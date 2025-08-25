@@ -11,14 +11,21 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSettings } from '@/hooks/useSettings';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Clock, Bell, User, Shield, Settings as SettingsIcon, Palette, Save, AlertCircle, Calendar } from 'lucide-react';
+import { ArrowLeft, Clock, Bell, User, Shield, Settings as SettingsIcon, Palette, Save, AlertCircle, Calendar, Globe } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
+import ToggleAgendamento from '@/components/booking-settings/ToggleAgendamento';
+import LinkCompartilhamento from '@/components/booking-settings/LinkCompartilhamento';
+import ConfiguracoesRegras from '@/components/booking-settings/ConfiguracoesRegras';
+import AutoAgendar from '@/components/booking-settings/AutoAgendar';
+import ListaReservas from '@/components/booking-settings/ListaReservas';
 
 const Settings = () => {
   const { user, loading: authLoading } = useAuth();
+  const { profile } = useUserProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { settings, isLoading: settingsLoading, error, updateSettings } = useSettings();
@@ -83,6 +90,75 @@ const Settings = () => {
   const [hasProfileChanges, setHasProfileChanges] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  // Estados para Agendamento Online
+  const [configuracaoAgendamento, setConfiguracaoAgendamento] = useState({
+    ativo: true,
+    autoAgendar: false,
+    tempoMinimoAntecedencia: 24,
+    duracaoPadrao: 60,
+    linkPublico: profile?.name 
+      ? `https://arenatime.com/booking/${profile.name.toLowerCase().replace(/\s+/g, '-')}`
+      : 'https://arenatime.com/booking'
+  });
+
+                    type StatusReserva = 'pendente' | 'confirmada' | 'cancelada' | 'realizada';
+
+                  interface ReservaOnline {
+                    id: string;
+                    cliente: {
+                      nome: string;
+                      email: string;
+                      telefone: string;
+                    };
+                    modalidade: string;
+                    data: Date;
+                    horario: string;
+                    status: StatusReserva;
+                    valor: number;
+                  }
+
+                  const [reservasOnline, setReservasOnline] = useState<ReservaOnline[]>([
+                    {
+                      id: '1',
+                      cliente: {
+                        nome: 'João Silva',
+                        email: 'joao@email.com',
+                        telefone: '(11) 99999-9999'
+                      },
+                      modalidade: 'Futsal',
+                      data: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                      horario: '14:00',
+                      status: 'pendente',
+                      valor: 80
+                    },
+                    {
+                      id: '2',
+                      cliente: {
+                        nome: 'Maria Santos',
+                        email: 'maria@email.com',
+                        telefone: '(11) 88888-8888'
+                      },
+                      modalidade: 'Vôlei',
+                      data: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+                      horario: '16:00',
+                      status: 'confirmada',
+                      valor: 100
+                    },
+                    {
+                      id: '3',
+                      cliente: {
+                        nome: 'Pedro Costa',
+                        email: 'pedro@email.com',
+                        telefone: '(11) 77777-7777'
+                      },
+                      modalidade: 'Tênis',
+                      data: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+                      horario: '10:00',
+                      status: 'realizada',
+                      valor: 120
+                    }
+                  ]);
+
   // Carregar configurações quando disponíveis
   useEffect(() => {
     if (settings) {
@@ -125,6 +201,16 @@ const Settings = () => {
       }
     }
   }, [settings]);
+
+  // Atualizar link do agendamento online quando o perfil carregar
+  useEffect(() => {
+    if (profile?.name) {
+      setConfiguracaoAgendamento(prev => ({
+        ...prev,
+        linkPublico: `https://arenatime.com/booking/${profile.name.toLowerCase().replace(/\s+/g, '-')}`
+      }));
+    }
+  }, [profile?.name]);
 
   // Função para atualizar horário
   const handleWorkingHourChange = async (day: string, field: 'enabled' | 'start' | 'end', value: boolean | string) => {
@@ -274,6 +360,47 @@ const Settings = () => {
     }
   };
 
+  // Funções para Agendamento Online
+  const handleToggleAgendamento = (ativo: boolean) => {
+    setConfiguracaoAgendamento(prev => ({ ...prev, ativo }));
+  };
+
+  const handleToggleAutoAgendar = (autoAgendar: boolean) => {
+    setConfiguracaoAgendamento(prev => ({ ...prev, autoAgendar }));
+  };
+
+  const handleUpdateRegras = (tempoMinimo: number, duracaoPadrao: number) => {
+    setConfiguracaoAgendamento(prev => ({ 
+      ...prev, 
+      tempoMinimoAntecedencia: tempoMinimo,
+      duracaoPadrao: duracaoPadrao
+    }));
+  };
+
+  const handleCancelarReserva = (id: string) => {
+    setReservasOnline(prev => 
+      prev.map(reserva => 
+        reserva.id === id ? { ...reserva, status: 'cancelada' } : reserva
+      )
+    );
+  };
+
+  const handleConfirmarReserva = (id: string) => {
+    setReservasOnline(prev => 
+      prev.map(reserva => 
+        reserva.id === id ? { ...reserva, status: 'confirmada' } : reserva
+      )
+    );
+  };
+
+  const handleMarcarRealizada = (id: string) => {
+    setReservasOnline(prev => 
+      prev.map(reserva => 
+        reserva.id === id ? { ...reserva, status: 'realizada' } : reserva
+      )
+    );
+  };
+
   // Loading states
   if (authLoading || settingsLoading) {
     return (
@@ -366,6 +493,7 @@ const Settings = () => {
                 { value: "schedule", label: "Horários", icon: <Clock className="h-4 w-4" /> },
                 { value: "modalities", label: "Modalidades", icon: <Calendar className="h-4 w-4" /> },
                 { value: "appointments", label: "Agendamentos", icon: <SettingsIcon className="h-4 w-4" /> },
+                { value: "online-booking", label: "Agendamento Online", icon: <Globe className="h-4 w-4" /> },
                 { value: "notifications", label: "Notificações", icon: <Bell className="h-4 w-4" /> },
                 { value: "security", label: "Segurança", icon: <Shield className="h-4 w-4" /> }
               ]}
@@ -544,6 +672,39 @@ const Settings = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Aba Agendamento Online */}
+            <TabsContent value="online-booking" className="space-y-6">
+              <div className="grid gap-6">
+                <ToggleAgendamento 
+                  ativo={configuracaoAgendamento.ativo}
+                  onToggle={handleToggleAgendamento}
+                />
+                
+                <LinkCompartilhamento 
+                  link={configuracaoAgendamento.linkPublico}
+                  ativo={configuracaoAgendamento.ativo}
+                />
+                
+                <AutoAgendar 
+                  ativo={configuracaoAgendamento.autoAgendar}
+                  onToggle={handleToggleAutoAgendar}
+                />
+                
+                <ConfiguracoesRegras 
+                  tempoMinimo={configuracaoAgendamento.tempoMinimoAntecedencia}
+                  duracaoPadrao={configuracaoAgendamento.duracaoPadrao}
+                  onUpdate={handleUpdateRegras}
+                />
+                
+                <ListaReservas 
+                  reservas={reservasOnline}
+                  onCancelar={handleCancelarReserva}
+                  onConfirmar={handleConfirmarReserva}
+                  onMarcarRealizada={handleMarcarRealizada}
+                />
+              </div>
             </TabsContent>
 
             {/* Aba Notificações */}

@@ -270,6 +270,69 @@ export type Database = {
           }
         ]
       }
+      online_reservations: {
+        Row: {
+          admin_user_id: string
+          auto_confirmada: boolean
+          cliente_email: string
+          cliente_nome: string
+          cliente_telefone: string
+          created_at: string
+          data: string
+          horario: string
+          id: string
+          modalidade_id: string
+          status: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          admin_user_id: string
+          auto_confirmada?: boolean
+          cliente_email: string
+          cliente_nome: string
+          cliente_telefone: string
+          created_at?: string
+          data: string
+          horario: string
+          id?: string
+          modalidade_id: string
+          status?: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          admin_user_id?: string
+          auto_confirmada?: boolean
+          cliente_email?: string
+          cliente_nome?: string
+          cliente_telefone?: string
+          created_at?: string
+          data?: string
+          horario?: string
+          id?: string
+          modalidade_id?: string
+          status?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "online_reservations_admin_user_id_fkey"
+            columns: ["admin_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_reservations_modalidade_id_fkey"
+            columns: ["modalidade_id"]
+            isOneToOne: false
+            referencedRelation: "modalities"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

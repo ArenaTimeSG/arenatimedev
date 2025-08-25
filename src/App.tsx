@@ -16,6 +16,9 @@ import NewAppointment from "./pages/NewAppointment";
 import Appointments from "./pages/Appointments";
 import Financial from "./pages/Financial";
 import Settings from "./pages/Settings";
+import OnlineBooking from "./pages/OnlineBooking";
+import OnlineBookingDebug from "./pages/OnlineBookingDebug";
+import TestBooking from "./pages/TestBooking";
 import NotFound from "./pages/NotFound";
 
 const AppContent = () => {
@@ -36,6 +39,8 @@ const AppContent = () => {
         <Route path="/appointments/new" element={<NewAppointment />} />
         <Route path="/financial" element={<Financial />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/booking/:username" element={<OnlineBooking />} />
+        <Route path="/booking" element={<OnlineBooking />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
