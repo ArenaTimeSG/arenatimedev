@@ -283,14 +283,16 @@ const Appointments = () => {
                       {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
                     </h3>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCurrentMonth}
-                    className="border-slate-200 hover:bg-slate-50"
-                  >
-                    Mês Atual
-                  </Button>
+                  {format(selectedMonth, 'MMMM yyyy', { locale: ptBR }) === format(new Date(), 'MMMM yyyy', { locale: ptBR }) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCurrentMonth}
+                      className="border-slate-200 hover:bg-slate-50"
+                    >
+                      Mês Atual
+                    </Button>
+                  )}
                 </div>
                 
                 <Button
