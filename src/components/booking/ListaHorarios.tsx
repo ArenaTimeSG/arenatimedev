@@ -14,37 +14,61 @@ interface Modalidade {
 }
 
 interface ListaHorariosProps {
-  horarios: string[];
+  horarios: string[]; // Horários disponíveis
   onHorarioSelect: (horario: string) => void;
   modalidade: Modalidade;
   data: Date;
+  workingHours?: any; // Configuração de horários de funcionamento
 }
 
-const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data }: ListaHorariosProps) => {
+const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHours }: ListaHorariosProps) => {
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
 
-  // Simular horários ocupados (em um app real, viria do backend)
-  const horariosOcupados = ['10:00', '15:00', '19:00'];
+  // Gerar todos os horários possíveis baseados no working_hours
+  const generateAllPossibleHours = () => {
+    if (!workingHours) return [];
+    
+    const dayOfWeek = data.getDay();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[dayOfWeek];
+    const daySchedule = workingHours[dayName];
+    
+    if (!daySchedule || !daySchedule.enabled) return [];
+    
+    const startHour = parseInt(daySchedule.start.split(':')[0]);
+    const endHour = parseInt(daySchedule.end.split(':')[0]);
+    
+    const allHours: string[] = [];
+    for (let hour = startHour; hour < endHour; hour++) {
+      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+      allHours.push(timeString);
+    }
+    
+    return allHours;
+  };
+
+  const allPossibleHours = generateAllPossibleHours();
+
+  // Verificar se o horário está disponível
+  const isHorarioOcupado = (horario: string) => {
+    return !horarios.includes(horario);
+  };
 
   const handleHorarioClick = (horario: string) => {
-    if (!horariosOcupados.includes(horario)) {
+    if (horarios.includes(horario)) {
       setSelectedHorario(horario);
       onHorarioSelect(horario);
     }
-  };
-
-  const isHorarioOcupado = (horario: string) => {
-    return horariosOcupados.includes(horario);
   };
 
   const isHorarioSelected = (horario: string) => {
     return selectedHorario === horario;
   };
 
-  // Agrupar horários por período
-  const horariosManha = horarios.filter(h => parseInt(h) < 12);
-  const horariosTarde = horarios.filter(h => parseInt(h) >= 12 && parseInt(h) < 18);
-  const horariosNoite = horarios.filter(h => parseInt(h) >= 18);
+  // Agrupar horários por período (usar todos os horários possíveis)
+  const horariosManha = allPossibleHours.filter(h => parseInt(h) < 12);
+  const horariosTarde = allPossibleHours.filter(h => parseInt(h) >= 12 && parseInt(h) < 18);
+  const horariosNoite = allPossibleHours.filter(h => parseInt(h) >= 18);
 
   return (
     <div className="max-w-2xl mx-auto">

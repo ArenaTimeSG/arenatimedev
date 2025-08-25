@@ -6,8 +6,7 @@ import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAdminByUsername } from '@/hooks/useAdminByUsername';
 import { useOnlineBooking } from '@/hooks/useOnlineBooking';
-import { useAvailableHoursSync } from '@/hooks/useAvailableHoursSync';
-import { useExistingAppointments } from '@/hooks/useExistingAppointments';
+import { useAvailableHoursCorrect } from '@/hooks/useAvailableHoursCorrect';
 import CardModalidade from '@/components/booking/CardModalidade';
 import Calendario from '@/components/booking/Calendario';
 import ListaHorarios from '@/components/booking/ListaHorarios';
@@ -66,14 +65,10 @@ const OnlineBooking = () => {
     error: reservationError 
   } = useOnlineBooking();
 
-  // Hook para buscar agendamentos existentes
-  const { data: existingAppointments = [] } = useExistingAppointments({
+  // Hook para horários disponíveis (usando tabela horarios)
+  const { data: availableHours = [] } = useAvailableHoursCorrect({
     adminUserId: adminData?.user?.user_id,
-    selectedDate: reserva.data || new Date()
-  });
-
-  // Hook para horários disponíveis (movido para nível superior)
-  const availableHours = useAvailableHoursSync({
+    selectedDate: reserva.data || new Date(),
     workingHours: adminData?.settings?.working_hours || {
       monday: { enabled: true, start: '08:00', end: '18:00' },
       tuesday: { enabled: true, start: '08:00', end: '18:00' },
@@ -83,10 +78,7 @@ const OnlineBooking = () => {
       saturday: { enabled: true, start: '08:00', end: '18:00' },
       sunday: { enabled: false, start: '08:00', end: '18:00' }
     },
-    selectedDate: reserva.data || new Date(),
-    tempoMinimoAntecedencia: adminData?.settings?.online_booking?.tempo_minimo_antecedencia || 24,
-    existingAppointments: existingAppointments,
-    modalityDuration: reserva.modalidade?.duracao || 60
+    tempoMinimoAntecedencia: adminData?.settings?.online_booking?.tempo_minimo_antecedencia || 24
   });
 
   // Função para gerar cor baseada no nome da modalidade
@@ -386,6 +378,7 @@ const OnlineBooking = () => {
                 onHorarioSelect={handleHorarioSelect}
                 modalidade={reserva.modalidade!}
                 data={reserva.data!}
+                workingHours={adminData?.settings?.working_hours}
               />
             </div>
           )}

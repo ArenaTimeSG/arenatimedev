@@ -78,20 +78,38 @@ export const useOnlineBooking = () => {
           clientId = newClient.id;
         }
 
-        // 2. Criar o agendamento real na tabela appointments
-        // Debug: Log dos dados recebidos
-        console.log('🔍 Dados recebidos:', data);
-        console.log('🔍 Data recebida:', data.data);
-        console.log('🔍 Horário recebido:', data.horario);
+        // 2. Verificar se já existe agendamento para esta data e hora
+        const normalizedDate = data.data; // Já vem no formato YYYY-MM-DD
+        const normalizedTime = data.horario; // Formato HH:mm
         
-        // Criar data correta combinando data e horário
-        const [year, month, day] = data.data.split('-').map(Number);
-        const [hour, minute] = data.horario.split(':').map(Number);
-        
-        const appointmentDate = new Date(year, month - 1, day, hour, minute, 0, 0);
-        
-        console.log('🔍 Data final criada:', appointmentDate);
-        console.log('🔍 Data ISO:', appointmentDate.toISOString());
+        console.log('🔍 Verificando duplicidade:', {
+          data: normalizedDate,
+          hora: normalizedTime,
+          adminUserId: data.admin_user_id
+        });
+
+        // Verificar se já existe agendamento
+        const { data: existingAppointments, error: checkError } = await supabase
+          .from('appointments')
+          .select('id')
+          .eq('user_id', data.admin_user_id)
+          .eq('date', `${normalizedDate}T${normalizedTime}:00`)
+          .not('status', 'eq', 'a_cobrar');
+
+        if (checkError) {
+          throw new Error(`Erro ao verificar agendamento existente: ${checkError.message}`);
+        }
+
+        if (existingAppointments && existingAppointments.length > 0) {
+          throw new Error('Este horário já está ocupado. Por favor, escolha outro horário.');
+        }
+
+        // 3. Criar o agendamento real na tabela appointments
+        console.log('🔍 Criando agendamento:', {
+          data: normalizedDate,
+          hora: normalizedTime,
+          adminUserId: data.admin_user_id
+        });
 
         // Determinar o status baseado na configuração de auto-agendamento
         // Se auto_confirmada é true, status é 'agendado', senão é 'a_cobrar' (pendente)
@@ -101,7 +119,7 @@ export const useOnlineBooking = () => {
           .from('appointments')
           .insert({
             client_id: clientId,
-            date: appointmentDate.toISOString(),
+            date: `${normalizedDate}T${normalizedTime}:00`,
             status: appointmentStatus,
             modality: data.modalidade_name, // Usar o nome da modalidade
             user_id: data.admin_user_id, // Vincular ao admin
