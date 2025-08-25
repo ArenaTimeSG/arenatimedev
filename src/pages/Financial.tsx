@@ -93,7 +93,13 @@ const Financial = () => {
       // Filtrar agendamentos do mês selecionado
       const monthAppointments = appointments.filter(apt => {
         const aptDate = new Date(apt.date);
-        return aptDate >= startOfSelectedMonth && aptDate <= endOfSelectedMonth;
+        // Normalizar as datas para comparar apenas ano e mês
+        const aptYear = aptDate.getFullYear();
+        const aptMonth = aptDate.getMonth();
+        const selectedYear = selectedMonth.getFullYear();
+        const selectedMonthNum = selectedMonth.getMonth();
+        
+        return aptYear === selectedYear && aptMonth === selectedMonthNum;
       });
 
       setAppointmentsData(monthAppointments.map(apt => ({

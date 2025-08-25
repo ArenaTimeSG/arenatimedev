@@ -69,16 +69,19 @@ const Appointments = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [appointments, searchTerm, statusFilter, modalityFilter]);
+  }, [appointments, searchTerm, statusFilter, modalityFilter, selectedMonth]);
 
   // Função para filtrar agendamentos por mês selecionado
   const getAppointmentsForSelectedMonth = () => {
-    const startOfSelectedMonth = startOfMonth(selectedMonth);
-    const endOfSelectedMonth = endOfMonth(selectedMonth);
-    
     return appointments.filter(apt => {
       const appointmentDate = new Date(apt.date);
-      return appointmentDate >= startOfSelectedMonth && appointmentDate <= endOfSelectedMonth;
+      // Normalizar as datas para comparar apenas ano e mês
+      const aptYear = appointmentDate.getFullYear();
+      const aptMonth = appointmentDate.getMonth();
+      const selectedYear = selectedMonth.getFullYear();
+      const selectedMonthNum = selectedMonth.getMonth();
+      
+      return aptYear === selectedYear && aptMonth === selectedMonthNum;
     });
   };
 
