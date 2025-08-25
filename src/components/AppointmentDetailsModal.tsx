@@ -1,0 +1,596 @@
+import { useState, useEffect, useCallback } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { Trash2, DollarSign, X, Calendar, User, Activity, Loader2, AlertCircle } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
+import { useAppointments } from '@/hooks/useAppointments';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+
+interface Appointment {
+  id: string;
+  date: string;
+  status: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
+  modality: string | null;
+  modality_id: string | null;
+  valor_total: number;
+  client: {
+    name: string;
+  };
+  modality_info?: {
+    name: string;
+    valor: number;
+  };
+  recurrence_id?: string;
+}
+
+interface AppointmentDetailsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  appointment: Appointment | null;
+  onAppointmentUpdated: () => void;
+}
+
+const AppointmentDetailsModal = ({ 
+  isOpen, 
+  onClose, 
+  appointment, 
+  onAppointmentUpdated 
+}: AppointmentDetailsModalProps) => {
+  const { toast } = useToast();
+  const { deleteAppointment } = useAppointments();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [showSingleDeleteDialog, setShowSingleDeleteDialog] = useState(false);
+  const [showRecurrenceDeleteDialog, setShowRecurrenceDeleteDialog] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Debug apenas em desenvolvimento
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  useEffect(() => {
+    if (isDevelopment) {
+      console.log('🔍 AppointmentDetailsModal - Debug Info:', {
+        isOpen,
+        appointment: appointment ? {
+          id: appointment.id,
+          date: appointment.date,
+          status: appointment.status,
+          modality: appointment.modality,
+          clientName: appointment.client?.name,
+          recurrence_id: appointment.recurrence_id
+        } : null,
+        recurrence_id: appointment?.recurrence_id,
+        hasRecurrence: !!appointment?.recurrence_id,
+        appointmentId: appointment?.id
+      });
+    }
+  }, [isOpen, appointment, isDevelopment]);
+
+  // Limpar estados quando o modal fecha
+  useEffect(() => {
+    if (!isOpen) {
+      setError(null);
+      setIsFetching(false);
+      setShowSingleDeleteDialog(false);
+      setShowRecurrenceDeleteDialog(false);
+    }
+  }, [isOpen]);
+
+  // Funções auxiliares
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pago': return 'bg-green-100 text-green-800 border-green-200';
+      case 'a_cobrar': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'agendado': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'cancelado': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pago': return 'Pago';
+      case 'a_cobrar': return 'A Cobrar';
+      case 'agendado': return 'Agendado';
+      case 'cancelado': return 'Cancelado';
+      default: return status;
+    }
+  };
+
+  // Hooks useCallback - devem vir antes de qualquer lógica condicional
+  const handleStatusChange = useCallback(async (newStatus: 'pago' | 'cancelado') => {
+    if (!appointment?.id) {
+      toast({
+        title: 'Erro',
+        description: 'ID do agendamento não encontrado.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: newStatus })
+        .eq('id', appointment.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Status atualizado!',
+        description: `Agendamento marcado como ${getStatusLabel(newStatus)}.`,
+      });
+
+      onAppointmentUpdated();
+      onClose();
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Erro desconhecido ao atualizar status';
+      setError(errorMessage);
+      toast({
+        title: 'Erro ao atualizar status',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appointment?.id, onAppointmentUpdated, onClose, toast]);
+
+  const handleDeleteSingle = useCallback(async () => {
+    if (!appointment?.id) {
+      toast({
+        title: 'Erro',
+        description: 'ID do agendamento não encontrado.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      await deleteAppointment(appointment.id);
+
+      onAppointmentUpdated();
+      onClose();
+      setShowSingleDeleteDialog(false);
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Erro desconhecido ao excluir agendamento';
+      setError(errorMessage);
+      toast({
+        title: 'Erro ao excluir agendamento',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appointment?.id, onAppointmentUpdated, onClose, toast, deleteAppointment]);
+
+  const handleDeleteRecurrence = useCallback(async () => {
+    if (!appointment?.recurrence_id) {
+      toast({
+        title: 'Erro ao excluir recorrência',
+        description: 'ID de recorrência não encontrado.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (isDevelopment) {
+      console.log('🗑️ handleDeleteRecurrence - Iniciando exclusão de recorrência:', {
+        recurrence_id: appointment.recurrence_id,
+        appointment_id: appointment.id,
+        appointment_date: appointment.date
+      });
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Primeiro, verificar quantos agendamentos existem com este recurrence_id
+      const { data: appointmentsToDelete, error: countError } = await supabase
+        .from('appointments')
+        .select('id, date, client_id, modality, status')
+        .eq('recurrence_id', appointment.recurrence_id)
+        .order('date', { ascending: true });
+
+      if (countError) throw countError;
+
+      if (isDevelopment) {
+        console.log('📊 handleDeleteRecurrence - Agendamentos encontrados:', {
+          count: appointmentsToDelete?.length || 0,
+          recurrence_id: appointment.recurrence_id,
+          appointments: appointmentsToDelete?.map(apt => ({
+            id: apt.id,
+            date: apt.date,
+            modality: apt.modality,
+            status: apt.status
+          }))
+        });
+      }
+
+      if (!appointmentsToDelete || appointmentsToDelete.length === 0) {
+        if (isDevelopment) {
+          console.warn('⚠️ handleDeleteRecurrence - Nenhum agendamento encontrado para este recurrence_id');
+        }
+        toast({
+          title: 'Aviso',
+          description: 'Nenhum agendamento encontrado para esta recorrência.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Deletar TODOS os agendamentos com o mesmo recurrence_id
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('recurrence_id', appointment.recurrence_id);
+
+      if (error) throw error;
+
+      if (isDevelopment) {
+        console.log('✅ handleDeleteRecurrence - Exclusão concluída com sucesso', {
+          recurrence_id: appointment.recurrence_id,
+          deleted_count: appointmentsToDelete.length,
+          deleted_appointments: appointmentsToDelete.map(apt => apt.id)
+        });
+      }
+
+      toast({
+        title: 'Recorrência excluída!',
+        description: `${appointmentsToDelete.length} agendamentos da recorrência foram excluídos com sucesso.`,
+      });
+
+      // Invalidar cache para atualizar a lista
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+      
+      onAppointmentUpdated();
+      setShowRecurrenceDeleteDialog(false);
+      onClose();
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Erro desconhecido ao excluir recorrência';
+      setError(errorMessage);
+      
+      if (isDevelopment) {
+        console.error('❌ handleDeleteRecurrence - Erro:', error);
+      }
+      
+      toast({
+        title: 'Erro ao excluir recorrência',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appointment?.recurrence_id, appointment?.id, appointment?.date, onAppointmentUpdated, onClose, toast, isDevelopment, queryClient, user?.id]);
+
+  // Renderizar conteúdo principal - sempre renderizar o Dialog, mas controlar visibilidade com open
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Detalhes do Agendamento
+            </DialogTitle>
+          </DialogHeader>
+          
+          {/* Loading state */}
+          {isFetching && (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Carregando detalhes...</p>
+            </div>
+          )}
+
+          {/* Error state */}
+          {error && (
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
+              <AlertCircle className="h-8 w-8 text-red-500" />
+              <div className="text-center">
+                <h3 className="text-sm font-medium text-red-600">Erro ao carregar dados</h3>
+                <p className="text-xs text-muted-foreground mt-1">{error}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setError(null)}>
+                Tentar Novamente
+              </Button>
+            </div>
+          )}
+
+          {/* Fallback para appointment nulo/indefinido */}
+          {!isFetching && !error && (!appointment || !appointment.id) && (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <AlertCircle className="h-12 w-12 text-muted-foreground" />
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-muted-foreground">
+                  Agendamento não encontrado
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Os detalhes do agendamento não estão disponíveis.
+                </p>
+              </div>
+              <Button variant="outline" onClick={onClose}>
+                Fechar
+              </Button>
+            </div>
+          )}
+
+          {/* Fallback para dados incompletos */}
+          {!isFetching && !error && appointment && appointment.id && (!appointment.client?.name || !appointment.date) && (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <AlertCircle className="h-12 w-12 text-muted-foreground" />
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-muted-foreground">
+                  Dados incompletos
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Algumas informações do agendamento estão faltando.
+                </p>
+              </div>
+              <Button variant="outline" onClick={onClose}>
+                Fechar
+              </Button>
+            </div>
+          )}
+
+          {/* Main content - apenas se não estiver carregando, não houver erro e appointment for válido */}
+          {!isFetching && !error && appointment && appointment.id && appointment.client?.name && appointment.date && (
+            <div className="space-y-6">
+              {/* Informações do Cliente */}
+              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+                <User className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium">{appointment.client.name}</p>
+                  <p className="text-sm text-muted-foreground">Cliente</p>
+                </div>
+              </div>
+
+              {/* Informações do Agendamento */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Activity className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium">
+                      {appointment.modality_info ? 
+                        `${appointment.modality_info.name} – ${formatCurrency(appointment.valor_total)}` :
+                        appointment.modality || 'Modalidade não definida'
+                      }
+                    </p>
+                    <p className="text-sm text-muted-foreground">Modalidade</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium">
+                      {format(new Date(appointment.date), 'dd/MM/yyyy', { locale: ptBR })}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Data</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium">
+                      {format(new Date(appointment.date), 'HH:mm', { locale: ptBR })}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Horário</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Badge className={getStatusColor(appointment.status)}>
+                    {getStatusLabel(appointment.status)}
+                  </Badge>
+                  <p className="text-sm text-muted-foreground">Status atual</p>
+                </div>
+              </div>
+
+              {/* Ações */}
+              <div className="space-y-3 pt-4 border-t">
+                <h3 className="font-medium">Ações</h3>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => handleStatusChange('pago')}
+                    disabled={isLoading || appointment.status === 'pago'}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <DollarSign className="h-4 w-4" />
+                    )}
+                    Marcar como Pago
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => handleStatusChange('cancelado')}
+                    disabled={isLoading || appointment.status === 'cancelado'}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
+                    Marcar como Cancelado
+                  </Button>
+                </div>
+
+                {/* Botões de Exclusão */}
+                <div className="space-y-3">
+                  <Button
+                    variant="destructive"
+                    className="w-full flex items-center gap-2"
+                    disabled={isLoading}
+                    onClick={() => setShowSingleDeleteDialog(true)}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    Excluir este agendamento
+                  </Button>
+
+                  {/* Debug apenas em desenvolvimento */}
+                  {isDevelopment && appointment.recurrence_id && (
+                    <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                      🔍 Debug: recurrence_id = {appointment.recurrence_id}
+                      <br />
+                      📅 Data do agendamento: {format(new Date(appointment.date), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      <br />
+                      🎯 Tipo: Recorrência (indeterminada ou com prazo)
+                    </div>
+                  )}
+
+                  {appointment.recurrence_id && (
+                    <Button
+                      variant="destructive"
+                      className="w-full flex items-center gap-2 bg-red-700 hover:bg-red-800"
+                      disabled={isLoading}
+                      onClick={() => {
+                        if (isDevelopment) {
+                          console.log('🔘 Botão "Excluir toda a recorrência" clicado');
+                        }
+                        setShowRecurrenceDeleteDialog(true);
+                      }}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                      Excluir toda a recorrência
+                    </Button>
+                  )}
+                </div>
+
+                {/* Diálogo de Confirmação - Exclusão Individual */}
+                <AlertDialog open={showSingleDeleteDialog} onOpenChange={setShowSingleDeleteDialog}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <Trash2 className="h-5 w-5 text-red-600" />
+                        Confirmar exclusão
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir este agendamento?
+                        {appointment.recurrence_id && (
+                          <span className="block mt-2 text-sm text-amber-600">
+                            ⚠️ Este agendamento faz parte de uma recorrência. Apenas este agendamento será excluído.
+                          </span>
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteSingle}
+                        className="bg-red-600 hover:bg-red-700"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Excluindo...' : 'Excluir Agendamento'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Diálogo de Confirmação - Exclusão de Recorrência */}
+                <AlertDialog open={showRecurrenceDeleteDialog} onOpenChange={setShowRecurrenceDeleteDialog}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <Trash2 className="h-5 w-5 text-red-600" />
+                        Confirmar exclusão de recorrência
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        <div className="space-y-2">
+                          <p>Tem certeza que deseja excluir <strong>TODA A RECORRÊNCIA</strong>?</p>
+                          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-sm text-red-800 font-medium">⚠️ Atenção!</p>
+                            <p className="text-sm text-red-700 mt-1">
+                              Esta ação irá excluir <strong>permanentemente</strong> todos os agendamentos 
+                              desta recorrência, incluindo agendamentos futuros e indeterminados. 
+                              Esta operação não pode ser desfeita.
+                            </p>
+                            <p className="text-sm text-red-700 mt-2">
+                              <strong>Impacto:</strong> Todos os agendamentos com o mesmo recurrence_id 
+                              serão removidos do sistema, independentemente da data ou tipo de recorrência.
+                            </p>
+                            {/* Debug apenas em desenvolvimento */}
+                            {isDevelopment && (
+                              <p className="text-xs text-red-600 mt-2">
+                                Recurrence ID: {appointment.recurrence_id}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel 
+                        disabled={isLoading}
+                        onClick={() => {
+                          if (isDevelopment) {
+                            console.log('🔘 Botão "Cancelar" clicado no diálogo de recorrência');
+                          }
+                        }}
+                      >
+                        Cancelar
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          if (isDevelopment) {
+                            console.log('🔘 Botão "Excluir Toda Recorrência" clicado no diálogo');
+                          }
+                          handleDeleteRecurrence();
+                        }}
+                        className="bg-red-700 hover:bg-red-800"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Excluindo...' : 'Excluir Toda Recorrência'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose} disabled={isLoading}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+export default AppointmentDetailsModal;
