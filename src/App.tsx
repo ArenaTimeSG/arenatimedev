@@ -41,6 +41,7 @@ const AppContent = () => {
         <Route path="/settings" element={<Settings />} />
         <Route path="/booking/:username" element={<OnlineBooking />} />
         <Route path="/booking" element={<OnlineBooking />} />
+        <Route path="/booking-debug/:username" element={<OnlineBookingDebug />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
