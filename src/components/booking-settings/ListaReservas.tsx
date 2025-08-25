@@ -226,4 +226,4 @@ const ListaReservas = ({ reservas, onCancelar, onConfirmar, onMarcarRealizada }:
   );
 };
 
-export default ListaReservas;
+export { ListaReservas };

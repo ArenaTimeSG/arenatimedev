@@ -152,4 +152,4 @@ const AutoAgendar = ({ ativo, onToggle }: AutoAgendarProps) => {
   );
 };
 
-export default AutoAgendar;
+export { AutoAgendar };

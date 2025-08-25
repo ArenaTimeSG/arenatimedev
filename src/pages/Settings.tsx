@@ -17,11 +17,11 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Clock, Bell, User, Shield, Settings as SettingsIcon, Palette, Save, AlertCircle, Calendar, Globe } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
-import ToggleAgendamento from '@/components/booking-settings/ToggleAgendamento';
-import LinkCompartilhamento from '@/components/booking-settings/LinkCompartilhamento';
-import ConfiguracoesRegras from '@/components/booking-settings/ConfiguracoesRegras';
-import AutoAgendar from '@/components/booking-settings/AutoAgendar';
-import ListaReservas from '@/components/booking-settings/ListaReservas';
+import { ToggleAgendamento } from '@/components/booking-settings/ToggleAgendamento';
+import { LinkCompartilhamento } from '@/components/booking-settings/LinkCompartilhamento';
+import { ConfiguracoesRegras } from '@/components/booking-settings/ConfiguracoesRegras';
+import { AutoAgendar } from '@/components/booking-settings/AutoAgendar';
+import { ListaReservas } from '@/components/booking-settings/ListaReservas';
 
 const Settings = () => {
   const { user, loading: authLoading } = useAuth();
@@ -682,10 +682,7 @@ const Settings = () => {
                   onToggle={handleToggleAgendamento}
                 />
                 
-                <LinkCompartilhamento 
-                  link={configuracaoAgendamento.linkPublico}
-                  ativo={configuracaoAgendamento.ativo}
-                />
+                <LinkCompartilhamento />
                 
                 <AutoAgendar 
                   ativo={configuracaoAgendamento.autoAgendar}

@@ -37,6 +37,7 @@ export const useUserProfile = () => {
           throw error;
         }
 
+        console.log('🔍 useUserProfile - Perfil carregado:', data);
         return data;
       } catch (error) {
         console.error('Erro ao buscar perfil:', error);

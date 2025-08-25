@@ -6,7 +6,8 @@ import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAdminByUsername } from '@/hooks/useAdminByUsername';
 import { useOnlineBooking } from '@/hooks/useOnlineBooking';
-import { useAvailableHours } from '@/hooks/useAvailableHours';
+import { useAvailableHoursSync } from '@/hooks/useAvailableHoursSync';
+import { useExistingAppointments } from '@/hooks/useExistingAppointments';
 import CardModalidade from '@/components/booking/CardModalidade';
 import Calendario from '@/components/booking/Calendario';
 import ListaHorarios from '@/components/booking/ListaHorarios';
@@ -55,6 +56,9 @@ const OnlineBooking = () => {
     error: adminError 
   } = useAdminByUsername(username || '');
 
+  // Verificar se o agendamento online está ativo
+  const isOnlineBookingEnabled = adminData?.settings?.online_booking?.ativo ?? false;
+
   // Hook para salvar reserva
   const { 
     createReservation, 
@@ -62,8 +66,14 @@ const OnlineBooking = () => {
     error: reservationError 
   } = useOnlineBooking();
 
+  // Hook para buscar agendamentos existentes
+  const { data: existingAppointments = [] } = useExistingAppointments({
+    adminUserId: adminData?.user?.user_id,
+    selectedDate: reserva.data || new Date()
+  });
+
   // Hook para horários disponíveis (movido para nível superior)
-  const availableHours = useAvailableHours({
+  const availableHours = useAvailableHoursSync({
     workingHours: adminData?.settings?.working_hours || {
       monday: { enabled: true, start: '08:00', end: '18:00' },
       tuesday: { enabled: true, start: '08:00', end: '18:00' },
@@ -74,7 +84,9 @@ const OnlineBooking = () => {
       sunday: { enabled: false, start: '08:00', end: '18:00' }
     },
     selectedDate: reserva.data || new Date(),
-    tempoMinimoAntecedencia: adminData?.settings?.online_booking?.tempo_minimo_antecedencia || 24
+    tempoMinimoAntecedencia: adminData?.settings?.online_booking?.tempo_minimo_antecedencia || 24,
+    existingAppointments: existingAppointments,
+    modalityDuration: reserva.modalidade?.duracao || 60
   });
 
   // Função para gerar cor baseada no nome da modalidade
@@ -129,21 +141,35 @@ const OnlineBooking = () => {
     try {
       const autoConfirmada = adminData?.settings?.online_booking?.auto_agendar || false;
       
-      await createReservation({
-        admin_user_id: adminData.user.user_id,
-        modalidade_id: reserva.modalidade.id,
-        modalidade_name: reserva.modalidade.name, // Adicionar nome da modalidade
-        data: reserva.data.toISOString(),
-        horario: reserva.horario,
-        cliente_nome: reserva.cliente.nome,
-        cliente_email: reserva.cliente.email,
-        cliente_telefone: reserva.cliente.telefone,
-        valor: reserva.modalidade.valor,
-        auto_confirmada: autoConfirmada
-      });
+      // Aguardar a resposta da criação da reserva
+      try {
+        // Debug: Log da data selecionada
+        console.log('🔍 Data selecionada:', reserva.data);
+        console.log('🔍 Data formatada:', reserva.data.toISOString().split('T')[0]);
+        console.log('🔍 Horário selecionado:', reserva.horario);
+        
+        await createReservation({
+          admin_user_id: adminData.user.user_id,
+          modalidade_id: reserva.modalidade.id,
+          modalidade_name: reserva.modalidade.name,
+          data: reserva.data.toISOString().split('T')[0],
+          horario: reserva.horario,
+          cliente_nome: reserva.cliente.nome,
+          cliente_email: reserva.cliente.email,
+          cliente_telefone: reserva.cliente.telefone,
+          valor: reserva.modalidade.valor,
+          auto_confirmada: autoConfirmada
+        });
 
-      setReservationStatus(autoConfirmada ? 'success' : 'pending');
-      setReservaConfirmada(true);
+        // Se chegou até aqui, a reserva foi criada com sucesso
+        setReservationStatus(autoConfirmada ? 'success' : 'pending');
+        setReservaConfirmada(true);
+      } catch (error) {
+        console.error('Erro ao criar reserva:', error);
+        // Em caso de erro, mostrar como pendente
+        setReservationStatus('pending');
+        setReservaConfirmada(true);
+      }
       
       // Reset após 5 segundos
       setTimeout(() => {

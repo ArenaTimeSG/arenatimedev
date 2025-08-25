@@ -79,15 +79,30 @@ export const useOnlineBooking = () => {
         }
 
         // 2. Criar o agendamento real na tabela appointments
-        const appointmentDate = new Date(data.data);
-        appointmentDate.setHours(parseInt(data.horario.split(':')[0]), parseInt(data.horario.split(':')[1]), 0, 0);
+        // Debug: Log dos dados recebidos
+        console.log('🔍 Dados recebidos:', data);
+        console.log('🔍 Data recebida:', data.data);
+        console.log('🔍 Horário recebido:', data.horario);
+        
+        // Criar data correta combinando data e horário
+        const [year, month, day] = data.data.split('-').map(Number);
+        const [hour, minute] = data.horario.split(':').map(Number);
+        
+        const appointmentDate = new Date(year, month - 1, day, hour, minute, 0, 0);
+        
+        console.log('🔍 Data final criada:', appointmentDate);
+        console.log('🔍 Data ISO:', appointmentDate.toISOString());
+
+        // Determinar o status baseado na configuração de auto-agendamento
+        // Se auto_confirmada é true, status é 'agendado', senão é 'a_cobrar' (pendente)
+        const appointmentStatus = data.auto_confirmada ? 'agendado' : 'a_cobrar';
 
         const { data: appointment, error: appointmentError } = await supabase
           .from('appointments')
           .insert({
             client_id: clientId,
             date: appointmentDate.toISOString(),
-            status: 'a_cobrar', // Sempre a_cobrar inicialmente
+            status: appointmentStatus,
             modality: data.modalidade_name, // Usar o nome da modalidade
             user_id: data.admin_user_id, // Vincular ao admin
             valor_total: data.valor,

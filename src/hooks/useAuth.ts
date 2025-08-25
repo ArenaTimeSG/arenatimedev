@@ -47,7 +47,7 @@ export const useAuth = () => {
 
   const signUp = async (signUpData: SignUpData) => {
     try {
-      console.log('🔐 Iniciando cadastro de usuário:', { email: signUpData.email, name: signUpData.name });
+      console.log('🔐 Iniciando cadastro de usuário:', { email: signUpData.email, name: signUpData.name, username: signUpData.username });
       
       // 1. Criar usuário no Supabase Auth
       const { data, error } = await supabase.auth.signUp({
@@ -56,7 +56,8 @@ export const useAuth = () => {
         options: {
           data: {
             name: signUpData.name,
-            phone: signUpData.phone
+            phone: signUpData.phone,
+            username: signUpData.username
           }
         }
       });
@@ -69,28 +70,29 @@ export const useAuth = () => {
       if (data?.user) {
         console.log('✅ Usuário criado com sucesso:', data.user.id);
         
-        // 2. Criar/atualizar perfil em user_profiles usando upsert
-        try {
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .upsert({
-              user_id: data.user.id,
-              name: signUpData.name,
-              email: signUpData.email,
-              phone: signUpData.phone,
-              role: 'user',
-              is_active: true,
-            });
+        // O trigger create_default_settings() vai criar o perfil automaticamente
+        // Se o username foi fornecido, vamos atualizar o perfil criado pelo trigger
+        if (signUpData.username) {
+          try {
+            const { error: profileError } = await supabase
+              .from('user_profiles')
+              .update({
+                username: signUpData.username,
+                name: signUpData.name,
+                phone: signUpData.phone,
+              })
+              .eq('user_id', data.user.id);
 
-          if (profileError) {
-            console.error('❌ Erro ao criar perfil:', profileError);
-            // Não falhar o cadastro se o perfil não puder ser criado
-          } else {
-            console.log('✅ Perfil criado/atualizado com sucesso');
+            if (profileError) {
+              console.error('❌ Erro ao atualizar perfil:', profileError);
+              // Não falhar o cadastro se a atualização não puder ser feita
+            } else {
+              console.log('✅ Perfil atualizado com sucesso');
+            }
+          } catch (profileError) {
+            console.error('❌ Erro inesperado ao atualizar perfil:', profileError);
+            // Não falhar o cadastro se a atualização não puder ser feita
           }
-        } catch (profileError) {
-          console.error('❌ Erro inesperado ao criar perfil:', profileError);
-          // Não falhar o cadastro se o perfil não puder ser criado
         }
       }
 

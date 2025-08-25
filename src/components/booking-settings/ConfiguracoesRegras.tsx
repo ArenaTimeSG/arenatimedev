@@ -188,4 +188,4 @@ const ConfiguracoesRegras = ({ tempoMinimo, duracaoPadrao, onUpdate }: Configura
   );
 };
 
-export default ConfiguracoesRegras;
+export { ConfiguracoesRegras };

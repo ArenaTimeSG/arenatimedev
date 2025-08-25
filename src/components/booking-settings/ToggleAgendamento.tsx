@@ -126,4 +126,4 @@ const ToggleAgendamento = ({ ativo, onToggle }: ToggleAgendamentoProps) => {
   );
 };
 
-export default ToggleAgendamento;
+export { ToggleAgendamento };

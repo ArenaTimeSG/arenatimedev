@@ -12,7 +12,9 @@ import {
   ValidationErrors, 
   validateSignUpData, 
   formatPhoneNumber,
-  cleanPhoneNumber 
+  cleanPhoneNumber,
+  generateUsername,
+  validateUsername
 } from '@/types/user';
 
 interface SignUpFormProps {
@@ -26,7 +28,8 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
     password: '',
     confirmPassword: '',
     name: '',
-    phone: ''
+    phone: '',
+    username: ''
   });
 
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -49,6 +52,15 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
           newErrors.email = 'Email inválido';
         } else {
           delete newErrors.email;
+        }
+        break;
+        
+      case 'username':
+        const usernameError = validateUsername(value);
+        if (usernameError) {
+          newErrors.username = usernameError;
+        } else {
+          delete newErrors.username;
         }
         break;
         
@@ -90,6 +102,9 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
           newErrors.name = 'Nome deve ter no máximo 100 caracteres';
         } else {
           delete newErrors.name;
+          // Gerar username automaticamente baseado no nome
+          const generatedUsername = generateUsername(value);
+          setFormData(prev => ({ ...prev, username: generatedUsername }));
         }
         break;
         
@@ -137,6 +152,7 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
       formData.password &&
       formData.confirmPassword &&
       formData.name &&
+      formData.username &&
       formData.password === formData.confirmPassword &&
       Object.keys(errors).length === 0
     );
@@ -168,7 +184,8 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
         email: formData.email,
         password: formData.password,
         name: formData.name,
-        phone: cleanPhoneNumber(formData.phone)
+        phone: cleanPhoneNumber(formData.phone),
+        username: formData.username
       });
       
       if (error) {
@@ -176,12 +193,14 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
         
         let errorMessage = 'Erro ao criar conta';
         
-        if (error.message.includes('already registered')) {
-          errorMessage = 'Este email já está cadastrado. Tente fazer login.';
+        if (error.message.includes('already registered') || error.message.includes('User already registered')) {
+          errorMessage = 'Este email já está cadastrado. Tente fazer login ou use a opção "Esqueci minha senha".';
         } else if (error.message.includes('password')) {
           errorMessage = 'Senha muito fraca. Use pelo menos 6 caracteres.';
         } else if (error.message.includes('email')) {
           errorMessage = 'Email inválido.';
+        } else if (error.message.includes('username')) {
+          errorMessage = 'Este username já está em uso. Escolha outro username.';
         } else {
           errorMessage = error.message;
         }
@@ -266,6 +285,44 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
             {errors.name && (
               <Alert variant="destructive" className="py-3 border-red-200 bg-red-50">
                 <AlertDescription className="text-sm font-medium">{errors.name}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          {/* Username */}
+          <div className="space-y-3">
+            <Label htmlFor="username" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <User className="h-4 w-4 text-blue-600" />
+              Username *
+            </Label>
+            <div className="relative">
+              <Input
+                id="username"
+                type="text"
+                placeholder="seu-username"
+                value={formData.username}
+                onChange={(e) => handleFieldChange('username', e.target.value)}
+                className={`h-12 px-4 pl-12 text-base border-2 transition-all duration-300 ${
+                  errors.username 
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
+                    : 'border-slate-200 focus:border-blue-500 focus:ring-blue-200'
+                } rounded-xl bg-white/80 backdrop-blur-sm`}
+                disabled={isSubmitting}
+              />
+              <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+              {formData.username && (
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                  {errors.username ? (
+                    <XCircle className="h-5 w-5 text-red-500" />
+                  ) : (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  )}
+                </div>
+              )}
+            </div>
+            {errors.username && (
+              <Alert variant="destructive" className="py-3 border-red-200 bg-red-50">
+                <AlertDescription className="text-sm font-medium">{errors.username}</AlertDescription>
               </Alert>
             )}
           </div>

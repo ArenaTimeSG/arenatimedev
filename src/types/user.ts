@@ -1,4 +1,5 @@
 // Types for User Profile functionality
+import { supabase } from '@/integrations/supabase/client';
 
 export interface UserProfile {
   id: string;
@@ -8,6 +9,7 @@ export interface UserProfile {
   phone?: string;
   role: 'admin' | 'user';
   is_active: boolean;
+  username: string;
   created_at: string;
   updated_at: string;
 }
@@ -16,6 +18,7 @@ export interface CreateUserProfile {
   name: string;
   email: string;
   phone?: string;
+  username: string;
   role?: 'admin' | 'user';
 }
 
@@ -32,6 +35,7 @@ export interface SignUpData {
   password: string;
   name: string;
   phone?: string;
+  username: string;
 }
 
 export interface SignUpValidation {
@@ -40,6 +44,7 @@ export interface SignUpValidation {
   confirmPassword: string;
   name: string;
   phone: string;
+  username: string;
 }
 
 export interface ValidationErrors {
@@ -48,6 +53,7 @@ export interface ValidationErrors {
   confirmPassword?: string;
   name?: string;
   phone?: string;
+  username?: string;
   general?: string;
 }
 
@@ -128,6 +134,38 @@ export const validatePhone = (phone: string): string | null => {
   return null;
 };
 
+export const validateUsername = (username: string): string | null => {
+  if (!username) {
+    return 'Username é obrigatório';
+  }
+  
+  if (username.length < 3) {
+    return 'Username deve ter pelo menos 3 caracteres';
+  }
+  
+  if (username.length > 50) {
+    return 'Username deve ter no máximo 50 caracteres';
+  }
+  
+  // Apenas letras, números e hífens
+  const usernameRegex = /^[a-zA-Z0-9-]+$/;
+  if (!usernameRegex.test(username)) {
+    return 'Username deve conter apenas letras, números e hífens';
+  }
+  
+  // Não pode começar ou terminar com hífen
+  if (username.startsWith('-') || username.endsWith('-')) {
+    return 'Username não pode começar ou terminar com hífen';
+  }
+  
+  // Não pode ter hífens consecutivos
+  if (username.includes('--')) {
+    return 'Username não pode ter hífens consecutivos';
+  }
+  
+  return null;
+};
+
 export const validateSignUpData = (data: SignUpValidation): ValidationErrors => {
   const errors: ValidationErrors = {};
   
@@ -153,6 +191,12 @@ export const validateSignUpData = (data: SignUpValidation): ValidationErrors => 
   const nameError = validateName(data.name);
   if (nameError) {
     errors.name = nameError;
+  }
+  
+  // Validar username
+  const usernameError = validateUsername(data.username);
+  if (usernameError) {
+    errors.username = usernameError;
   }
   
   // Validar telefone
@@ -182,5 +226,32 @@ export const formatPhoneNumber = (phone: string): string => {
 // Clean phone number (remove formatting)
 export const cleanPhoneNumber = (phone: string): string => {
   return phone.replace(/\D/g, '');
+};
+
+// Generate username from name
+export const generateUsername = (name: string): string => {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
+    .replace(/\s+/g, '-') // Substitui espaços por hífens
+    .replace(/-+/g, '-') // Remove hífens consecutivos
+    .replace(/^-|-$/g, ''); // Remove hífens no início e fim
+};
+
+// Check if username is available
+export const checkUsernameAvailability = async (username: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('username')
+      .eq('username', username)
+      .single();
+    
+    return !data; // Se não retornou dados, username está disponível
+  } catch (error) {
+    return true; // Em caso de erro, assume que está disponível
+  }
 };
 

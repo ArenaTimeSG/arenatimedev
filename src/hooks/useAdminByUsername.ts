@@ -46,62 +46,22 @@ export const useAdminByUsername = (username: string) => {
     queryKey: ['adminByUsername', username],
     queryFn: async (): Promise<AdminData> => {
       try {
-        // 1. Buscar o usuário pelo nome (convertido para formato URL)
+        // 1. Buscar o usuário pelo username
         console.log('Buscando usuário com username:', username);
         
-        // Tentar diferentes variações do nome
-        const searchVariations = [
-          username.replace(/-/g, ' '), // teste -> "teste"
-          username.replace(/-/g, ''),   // teste -> "teste"
-          username,                     // teste -> "teste"
-          username.toLowerCase(),       // TESTE -> "teste"
-          username.replace(/-/g, ' ').toLowerCase() // TESTE -> "teste"
-        ];
+        const { data: user, error: userError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('username', username)
+          .eq('is_active', true)
+          .single();
         
-        let user = null;
-        let userError = null;
-        
-        // Primeiro tentar buscar usuários admin
-        for (const searchTerm of searchVariations) {
-          console.log('Tentando buscar admin com termo:', searchTerm);
-          
-          const { data, error } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('role', 'admin')
-            .eq('is_active', true)
-            .ilike('name', `%${searchTerm}%`);
-          
-          if (!error && data && data.length > 0) {
-            user = data[0];
-            console.log('Usuário admin encontrado:', user);
-            break;
-          }
-        }
-        
-        // Se não encontrou admin, usuário não existe ou não é admin
-        if (!user) {
-          console.log('Nenhum admin encontrado com o nome:', username);
+        if (userError || !user) {
+          console.error('Usuário não encontrado para username:', username);
           throw new Error('Usuário não encontrado');
         }
         
-        if (!user) {
-          // Se não encontrou, tentar busca exata
-          const { data, error } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('role', 'admin')
-            .eq('is_active', true)
-            .eq('name', username.replace(/-/g, ' '));
-          
-          if (!error && data && data.length > 0) {
-            user = data[0];
-            console.log('Usuário encontrado com busca exata:', user);
-          } else {
-            console.error('Nenhum usuário encontrado para:', username);
-            throw new Error('Usuário não encontrado');
-          }
-        }
+        console.log('Usuário encontrado:', user);
 
         // 2. Buscar configurações do usuário
         const { data: settings, error: settingsError } = await supabase

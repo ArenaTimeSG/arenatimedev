@@ -235,6 +235,7 @@ export type Database = {
           phone: string | null
           role: string
           is_active: boolean
+          username: string
           created_at: string
           updated_at: string
         }
@@ -246,6 +247,7 @@ export type Database = {
           phone?: string | null
           role?: string
           is_active?: boolean
+          username: string
           created_at?: string
           updated_at?: string
         }
@@ -257,6 +259,7 @@ export type Database = {
           phone?: string | null
           role?: string
           is_active?: boolean
+          username?: string
           created_at?: string
           updated_at?: string
         }

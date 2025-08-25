@@ -1,176 +1,183 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { Copy, Link, Check, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Link, Copy, Check, ExternalLink, Share2, Eye, EyeOff } from 'lucide-react';
 
-interface LinkCompartilhamentoProps {
-  link: string;
-  ativo: boolean;
-}
+export const LinkCompartilhamento = () => {
+  const { user } = useAuth();
+  const { profile: userProfile, refetchProfile } = useUserProfile();
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
 
-const LinkCompartilhamento = ({ link, ativo }: LinkCompartilhamentoProps) => {
-  const [copiado, setCopiado] = useState(false);
-  const [mostrarLink, setMostrarLink] = useState(true);
+  // Debug: Log do perfil do usuário
+  console.log('🔍 LinkCompartilhamento - userProfile:', userProfile);
+  console.log('🔍 LinkCompartilhamento - user:', user);
 
-  const handleCopiarLink = async () => {
+  // Forçar refetch do perfil se não estiver carregado
+  useEffect(() => {
+    if (!userProfile && user) {
+      console.log('🔄 Forçando refetch do perfil...');
+      refetchProfile();
+    }
+  }, [userProfile, user, refetchProfile]);
+
+  const bookingUrl = userProfile?.username 
+    ? `${window.location.origin}/booking/${userProfile.username}`
+    : '';
+
+  const handleCopyLink = async () => {
+    if (!bookingUrl) {
+      toast({
+        title: 'Erro',
+        description: 'Username não configurado. Configure seu username primeiro.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
-      await navigator.clipboard.writeText(link);
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2000);
-    } catch (err) {
-      console.error('Erro ao copiar link:', err);
+      await navigator.clipboard.writeText(bookingUrl);
+      setCopied(true);
+      toast({
+        title: 'Link copiado!',
+        description: 'O link de agendamento foi copiado para a área de transferência.',
+      });
+      
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: 'Erro ao copiar',
+        description: 'Não foi possível copiar o link automaticamente.',
+        variant: 'destructive',
+      });
     }
   };
 
-  const handleAbrirLink = () => {
-    window.open(link, '_blank');
+  const handleOpenLink = () => {
+    if (bookingUrl) {
+      window.open(bookingUrl, '_blank');
+    }
   };
 
-  return (
-    <div className="bg-white rounded-2xl shadow-lg p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-          <Link className="w-6 h-6 text-blue-600" />
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-gray-800">Link de Compartilhamento</h3>
-          <p className="text-sm text-gray-600">
-            Link público para clientes acessarem o agendamento online
-          </p>
-        </div>
-      </div>
-
-      {/* Status do Link */}
-      <div className={`p-4 rounded-xl border mb-6 ${
-        ativo 
-          ? 'bg-green-50 border-green-200' 
-          : 'bg-red-50 border-red-200'
-      }`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {ativo ? (
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            ) : (
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-            )}
-            <span className={`text-sm font-medium ${
-              ativo ? 'text-green-800' : 'text-red-800'
-            }`}>
-              {ativo ? 'Link Ativo' : 'Link Inativo'}
-            </span>
-          </div>
-          <span className={`text-xs px-2 py-1 rounded-full ${
-            ativo 
-              ? 'bg-green-200 text-green-800' 
-              : 'bg-red-200 text-red-800'
-          }`}>
-            {ativo ? 'Disponível' : 'Indisponível'}
-          </span>
-        </div>
-      </div>
-
-      {/* Campo do Link */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Link Público
-        </label>
-        <div className="relative">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 relative">
-              <input
-                type={mostrarLink ? 'text' : 'password'}
-                value={link}
-                readOnly
-                className={`w-full px-4 py-3 pr-12 border rounded-lg bg-gray-50 text-gray-700 ${
-                  ativo ? 'border-green-300' : 'border-red-300'
-                }`}
-                placeholder="Link de agendamento..."
-              />
-              <button
-                onClick={() => setMostrarLink(!mostrarLink)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {mostrarLink ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
+  if (!userProfile?.username) {
+    return (
+      <Card className="border-orange-200 bg-orange-50/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-orange-800">
+            <Link className="h-5 w-5" />
+            Link de Agendamento
+          </CardTitle>
+          <CardDescription className="text-orange-700">
+            Configure seu username para gerar o link de agendamento online.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4 space-y-4">
+            <Badge variant="outline" className="text-orange-700 border-orange-300">
+              Username não configurado
+            </Badge>
+            
+            {/* Debug info */}
+            <div className="text-xs text-orange-600 bg-orange-100 p-2 rounded">
+              <p><strong>Debug Info:</strong></p>
+              <p>User: {user?.email || 'N/A'}</p>
+              <p>Profile: {userProfile ? 'Carregado' : 'Não carregado'}</p>
+              <p>Username: {userProfile?.username || 'N/A'}</p>
+              <p>Name: {userProfile?.name || 'N/A'}</p>
             </div>
             
-            <motion.button
-              onClick={handleCopiarLink}
-              className={`px-4 py-3 rounded-lg font-medium transition-all ${
-                copiado
-                  ? 'bg-green-600 text-white'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            {/* Botão de debug */}
+            <Button
+              onClick={() => {
+                console.log('🔄 Forçando refetch...');
+                refetchProfile();
+              }}
+              variant="outline"
+              size="sm"
+              className="text-orange-700 border-orange-300"
             >
-              {copiado ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </motion.button>
-            
-            <motion.button
-              onClick={handleAbrirLink}
-              disabled={!ativo}
-              className={`px-4 py-3 rounded-lg font-medium transition-all ${
-                ativo
-                  ? 'bg-gray-600 text-white hover:bg-gray-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-              whileHover={ativo ? { scale: 1.02 } : {}}
-              whileTap={ativo ? { scale: 0.98 } : {}}
-            >
-              <ExternalLink className="w-4 h-4" />
-            </motion.button>
+              Recarregar Perfil
+            </Button>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-green-200 bg-green-50/50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-green-800">
+          <Link className="h-5 w-5" />
+          Link de Agendamento
+        </CardTitle>
+        <CardDescription className="text-green-700">
+          Compartilhe este link com seus clientes para permitir agendamentos online.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-green-700 border-green-300">
+            Ativo
+          </Badge>
+          <span className="text-sm text-green-600">
+            Username: <strong>{userProfile.username}</strong>
+          </span>
         </div>
         
-        {copiado && (
-          <motion.p
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-sm text-green-600 mt-2 flex items-center gap-1"
-          >
-            <Check className="w-4 h-4" />
-            Link copiado para a área de transferência!
-          </motion.p>
-        )}
-      </div>
-
-      {/* Informações Adicionais */}
-      <div className="bg-blue-50 rounded-xl p-4">
-        <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-          <Share2 className="w-4 h-4" />
-          Como Compartilhar
-        </h4>
-        <ul className="text-sm text-blue-700 space-y-1">
-          <li>• Compartilhe este link nas suas redes sociais</li>
-          <li>• Envie por WhatsApp ou e-mail para seus clientes</li>
-          <li>• Adicione o link no seu site ou perfil de negócio</li>
-          <li>• Cole em cartões de visita ou materiais promocionais</li>
-        </ul>
-      </div>
-
-      {/* Estatísticas do Link */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">1,247</div>
-            <div className="text-xs text-gray-600">Visualizações</div>
-          </div>
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">89</div>
-            <div className="text-xs text-gray-600">Reservas via Link</div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-green-800">
+            Link de Agendamento:
+          </label>
+          <div className="flex gap-2">
+            <Input
+              value={bookingUrl}
+              readOnly
+              className="bg-white border-green-300 text-green-900"
+            />
+            <Button
+              onClick={handleCopyLink}
+              variant="outline"
+              size="sm"
+              className="border-green-300 text-green-700 hover:bg-green-100"
+            >
+              {copied ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              onClick={handleOpenLink}
+              variant="outline"
+              size="sm"
+              className="border-green-300 text-green-700 hover:bg-green-100"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-      </div>
-    </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/80 rounded-lg p-4 border border-green-200"
+        >
+          <h4 className="font-medium text-green-800 mb-2">Como usar:</h4>
+          <ul className="text-sm text-green-700 space-y-1">
+            <li>• Compartilhe o link com seus clientes</li>
+            <li>• Eles poderão escolher modalidades e horários</li>
+            <li>• Os agendamentos serão salvos automaticamente</li>
+            <li>• Configure se quer confirmação automática ou manual</li>
+          </ul>
+        </motion.div>
+      </CardContent>
+    </Card>
   );
 };
-
-export default LinkCompartilhamento;
