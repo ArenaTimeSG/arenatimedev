@@ -19,6 +19,8 @@ const getSafeSettings = (settings: Settings | null): Settings => {
     notifications_enabled: settings.notifications_enabled || DEFAULT_SETTINGS.notifications_enabled,
     theme: settings.theme || DEFAULT_SETTINGS.theme,
     personal_data: settings.personal_data || DEFAULT_SETTINGS.personal_data,
+    online_enabled: settings.online_enabled ?? DEFAULT_SETTINGS.online_enabled,
+    online_booking: settings.online_booking || DEFAULT_SETTINGS.online_booking,
   };
 };
 
@@ -79,7 +81,9 @@ export const useSettings = () => {
               default_interval: defaultSettings.default_interval,
               notifications_enabled: defaultSettings.notifications_enabled as any,
               theme: defaultSettings.theme,
-              personal_data: defaultSettings.personal_data as any
+              personal_data: defaultSettings.personal_data as any,
+              online_enabled: defaultSettings.online_enabled,
+              online_booking: defaultSettings.online_booking as any
             })
             .select()
             .single();

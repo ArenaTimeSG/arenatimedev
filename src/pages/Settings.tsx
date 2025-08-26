@@ -100,9 +100,9 @@ const Settings = () => {
 
   // Estados para Agendamento Online
   const [configuracaoAgendamento, setConfiguracaoAgendamento] = useState({
-    ativo: settings?.online_enabled ?? false,
-    autoAgendar: settings?.online_booking?.auto_agendar ?? false,
-    tempoMinimoAntecedencia: settings?.online_booking?.tempo_minimo_antecedencia ?? 24,
+    ativo: false,
+    autoAgendar: false,
+    tempoMinimoAntecedencia: 24,
     duracaoPadrao: 60,
     linkPublico: profile?.username 
       ? `${window.location.origin}/agendar/${profile.username}`
@@ -151,6 +151,15 @@ const Settings = () => {
         });
         setHasProfileChanges(false); // Reset das mudanças ao carregar
       }
+
+      // Carregar configurações de agendamento online
+      setConfiguracaoAgendamento(prev => ({
+        ...prev,
+        ativo: settings.online_enabled ?? false,
+        autoAgendar: settings.online_booking?.auto_agendar ?? false,
+        tempoMinimoAntecedencia: settings.online_booking?.tempo_minimo_antecedencia ?? 24,
+        duracaoPadrao: settings.online_booking?.duracao_padrao ?? 60
+      }));
     }
   }, [settings]);
 
@@ -317,24 +326,85 @@ const Settings = () => {
     setConfiguracaoAgendamento(prev => ({ ...prev, ativo }));
     
     // Salvar no banco de dados
-    if (settings) {
+    try {
       await updateSettings({
-        ...settings,
         online_enabled: ativo
+      });
+      
+      toast({
+        title: ativo ? 'Agendamento Online Ativado' : 'Agendamento Online Desativado',
+        description: ativo 
+          ? 'Os clientes agora podem fazer agendamentos online.' 
+          : 'Os clientes não podem mais fazer agendamentos online.',
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar agendamento online:', error);
+      toast({
+        title: 'Erro ao atualizar',
+        description: 'Não foi possível atualizar o status do agendamento online.',
+        variant: 'destructive',
       });
     }
   };
 
-  const handleToggleAutoAgendar = (autoAgendar: boolean) => {
+  const handleToggleAutoAgendar = async (autoAgendar: boolean) => {
     setConfiguracaoAgendamento(prev => ({ ...prev, autoAgendar }));
+    
+    try {
+      await updateSettings({
+        online_booking: {
+          ...settings?.online_booking,
+          auto_agendar: autoAgendar
+        }
+      });
+      
+      toast({
+        title: 'Configuração Atualizada',
+        description: autoAgendar 
+          ? 'Reservas serão confirmadas automaticamente.' 
+          : 'Reservas aguardarão confirmação manual.',
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar auto-agendamento:', error);
+      toast({
+        title: 'Erro ao atualizar',
+        description: 'Não foi possível atualizar a configuração.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleUpdateRegras = (tempoMinimo: number, duracaoPadrao: number) => {
+  const handleUpdateRegras = async (tempoMinimo: number, duracaoPadrao: number) => {
     setConfiguracaoAgendamento(prev => ({ 
       ...prev, 
       tempoMinimoAntecedencia: tempoMinimo,
       duracaoPadrao: duracaoPadrao
     }));
+    
+    try {
+      await updateSettings({
+        online_booking: {
+          ...settings?.online_booking,
+          tempo_minimo_antecedencia: tempoMinimo,
+          duracao_padrao: duracaoPadrao
+        }
+      });
+      
+      toast({
+        title: 'Regras Atualizadas',
+        description: 'As regras de agendamento foram atualizadas com sucesso.',
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar regras:', error);
+      toast({
+        title: 'Erro ao atualizar',
+        description: 'Não foi possível atualizar as regras.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleCancelarReserva = (id: string) => {

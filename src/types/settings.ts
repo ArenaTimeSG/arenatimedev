@@ -43,6 +43,12 @@ export interface Modalities {
   basquete: ModalityConfig;
 }
 
+export interface OnlineBookingConfig {
+  auto_agendar: boolean;
+  tempo_minimo_antecedencia: number;
+  duracao_padrao: number;
+}
+
 export interface Settings {
   id?: string;
   user_id?: string;
@@ -53,6 +59,8 @@ export interface Settings {
   notifications_enabled: NotificationConfig;
   theme: 'light' | 'dark' | 'custom';
   personal_data: UserProfile;
+  online_enabled: boolean;
+  online_booking: OnlineBookingConfig;
   created_at?: string;
   updated_at?: string;
 }
@@ -95,7 +103,13 @@ export const DEFAULT_SETTINGS: Omit<Settings, 'id' | 'user_id' | 'created_at' | 
     email: '',
     phone: ''
   },
-  theme: 'light'
+  theme: 'light',
+  online_enabled: false,
+  online_booking: {
+    auto_agendar: false,
+    tempo_minimo_antecedencia: 24,
+    duracao_padrao: 60
+  }
 };
 
 // Modality names mapping
