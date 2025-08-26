@@ -1,15 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/booking/:path*",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/cliente/:path*",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/agendar/:path*",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
