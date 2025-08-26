@@ -57,6 +57,8 @@ export const useClientAuth = () => {
 
       const hashedPassword = hashPassword(data.password);
       
+      console.log('🔍 useClientAuth: Tentando registrar cliente:', { name: data.name, email: data.email, phone: data.phone });
+      
       const { data: newClient, error } = await supabase
         .from('booking_clients')
         .insert({
@@ -68,7 +70,12 @@ export const useClientAuth = () => {
         .select('id, name, email, phone, created_at')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ useClientAuth: Erro ao registrar cliente:', error);
+        throw error;
+      }
+      
+      console.log('✅ useClientAuth: Cliente registrado com sucesso:', newClient);
       return newClient;
     },
     onSuccess: (data) => {

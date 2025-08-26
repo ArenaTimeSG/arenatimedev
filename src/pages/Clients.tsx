@@ -44,7 +44,7 @@ const Clients = () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
-        .from('clients')
+        .from('booking_clients')
         .select('*')
         .order('name');
 

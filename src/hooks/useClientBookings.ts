@@ -55,22 +55,43 @@ export const useClientBookings = (adminUserId?: string) => {
       const clientIdArray = clientIds?.map(c => c.id) || [];
 
       // Agora buscar agendamentos que têm client_id que existe na tabela booking_clients
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('user_id', adminUserId)
-        .not('client_id', 'is', null)
-        .in('client_id', clientIdArray)
-        .order('date', { ascending: true });
+              const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('user_id', adminUserId)
+          .not('client_id', 'is', null)
+          .order('date', { ascending: true });
 
       if (error) {
         console.error('Erro ao buscar agendamentos de clientes:', error);
         return [];
       }
       
-             console.log('✅ useClientBookings: Agendamentos de clientes encontrados:', data);
-       console.log('✅ useClientBookings: Quantidade de agendamentos:', data?.length || 0);
-      return data || [];
+      // Buscar dados dos clientes para agendamentos que têm client_id
+      const appointmentsWithClients = await Promise.all(
+        (data || []).map(async (appointment) => {
+          if (appointment.client_id) {
+            try {
+              const { data: clientData } = await supabase
+                .from('booking_clients')
+                .select('name')
+                .eq('id', appointment.client_id)
+                .single();
+              
+              if (clientData) {
+                return { ...appointment, client: clientData };
+              }
+            } catch (clientError) {
+              console.warn('⚠️ Erro ao buscar dados do cliente:', clientError);
+            }
+          }
+          return appointment;
+        })
+      );
+      
+      console.log('✅ useClientBookings: Agendamentos de clientes encontrados:', appointmentsWithClients);
+      console.log('✅ useClientBookings: Quantidade de agendamentos:', appointmentsWithClients?.length || 0);
+      return appointmentsWithClients;
     },
     enabled: !!adminUserId
   });
@@ -78,6 +99,9 @@ export const useClientBookings = (adminUserId?: string) => {
   const createBookingMutation = useMutation({
     mutationFn: async (data: CreateClientBookingData & { autoConfirmada?: boolean }) => {
       const { autoConfirmada, ...bookingData } = data;
+      
+      console.log('🔍 useClientBookings: Tentando criar agendamento:', bookingData);
+      console.log('🔍 useClientBookings: autoConfirmada:', autoConfirmada);
       
       const { data: newBooking, error } = await supabase
         .from('appointments')
@@ -92,7 +116,12 @@ export const useClientBookings = (adminUserId?: string) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ useClientBookings: Erro ao criar agendamento:', error);
+        throw error;
+      }
+      
+      console.log('✅ useClientBookings: Agendamento criado com sucesso:', newBooking);
       return newBooking;
     },
     onSuccess: () => {

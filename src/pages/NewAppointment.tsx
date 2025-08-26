@@ -46,7 +46,7 @@ const NewAppointment = () => {
   const fetchClients = async () => {
     try {
       const { data, error } = await supabase
-        .from('clients')
+        .from('booking_clients')
         .select('id, name')
         .order('name');
 

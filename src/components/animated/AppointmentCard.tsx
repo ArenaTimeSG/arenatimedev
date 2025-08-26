@@ -107,7 +107,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
         {/* Client name */}
         <div className="space-y-0">
           <p className="font-semibold text-xs leading-tight line-clamp-2">
-            {appointment.client.name}
+            {appointment.client?.name || 'Cliente não identificado'}
           </p>
           
           {/* Modality */}

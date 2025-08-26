@@ -51,7 +51,7 @@ const ClientDetail = () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
-        .from('clients')
+        .from('booking_clients')
         .select('*')
         .eq('id', id)
         .single();
@@ -90,7 +90,7 @@ const ClientDetail = () => {
 
     try {
       const { error } = await supabase
-        .from('clients')
+        .from('booking_clients')
         .update({
           name: formData.name.trim(),
           email: formData.email.trim() || null,

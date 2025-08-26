@@ -173,28 +173,46 @@ const OnlineBooking = () => {
   }, []);
 
   const handleConfirmarReserva = useCallback(async () => {
+    console.log('🔍 OnlineBooking: Iniciando confirmação de reserva');
+    console.log('🔍 OnlineBooking: adminData:', adminData);
+    console.log('🔍 OnlineBooking: reserva:', reserva);
+    console.log('🔍 OnlineBooking: client:', client);
+    
     if (!adminData || !reserva.modalidade || !reserva.data || !reserva.horario || !client) {
+      console.error('❌ OnlineBooking: Dados insuficientes para criar agendamento');
       return;
     }
 
     try {
       const autoConfirmada = adminData?.settings?.online_booking?.auto_agendar ?? false;
+      console.log('🔍 OnlineBooking: autoConfirmada:', autoConfirmada);
       
       // Criar data e hora combinadas
       const dataHora = new Date(reserva.data);
       const [horas, minutos] = reserva.horario.split(':');
       dataHora.setHours(parseInt(horas), parseInt(minutos), 0, 0);
       
+             console.log('🔍 OnlineBooking: client object:', client);
+       console.log('🔍 OnlineBooking: client.id:', client.id);
+       console.log('🔍 OnlineBooking: client.id type:', typeof client.id);
+       console.log('🔍 OnlineBooking: client.id length:', client.id?.length);
+       console.log('🔍 OnlineBooking: client.id valid UUID:', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(client.id || ''));
+       
+       const bookingData = {
+         user_id: adminData.user.user_id,
+         client_id: client.id,
+         date: dataHora.toISOString(),
+         modality: reserva.modalidade.name,
+         valor_total: reserva.modalidade.valor,
+         autoConfirmada: autoConfirmada
+       };
+      
+      console.log('🔍 OnlineBooking: Dados do agendamento:', bookingData);
+      
       // Criar agendamento na tabela appointments
-      createBooking({
-        user_id: adminData.user.user_id,
-        client_id: client.id,
-        date: dataHora.toISOString(),
-        modality: reserva.modalidade.name,
-        valor_total: reserva.modalidade.valor,
-        autoConfirmada: autoConfirmada
-      }, {
+      createBooking(bookingData, {
         onSuccess: () => {
+          console.log('✅ OnlineBooking: Agendamento criado com sucesso!');
           // Se chegou até aqui, a reserva foi criada com sucesso
           setReservationStatus(autoConfirmada ? 'success' : 'pending');
           setReservaConfirmada(true);
@@ -213,13 +231,13 @@ const OnlineBooking = () => {
           }, 5000);
         },
         onError: (error) => {
-          console.error('Erro ao criar agendamento:', error);
+          console.error('❌ OnlineBooking: Erro ao criar agendamento:', error);
           setReservationStatus('pending');
           setReservaConfirmada(true);
         }
       });
     } catch (error) {
-      console.error('Erro ao confirmar reserva:', error);
+      console.error('❌ OnlineBooking: Erro ao confirmar reserva:', error);
     }
   }, [adminData, reserva, client, createBooking]);
 

@@ -34,19 +34,13 @@ const getStorage = () => {
   }
 };
 
-// Criar cliente com configuração mais robusta
+// Criar cliente com configuração simplificada
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: getStorage(),
     persistSession: isBrowser,
     autoRefreshToken: isBrowser,
     detectSessionInUrl: isBrowser,
-    flowType: 'pkce',
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'supabase-js-react',
-    },
   },
 });
 

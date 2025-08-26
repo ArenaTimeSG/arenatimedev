@@ -131,9 +131,7 @@ const Dashboard = () => {
           modality,
           recurrence_id,
           user_id,
-          clients (
-            name
-          )
+          client:booking_clients(name)
         `)
         .gte('date', weekStart.toISOString())
         .lte('date', weekEnd.toISOString())
@@ -147,7 +145,7 @@ const Dashboard = () => {
       const processedData = data
         .map(apt => ({
           ...apt,
-          client: apt.clients as any
+          client: apt.client as any
         })) as Appointment[];
 
       setAppointments(processedData);

@@ -49,12 +49,12 @@ const NewClient = () => {
       }
 
       const { error } = await supabase
-        .from('clients')
+        .from('booking_clients')
         .insert({
           name: formData.name.trim(),
           email: formData.email.trim() || null,
           phone: formData.phone.trim() || null,
-          user_id: user.id
+          password_hash: 'temp_hash', // Hash temporário para clientes criados pelo admin
         });
 
       if (error) throw error;

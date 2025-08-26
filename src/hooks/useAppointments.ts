@@ -15,7 +15,7 @@ export interface AppointmentWithModality {
   recurrence_id: string | null;
   user_id: string;
   created_at: string;
-  client: {
+  client?: {
     name: string;
   };
   modality_info?: {
@@ -61,11 +61,7 @@ export const useAppointments = () => {
 
       const { data, error } = await supabase
         .from('appointments')
-        .select(`
-          *,
-          client:clients(name),
-          modality_info:modalities(name, valor)
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('date', { ascending: false });
 
@@ -74,7 +70,29 @@ export const useAppointments = () => {
         throw error;
       }
 
-      return data || [];
+      // Buscar dados dos clientes para agendamentos que têm client_id
+      const appointmentsWithClients = await Promise.all(
+        (data || []).map(async (appointment) => {
+          if (appointment.client_id) {
+            try {
+              const { data: clientData } = await supabase
+                .from('booking_clients')
+                .select('name')
+                .eq('id', appointment.client_id)
+                .single();
+              
+              if (clientData) {
+                return { ...appointment, client: clientData };
+              }
+            } catch (clientError) {
+              console.warn('⚠️ Erro ao buscar dados do cliente:', clientError);
+            }
+          }
+          return appointment;
+        })
+      );
+
+      return appointmentsWithClients;
     },
     enabled: !!user?.id,
   });
@@ -87,11 +105,7 @@ export const useAppointments = () => {
 
     const { data, error } = await supabase
       .from('appointments')
-      .select(`
-        *,
-        client:clients(name),
-        modality_info:modalities(name, valor)
-      `)
+      .select('*')
       .eq('user_id', user.id)
       .gte('date', startDate)
       .lte('date', endDate)
@@ -102,7 +116,29 @@ export const useAppointments = () => {
       throw error;
     }
 
-    return data || [];
+    // Buscar dados dos clientes para agendamentos que têm client_id
+    const appointmentsWithClients = await Promise.all(
+      (data || []).map(async (appointment) => {
+        if (appointment.client_id) {
+          try {
+            const { data: clientData } = await supabase
+              .from('booking_clients')
+              .select('name')
+              .eq('id', appointment.client_id)
+              .single();
+            
+            if (clientData) {
+              return { ...appointment, client: clientData };
+            }
+          } catch (clientError) {
+            console.warn('⚠️ Erro ao buscar dados do cliente:', clientError);
+          }
+        }
+        return appointment;
+      })
+    );
+
+    return appointmentsWithClients;
   }, [user?.id]);
 
   // Mutation para criar agendamento
@@ -135,11 +171,7 @@ export const useAppointments = () => {
           recurrence_id: appointmentData.recurrence_id,
           user_id: user.id
         })
-        .select(`
-          *,
-          client:clients(name),
-          modality_info:modalities(name, valor)
-        `)
+        .select('*')
         .single();
 
       if (error) {
@@ -152,7 +184,7 @@ export const useAppointments = () => {
     onSuccess: (newAppointment) => {
       toast({
         title: 'Agendamento criado!',
-        description: `Agendamento para ${newAppointment.client.name} foi criado com sucesso.`,
+        description: `Agendamento foi criado com sucesso.`,
       });
       
       // Invalidate and refetch appointments
@@ -197,11 +229,7 @@ export const useAppointments = () => {
         .update(updateData)
         .eq('id', id)
         .eq('user_id', user.id)
-        .select(`
-          *,
-          client:clients(name),
-          modality_info:modalities(name, valor)
-        `)
+        .select('*')
         .single();
 
       if (error) {

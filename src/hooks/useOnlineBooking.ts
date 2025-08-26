@@ -41,7 +41,7 @@ export const useOnlineBooking = () => {
         
         // Buscar cliente existente por email ou telefone
         const { data: existingClient } = await supabase
-          .from('clients')
+          .from('booking_clients')
           .select('id')
           .or(`email.eq.${data.cliente_email},phone.eq.${data.cliente_telefone}`)
           .single();
@@ -51,7 +51,7 @@ export const useOnlineBooking = () => {
           
           // Atualizar dados do cliente se necessário
           await supabase
-            .from('clients')
+            .from('booking_clients')
             .update({
               name: data.cliente_nome,
               phone: data.cliente_telefone,
@@ -61,12 +61,11 @@ export const useOnlineBooking = () => {
         } else {
           // Criar novo cliente
           const { data: newClient, error: clientError } = await supabase
-            .from('clients')
+            .from('booking_clients')
             .insert({
               name: data.cliente_nome,
               phone: data.cliente_telefone,
               email: data.cliente_email,
-              user_id: data.admin_user_id, // Vincular ao admin
             })
             .select('id')
             .single();
