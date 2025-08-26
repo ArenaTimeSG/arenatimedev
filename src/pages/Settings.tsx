@@ -21,8 +21,7 @@ import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { ToggleAgendamento } from '@/components/booking-settings/ToggleAgendamento';
 import { LinkCompartilhamento } from '@/components/booking-settings/LinkCompartilhamento';
 import { ConfiguracoesRegras } from '@/components/booking-settings/ConfiguracoesRegras';
-import { AutoAgendar } from '@/components/booking-settings/AutoAgendar';
-import { ListaReservas } from '@/components/booking-settings/ListaReservas';
+
 
 const Settings = () => {
   const { user, loading: authLoading } = useAuth();
@@ -101,7 +100,6 @@ const Settings = () => {
   // Estados para Agendamento Online
   const [configuracaoAgendamento, setConfiguracaoAgendamento] = useState({
     ativo: false,
-    autoAgendar: false,
     tempoMinimoAntecedencia: 24,
     duracaoPadrao: 60,
     linkPublico: profile?.username 
@@ -156,7 +154,6 @@ const Settings = () => {
       setConfiguracaoAgendamento(prev => ({
         ...prev,
         ativo: settings.online_enabled ?? false,
-        autoAgendar: settings.online_booking?.auto_agendar ?? false,
         tempoMinimoAntecedencia: settings.online_booking?.tempo_minimo_antecedencia ?? 24,
         duracaoPadrao: settings.online_booking?.duracao_padrao ?? 60
       }));
@@ -348,33 +345,7 @@ const Settings = () => {
     }
   };
 
-  const handleToggleAutoAgendar = async (autoAgendar: boolean) => {
-    setConfiguracaoAgendamento(prev => ({ ...prev, autoAgendar }));
-    
-    try {
-      await updateSettings({
-        online_booking: {
-          ...settings?.online_booking,
-          auto_agendar: autoAgendar
-        }
-      });
-      
-      toast({
-        title: 'Configuração Atualizada',
-        description: autoAgendar 
-          ? 'Reservas serão confirmadas automaticamente.' 
-          : 'Reservas aguardarão confirmação manual.',
-        duration: 2000,
-      });
-    } catch (error) {
-      console.error('Erro ao atualizar auto-agendamento:', error);
-      toast({
-        title: 'Erro ao atualizar',
-        description: 'Não foi possível atualizar a configuração.',
-        variant: 'destructive',
-      });
-    }
-  };
+
 
   const handleUpdateRegras = async (tempoMinimo: number, duracaoPadrao: number) => {
     setConfiguracaoAgendamento(prev => ({ 
@@ -407,29 +378,7 @@ const Settings = () => {
     }
   };
 
-  const handleCancelarReserva = (id: string) => {
-    cancelBooking(id);
-    toast({
-      title: 'Reserva cancelada',
-      description: 'A reserva foi cancelada com sucesso.',
-    });
-  };
 
-  const handleConfirmarReserva = (id: string) => {
-    confirmBooking(id);
-    toast({
-      title: 'Reserva confirmada',
-      description: 'A reserva foi confirmada com sucesso.',
-    });
-  };
-
-  const handleMarcarRealizada = (id: string) => {
-    markCompleted(id);
-    toast({
-      title: 'Reserva marcada como realizada',
-      description: 'A reserva foi marcada como realizada.',
-    });
-  };
 
   // Loading states
   if (authLoading || settingsLoading || bookingsLoading) {
@@ -714,39 +663,10 @@ const Settings = () => {
                 
                 <LinkCompartilhamento />
                 
-                <AutoAgendar 
-                  ativo={configuracaoAgendamento.autoAgendar}
-                  onToggle={handleToggleAutoAgendar}
-                />
-                
                 <ConfiguracoesRegras 
                   tempoMinimo={configuracaoAgendamento.tempoMinimoAntecedencia}
                   duracaoPadrao={configuracaoAgendamento.duracaoPadrao}
                   onUpdate={handleUpdateRegras}
-                />
-                
-                <ListaReservas 
-                  reservas={agendamentos.map(agendamento => ({
-                    id: agendamento.id,
-                    cliente: {
-                      nome: 'Cliente Online',
-                      email: 'cliente@online.com',
-                      telefone: 'N/A'
-                    },
-                    modalidade: agendamento.modality,
-                    data: new Date(agendamento.date),
-                    horario: new Date(agendamento.date).toLocaleTimeString('pt-BR', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    }),
-                    status: agendamento.status === 'a_cobrar' ? 'pendente' : 
-                           agendamento.status === 'agendado' ? 'confirmada' : 
-                           agendamento.status === 'pago' ? 'realizada' : 'cancelada',
-                    valor: agendamento.valor_total || 0
-                  }))}
-                  onCancelar={handleCancelarReserva}
-                  onConfirmar={handleConfirmarReserva}
-                  onMarcarRealizada={handleMarcarRealizada}
                 />
               </div>
             </TabsContent>
