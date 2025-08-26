@@ -129,8 +129,21 @@ const ClientLogin = () => {
               
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoggingIn}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  height: '48px',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: isLoggingIn ? 'not-allowed' : 'pointer',
+                  opacity: isLoggingIn ? 0.5 : 1
+                }}
               >
                 {isLoggingIn ? 'Entrando...' : 'Entrar'}
               </Button>
