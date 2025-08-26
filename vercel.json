@@ -1,7 +1,15 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/booking/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/cliente/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/agendar/:path*",
       "destination": "/index.html"
     }
   ],
@@ -16,21 +24,25 @@
       ]
     },
     {
-      "source": "/(.*)",
+      "source": "/(.*).css",
       "headers": [
         {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
+          "key": "Content-Type",
+          "value": "text/css"
+        }
+      ]
+    },
+    {
+      "source": "/(.*).js",
+      "headers": [
         {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
+          "key": "Content-Type",
+          "value": "application/javascript"
         }
       ]
     }
-  ]
+  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite"
 }

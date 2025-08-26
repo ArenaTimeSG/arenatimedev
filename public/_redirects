@@ -1,0 +1,10 @@
+# Redirecionamentos para SPA
+/booking/*    /index.html   200
+/cliente/*    /index.html   200
+/agendar/*    /index.html   200
+
+# Assets
+/assets/*     /assets/:splat   200
+
+# Fallback
+/*           /index.html   200
