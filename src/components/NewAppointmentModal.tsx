@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useWorkingHours } from '@/hooks/useWorkingHours';
 import { useModalities } from '@/hooks/useModalities';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Client {
@@ -34,8 +35,9 @@ const NewAppointmentModal = ({
   onAppointmentCreated 
 }: NewAppointmentModalProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { getAvailableHoursForDay, isDayEnabled } = useWorkingHours();
-  const { modalities } = useModalities();
+  const { modalities = [] } = useModalities();
   const { createAppointment } = useAppointments();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(false);

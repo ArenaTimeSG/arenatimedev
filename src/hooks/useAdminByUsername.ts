@@ -7,7 +7,7 @@ interface AdminUser {
   name: string;
   email: string;
   phone?: string;
-  role: 'admin';
+  role: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -23,8 +23,8 @@ interface AdminSettings {
     saturday: { enabled: boolean; start: string; end: string };
     sunday: { enabled: boolean; start: string; end: string };
   };
+  online_enabled: boolean;
   online_booking: {
-    ativo: boolean;
     auto_agendar: boolean;
     tempo_minimo_antecedencia: number;
     duracao_padrao: number;
@@ -46,49 +46,49 @@ export const useAdminByUsername = (username: string) => {
     queryKey: ['adminByUsername', username],
     queryFn: async (): Promise<AdminData> => {
       try {
+        if (!username) {
+          throw new Error('Username é obrigatório');
+        }
+
+        console.log('🔍 useAdminByUsername: Buscando admin com username:', username);
+
         // 1. Buscar o usuário pelo username
-        console.log('Buscando usuário com username:', username);
-        
-        const { data: user, error: userError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('username', username)
-          .eq('is_active', true)
-          .single();
-        
-        if (userError || !user) {
-          console.error('Usuário não encontrado para username:', username);
+        const userResponse = await fetch(`${(supabase as any).supabaseUrl}/rest/v1/user_profiles?username=eq.${username}&is_active=eq.true&select=*`, {
+          headers: {
+            'apikey': (supabase as any).supabaseKey,
+            'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (!userResponse.ok) {
+          throw new Error('Erro ao buscar usuário');
+        }
+
+        const users = await userResponse.json();
+        if (!users || users.length === 0) {
           throw new Error('Usuário não encontrado');
         }
-        
-        console.log('Usuário encontrado:', user);
+
+        const user = users[0];
+        console.log('✅ useAdminByUsername: Usuário encontrado:', user);
 
         // 2. Buscar configurações do usuário
-        const { data: settings, error: settingsError } = await supabase
-          .from('settings')
-          .select('*')
-          .eq('user_id', user.user_id)
-          .single();
+        const settingsResponse = await fetch(`${(supabase as any).supabaseUrl}/rest/v1/settings?user_id=eq.${user.user_id}&select=*`, {
+          headers: {
+            'apikey': (supabase as any).supabaseKey,
+            'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
+            'Content-Type': 'application/json',
+          }
+        });
 
-        if (settingsError && settingsError.code !== 'PGRST116') {
-          throw new Error('Erro ao carregar configurações');
+        let settings = null;
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json();
+          settings = settingsData[0] || null;
         }
 
-        // 3. Buscar modalidades do usuário
-        const { data: modalities, error: modalitiesError } = await supabase
-          .from('modalities')
-          .select('*')
-          .eq('user_id', user.user_id)
-          .order('name');
-
-        if (modalitiesError) {
-          console.error('Erro ao carregar modalidades:', modalitiesError);
-          throw new Error('Erro ao carregar modalidades');
-        }
-
-        console.log('Modalidades encontradas:', modalities);
-
-        // Configurações padrão se não existirem
+        // Configurações padrão
         const defaultSettings: AdminSettings = {
           working_hours: {
             monday: { enabled: true, start: '08:00', end: '18:00' },
@@ -99,32 +99,49 @@ export const useAdminByUsername = (username: string) => {
             saturday: { enabled: true, start: '08:00', end: '18:00' },
             sunday: { enabled: false, start: '08:00', end: '18:00' }
           },
+          online_enabled: false,
           online_booking: {
-            ativo: true,
             auto_agendar: false,
             tempo_minimo_antecedencia: 24,
             duracao_padrao: 60
           }
         };
 
-        // Se não há configurações, usar as padrão
-        // Se há configurações mas não tem online_booking, adicionar
-        const finalSettings = settings ? {
+        // Combinar configurações existentes com padrão
+        const finalSettings: AdminSettings = {
           ...defaultSettings,
-          ...settings,
-          online_booking: {
-            ...defaultSettings.online_booking,
-            ...(settings.online_booking || {})
+          online_enabled: settings?.online_enabled ?? false,
+          working_hours: settings?.working_hours || defaultSettings.working_hours,
+          online_booking: settings?.online_booking || defaultSettings.online_booking
+        };
+
+        console.log('✅ useAdminByUsername: Configurações carregadas:', finalSettings);
+
+        // 3. Buscar modalidades do usuário
+        const modalitiesResponse = await fetch(`${(supabase as any).supabaseUrl}/rest/v1/modalities?user_id=eq.${user.user_id}&select=*&order=name.asc`, {
+          headers: {
+            'apikey': (supabase as any).supabaseKey,
+            'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
+            'Content-Type': 'application/json',
           }
-        } : defaultSettings;
+        });
+
+        let modalities = [];
+        if (modalitiesResponse.ok) {
+          modalities = await modalitiesResponse.json();
+        }
+
+        console.log('✅ useAdminByUsername: Modalidades encontradas:', modalities);
+        console.log('✅ useAdminByUsername: Quantidade de modalidades:', modalities?.length || 0);
 
         return {
-          user,
+          user: user as AdminUser,
           settings: finalSettings,
           modalities: modalities || []
         };
+
       } catch (error) {
-        console.error('Erro ao buscar admin por username:', error);
+        console.error('❌ useAdminByUsername: Erro:', error);
         throw error;
       }
     },

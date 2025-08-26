@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSettings } from '@/hooks/useSettings';
+import { useClientBookings } from '@/hooks/useClientBookings';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Clock, Bell, User, Shield, Settings as SettingsIcon, Palette, Save, AlertCircle, Calendar, Globe } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -29,6 +30,13 @@ const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { settings, isLoading: settingsLoading, error, updateSettings } = useSettings();
+  const { 
+    agendamentos, 
+    isLoading: bookingsLoading, 
+    confirmBooking, 
+    cancelBooking, 
+    markCompleted 
+  } = useClientBookings(user?.id);
 
   // Estado para controlar a aba ativa
   const [activeTab, setActiveTab] = useState('profile');
@@ -92,72 +100,16 @@ const Settings = () => {
 
   // Estados para Agendamento Online
   const [configuracaoAgendamento, setConfiguracaoAgendamento] = useState({
-    ativo: true,
-    autoAgendar: false,
-    tempoMinimoAntecedencia: 24,
+    ativo: settings?.online_enabled ?? false,
+    autoAgendar: settings?.online_booking?.auto_agendar ?? false,
+    tempoMinimoAntecedencia: settings?.online_booking?.tempo_minimo_antecedencia ?? 24,
     duracaoPadrao: 60,
-    linkPublico: profile?.name 
-      ? `https://arenatime.com/booking/${profile.name.toLowerCase().replace(/\s+/g, '-')}`
-      : 'https://arenatime.com/booking'
+    linkPublico: profile?.username 
+      ? `${window.location.origin}/agendar/${profile.username}`
+      : `${window.location.origin}/agendar`
   });
 
-                    type StatusReserva = 'pendente' | 'confirmada' | 'cancelada' | 'realizada';
 
-                  interface ReservaOnline {
-                    id: string;
-                    cliente: {
-                      nome: string;
-                      email: string;
-                      telefone: string;
-                    };
-                    modalidade: string;
-                    data: Date;
-                    horario: string;
-                    status: StatusReserva;
-                    valor: number;
-                  }
-
-                  const [reservasOnline, setReservasOnline] = useState<ReservaOnline[]>([
-                    {
-                      id: '1',
-                      cliente: {
-                        nome: 'João Silva',
-                        email: 'joao@email.com',
-                        telefone: '(11) 99999-9999'
-                      },
-                      modalidade: 'Futsal',
-                      data: new Date(Date.now() + 24 * 60 * 60 * 1000),
-                      horario: '14:00',
-                      status: 'pendente',
-                      valor: 80
-                    },
-                    {
-                      id: '2',
-                      cliente: {
-                        nome: 'Maria Santos',
-                        email: 'maria@email.com',
-                        telefone: '(11) 88888-8888'
-                      },
-                      modalidade: 'Vôlei',
-                      data: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-                      horario: '16:00',
-                      status: 'confirmada',
-                      valor: 100
-                    },
-                    {
-                      id: '3',
-                      cliente: {
-                        nome: 'Pedro Costa',
-                        email: 'pedro@email.com',
-                        telefone: '(11) 77777-7777'
-                      },
-                      modalidade: 'Tênis',
-                      data: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-                      horario: '10:00',
-                      status: 'realizada',
-                      valor: 120
-                    }
-                  ]);
 
   // Carregar configurações quando disponíveis
   useEffect(() => {
@@ -361,8 +313,16 @@ const Settings = () => {
   };
 
   // Funções para Agendamento Online
-  const handleToggleAgendamento = (ativo: boolean) => {
+  const handleToggleAgendamento = async (ativo: boolean) => {
     setConfiguracaoAgendamento(prev => ({ ...prev, ativo }));
+    
+    // Salvar no banco de dados
+    if (settings) {
+      await updateSettings({
+        ...settings,
+        online_enabled: ativo
+      });
+    }
   };
 
   const handleToggleAutoAgendar = (autoAgendar: boolean) => {
@@ -378,31 +338,31 @@ const Settings = () => {
   };
 
   const handleCancelarReserva = (id: string) => {
-    setReservasOnline(prev => 
-      prev.map(reserva => 
-        reserva.id === id ? { ...reserva, status: 'cancelada' } : reserva
-      )
-    );
+    cancelBooking(id);
+    toast({
+      title: 'Reserva cancelada',
+      description: 'A reserva foi cancelada com sucesso.',
+    });
   };
 
   const handleConfirmarReserva = (id: string) => {
-    setReservasOnline(prev => 
-      prev.map(reserva => 
-        reserva.id === id ? { ...reserva, status: 'confirmada' } : reserva
-      )
-    );
+    confirmBooking(id);
+    toast({
+      title: 'Reserva confirmada',
+      description: 'A reserva foi confirmada com sucesso.',
+    });
   };
 
   const handleMarcarRealizada = (id: string) => {
-    setReservasOnline(prev => 
-      prev.map(reserva => 
-        reserva.id === id ? { ...reserva, status: 'realizada' } : reserva
-      )
-    );
+    markCompleted(id);
+    toast({
+      title: 'Reserva marcada como realizada',
+      description: 'A reserva foi marcada como realizada.',
+    });
   };
 
   // Loading states
-  if (authLoading || settingsLoading) {
+  if (authLoading || settingsLoading || bookingsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="flex flex-col items-center space-y-4">
@@ -696,7 +656,24 @@ const Settings = () => {
                 />
                 
                 <ListaReservas 
-                  reservas={reservasOnline}
+                  reservas={agendamentos.map(agendamento => ({
+                    id: agendamento.id,
+                    cliente: {
+                      nome: 'Cliente Online',
+                      email: 'cliente@online.com',
+                      telefone: 'N/A'
+                    },
+                    modalidade: agendamento.modality,
+                    data: new Date(agendamento.date),
+                    horario: new Date(agendamento.date).toLocaleTimeString('pt-BR', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    }),
+                    status: agendamento.status === 'a_cobrar' ? 'pendente' : 
+                           agendamento.status === 'agendado' ? 'confirmada' : 
+                           agendamento.status === 'pago' ? 'realizada' : 'cancelada',
+                    valor: agendamento.valor_total || 0
+                  }))}
                   onCancelar={handleCancelarReserva}
                   onConfirmar={handleConfirmarReserva}
                   onMarcarRealizada={handleMarcarRealizada}

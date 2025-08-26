@@ -273,6 +273,39 @@ export type Database = {
           }
         ]
       }
+      booking_clients: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          password_hash: string
+          phone: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          password_hash: string
+          phone?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          password_hash?: string
+          phone?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       online_reservations: {
         Row: {
           admin_user_id: string

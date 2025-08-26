@@ -12,6 +12,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Plus, Users, DollarSign, Activity, LogOut, FileText, Settings, ChevronLeft, ChevronRight, User, ChevronDown, Shield, Mail, Phone, Clock, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
+
 import { format, startOfWeek, addDays, isSameDay, isBefore, isEqual } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import NewAppointmentModal from '@/components/NewAppointmentModal';
@@ -631,6 +632,8 @@ const Dashboard = () => {
               delay={0.3}
             />
           </motion.div>
+
+
 
           {/* Responsive Calendar */}
           <motion.div

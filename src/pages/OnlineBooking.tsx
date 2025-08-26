@@ -1,17 +1,20 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, User, Phone, Mail, CheckCircle, ArrowLeft, AlertCircle, X } from 'lucide-react';
+import { Calendar, Clock, User, Phone, Mail, CheckCircle, ArrowLeft, AlertCircle, X, LogOut } from 'lucide-react';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAdminByUsername } from '@/hooks/useAdminByUsername';
-import { useOnlineBooking } from '@/hooks/useOnlineBooking';
+import { useClientBookings } from '@/hooks/useClientBookings';
 import { useAvailableHoursCorrect } from '@/hooks/useAvailableHoursCorrect';
+import { useClientAuth } from '@/hooks/useClientAuth';
+
 import CardModalidade from '@/components/booking/CardModalidade';
 import Calendario from '@/components/booking/Calendario';
 import ListaHorarios from '@/components/booking/ListaHorarios';
 import FormCliente from '@/components/booking/FormCliente';
 import ResumoReserva from '@/components/booking/ResumoReserva';
+import ClientAuth from './ClientAuth';
 
 interface Modalidade {
   id: string;
@@ -37,6 +40,7 @@ interface Reserva {
 
 const OnlineBooking = () => {
   const { username } = useParams<{ username: string }>();
+  const navigate = useNavigate();
   
   const [step, setStep] = useState(1);
   const [reserva, setReserva] = useState<Reserva>({
@@ -48,6 +52,9 @@ const OnlineBooking = () => {
   const [reservaConfirmada, setReservaConfirmada] = useState(false);
   const [reservationStatus, setReservationStatus] = useState<'success' | 'pending' | null>(null);
 
+  // Hook de autenticação do cliente
+  const { client, loading: clientLoading, logout } = useClientAuth();
+
   // Buscar dados do admin baseado no username
   const { 
     data: adminData, 
@@ -56,14 +63,40 @@ const OnlineBooking = () => {
   } = useAdminByUsername(username || '');
 
   // Verificar se o agendamento online está ativo
-  const isOnlineBookingEnabled = adminData?.settings?.online_booking?.ativo ?? false;
+  const isOnlineBookingEnabled = adminData?.settings?.online_enabled ?? false;
 
   // Hook para salvar reserva
   const { 
-    createReservation, 
+    createBooking, 
     isCreating, 
-    error: reservationError 
-  } = useOnlineBooking();
+    createError: reservationError 
+  } = useClientBookings(adminData?.user?.user_id);
+
+  // Usar modalidades do adminData (já vêm com o admin)
+  const modalities = adminData?.modalities || [];
+  const modalitiesLoading = false;
+
+  // Debug: Log dos dados do admin e modalidades
+  console.log('🔍 OnlineBooking - adminData:', adminData);
+  console.log('🔍 OnlineBooking - adminUserId:', adminData?.user?.user_id);
+  console.log('🔍 OnlineBooking - modalities:', modalities);
+  console.log('🔍 OnlineBooking - modalitiesLoading:', modalitiesLoading);
+  console.log('🔍 OnlineBooking - adminData?.user:', adminData?.user);
+  console.log('🔍 OnlineBooking - adminData?.modalities:', adminData?.modalities);
+
+  // Verificar se o cliente está logado e redirecionar se necessário
+  useEffect(() => {
+    if (!clientLoading && !client) {
+      navigate(`/cliente/login?redirect=${encodeURIComponent(`/agendar/${username}`)}`);
+    }
+  }, [client, clientLoading, navigate, username]);
+
+  // Verificar se o agendamento online está habilitado
+  useEffect(() => {
+    if (adminData && !isOnlineBookingEnabled) {
+      navigate('/');
+    }
+  }, [adminData, isOnlineBookingEnabled, navigate]);
 
   // Hook para horários disponíveis (usando tabela horarios)
   const { data: availableHours = [] } = useAvailableHoursCorrect({
@@ -93,9 +126,9 @@ const OnlineBooking = () => {
 
   // Converter modalidades do admin para o formato esperado (memoizado)
   const modalidades = useMemo(() => {
-    if (!adminData?.modalities) return [];
+    if (!modalities) return [];
     
-    return adminData.modalities.map(mod => ({
+    return modalities.map(mod => ({
       id: mod.id,
       name: mod.name,
       duracao: 60, // Duração padrão de 60 minutos
@@ -103,7 +136,7 @@ const OnlineBooking = () => {
       descricao: `${mod.name} - 60 minutos`,
       cor: getModalidadeColor(mod.name)
     }));
-  }, [adminData?.modalities, getModalidadeColor]);
+  }, [modalities, getModalidadeColor]);
 
   const handleModalidadeSelect = useCallback((modalidade: Modalidade) => {
     setReserva(prev => ({ ...prev, modalidade }));
@@ -120,65 +153,75 @@ const OnlineBooking = () => {
     setStep(4);
   }, []);
 
+  // Atualizar dados do cliente quando ele fizer login
+  const handleAuthSuccess = useCallback(() => {
+    if (client) {
+      setReserva(prev => ({
+        ...prev,
+        cliente: {
+          nome: client.name,
+          email: client.email,
+          telefone: client.phone || ''
+        }
+      }));
+    }
+  }, [client]);
+
   const handleClienteSubmit = useCallback((cliente: Cliente) => {
     setReserva(prev => ({ ...prev, cliente }));
     setStep(5);
   }, []);
 
   const handleConfirmarReserva = useCallback(async () => {
-    if (!adminData || !reserva.modalidade || !reserva.data || !reserva.horario) {
+    if (!adminData || !reserva.modalidade || !reserva.data || !reserva.horario || !client) {
       return;
     }
 
     try {
-      const autoConfirmada = adminData?.settings?.online_booking?.auto_agendar || false;
+      const autoConfirmada = adminData?.settings?.online_booking?.auto_agendar ?? false;
       
-      // Aguardar a resposta da criação da reserva
-      try {
-        // Debug: Log da data selecionada
-        console.log('🔍 Data selecionada:', reserva.data);
-        console.log('🔍 Data formatada:', reserva.data.toISOString().split('T')[0]);
-        console.log('🔍 Horário selecionado:', reserva.horario);
-        
-        await createReservation({
-          admin_user_id: adminData.user.user_id,
-          modalidade_id: reserva.modalidade.id,
-          modalidade_name: reserva.modalidade.name,
-          data: reserva.data.toISOString().split('T')[0],
-          horario: reserva.horario,
-          cliente_nome: reserva.cliente.nome,
-          cliente_email: reserva.cliente.email,
-          cliente_telefone: reserva.cliente.telefone,
-          valor: reserva.modalidade.valor,
-          auto_confirmada: autoConfirmada
-        });
-
-        // Se chegou até aqui, a reserva foi criada com sucesso
-        setReservationStatus(autoConfirmada ? 'success' : 'pending');
-        setReservaConfirmada(true);
-      } catch (error) {
-        console.error('Erro ao criar reserva:', error);
-        // Em caso de erro, mostrar como pendente
-        setReservationStatus('pending');
-        setReservaConfirmada(true);
-      }
+      // Criar data e hora combinadas
+      const dataHora = new Date(reserva.data);
+      const [horas, minutos] = reserva.horario.split(':');
+      dataHora.setHours(parseInt(horas), parseInt(minutos), 0, 0);
       
-      // Reset após 5 segundos
-      setTimeout(() => {
-        setReservaConfirmada(false);
-        setReservationStatus(null);
-        setReserva({
-          modalidade: null,
-          data: null,
-          horario: null,
-          cliente: { nome: '', email: '', telefone: '' }
-        });
-        setStep(1);
-      }, 5000);
+      // Criar agendamento na tabela appointments
+      createBooking({
+        user_id: adminData.user.user_id,
+        client_id: client.id,
+        date: dataHora.toISOString(),
+        modality: reserva.modalidade.name,
+        valor_total: reserva.modalidade.valor,
+        autoConfirmada: autoConfirmada
+      }, {
+        onSuccess: () => {
+          // Se chegou até aqui, a reserva foi criada com sucesso
+          setReservationStatus(autoConfirmada ? 'success' : 'pending');
+          setReservaConfirmada(true);
+          
+          // Reset após 5 segundos
+          setTimeout(() => {
+            setReservaConfirmada(false);
+            setReservationStatus(null);
+            setReserva({
+              modalidade: null,
+              data: null,
+              horario: null,
+              cliente: { nome: '', email: '', telefone: '' }
+            });
+            setStep(1);
+          }, 5000);
+        },
+        onError: (error) => {
+          console.error('Erro ao criar agendamento:', error);
+          setReservationStatus('pending');
+          setReservaConfirmada(true);
+        }
+      });
     } catch (error) {
       console.error('Erro ao confirmar reserva:', error);
     }
-  }, [adminData, reserva, createReservation]);
+  }, [adminData, reserva, client, createBooking]);
 
   const handleVoltar = useCallback(() => {
     if (step > 1) {
@@ -187,7 +230,7 @@ const OnlineBooking = () => {
   }, [step]);
 
   // Loading state
-  if (loadingAdmin) {
+  if (loadingAdmin || modalitiesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -214,7 +257,7 @@ const OnlineBooking = () => {
   }
 
   // Se o agendamento online está desativado
-  if (!adminData?.settings?.online_booking?.ativo) {
+  if (!adminData?.settings?.online_enabled) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -238,6 +281,28 @@ const OnlineBooking = () => {
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Nenhuma modalidade disponível</h1>
           <p className="text-slate-600">Não há modalidades cadastradas para agendamento no momento.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se o cliente não está autenticado, mostrar tela de login
+  if (!client && !clientLoading) {
+    return (
+      <ClientAuth 
+        onAuthSuccess={handleAuthSuccess}
+        adminName={adminData.user.name}
+      />
+    );
+  }
+
+  // Loading do cliente
+  if (clientLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-slate-600 font-medium">Carregando...</p>
         </div>
       </div>
     );
@@ -291,6 +356,23 @@ const OnlineBooking = () => {
                 </h1>
                 <p className="text-slate-600 text-sm">Reserve seu horário de forma rápida e fácil</p>
               </div>
+            </div>
+            
+            {/* Cliente logado e botão de logout */}
+            <div className="flex items-center gap-4">
+              {client && (
+                <div className="text-right">
+                  <p className="text-sm font-medium text-slate-700">{client.name}</p>
+                  <p className="text-xs text-slate-500">{client.email}</p>
+                </div>
+              )}
+              <button
+                onClick={logout}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
+                title="Sair"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
             
             {/* Progress Steps */}
@@ -388,13 +470,54 @@ const OnlineBooking = () => {
             <div>
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-gray-800 mb-2">Seus Dados</h2>
-                <p className="text-gray-600">Preencha suas informações para confirmar a reserva</p>
+                <p className="text-gray-600">Confirme suas informações para finalizar a reserva</p>
               </div>
               
-              <FormCliente
-                onSubmit={handleClienteSubmit}
-                reserva={reserva}
-              />
+              {client ? (
+                // Se o cliente está logado, mostrar dados pré-preenchidos
+                <div className="max-w-md mx-auto">
+                  <div className="bg-white rounded-2xl shadow-xl p-6 space-y-4">
+                    <div className="text-center mb-6">
+                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <User className="w-8 h-8 text-blue-600" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-800">{client.name}</h3>
+                      <p className="text-gray-600">{client.email}</p>
+                      {client.phone && (
+                        <p className="text-gray-600">{client.phone}</p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <span className="text-green-800 font-medium">Dados confirmados</span>
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 text-center">
+                        Seus dados estão corretos. Clique em continuar para revisar a reserva.
+                      </p>
+                    </div>
+                    
+                    <button
+                      onClick={() => handleClienteSubmit({
+                        nome: client.name,
+                        email: client.email,
+                        telefone: client.phone || ''
+                      })}
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
+                    >
+                      Continuar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // Fallback para cliente não logado (não deveria acontecer)
+                <FormCliente
+                  onSubmit={handleClienteSubmit}
+                  reserva={reserva}
+                />
+              )}
             </div>
           )}
 

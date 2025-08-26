@@ -23,11 +23,14 @@ export interface UpdateModalityData {
   valor?: number;
 }
 
-export const useModalities = () => {
+export const useModalities = (adminUserId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Se adminUserId foi fornecido, usar ele, senão usar o user.id
+  const userId = adminUserId || user?.id;
 
   // Query para buscar modalidades do usuário
   const {
@@ -36,26 +39,48 @@ export const useModalities = () => {
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: ['modalities', user?.id],
+    queryKey: ['modalities', userId],
     queryFn: async (): Promise<Modality[]> => {
-      if (!user?.id) {
-        throw new Error('Usuário não autenticado');
+      try {
+        if (!userId) {
+          console.log('❌ useModalities: userId não fornecido');
+          return [];
+        }
+
+        console.log('🔍 useModalities: Buscando modalidades para userId:', userId);
+
+        // Usar fetch direto para contornar problemas de tipos
+        const url = `${(supabase as any).supabaseUrl}/rest/v1/modalities?user_id=eq.${userId}&select=*&order=name.asc`;
+        console.log('🔍 useModalities: URL da requisição:', url);
+        
+        const response = await fetch(url, {
+          headers: {
+            'apikey': (supabase as any).supabaseKey,
+            'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
+            'Content-Type': 'application/json',
+          }
+        });
+
+        console.log('🔍 useModalities: Status da resposta:', response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ useModalities: Erro na resposta:', errorText);
+          throw new Error(`Erro HTTP: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ useModalities: Modalidades encontradas:', data);
+        console.log('✅ useModalities: Quantidade de modalidades:', data?.length || 0);
+        return data || [];
+      } catch (error) {
+        console.error('❌ useModalities: Erro ao buscar modalidades:', error);
+        return [];
       }
-
-      const { data, error } = await supabase
-        .from('modalities')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-
-      if (error) {
-        console.error('❌ Erro ao buscar modalidades:', error);
-        throw error;
-      }
-
-      return data || [];
     },
-    enabled: !!user?.id,
+    enabled: !!userId,
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutos
   });
 
   // Mutation para criar modalidade
@@ -65,22 +90,28 @@ export const useModalities = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      const { data, error } = await supabase
-        .from('modalities')
-        .insert({
+      const response = await fetch(`${(supabase as any).supabaseUrl}/rest/v1/modalities`, {
+        method: 'POST',
+        headers: {
+          'apikey': (supabase as any).supabaseKey,
+          'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
           name: modalityData.name,
           valor: modalityData.valor,
           user_id: user.id
         })
-        .select()
-        .single();
+      });
 
-      if (error) {
-        console.error('❌ Erro ao criar modalidade:', error);
-        throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao criar modalidade');
       }
 
-      return data;
+      const data = await response.json();
+      return data[0];
     },
     onSuccess: (newModality) => {
       toast({
@@ -107,20 +138,24 @@ export const useModalities = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      const { data: updatedModality, error } = await supabase
-        .from('modalities')
-        .update(data)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
-        .single();
+      const response = await fetch(`${(supabase as any).supabaseUrl}/rest/v1/modalities?id=eq.${id}&user_id=eq.${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': (supabase as any).supabaseKey,
+          'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
 
-      if (error) {
-        console.error('❌ Erro ao atualizar modalidade:', error);
-        throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao atualizar modalidade');
       }
 
-      return updatedModality;
+      const responseData = await response.json();
+      return responseData[0];
     },
     onSuccess: (updatedModality) => {
       toast({
@@ -147,15 +182,18 @@ export const useModalities = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      const { error } = await supabase
-        .from('modalities')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
+      const response = await fetch(`${(supabase as any).supabaseUrl}/rest/v1/modalities?id=eq.${id}&user_id=eq.${user.id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': (supabase as any).supabaseKey,
+          'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (error) {
-        console.error('❌ Erro ao deletar modalidade:', error);
-        throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao deletar modalidade');
       }
     },
     onSuccess: () => {
