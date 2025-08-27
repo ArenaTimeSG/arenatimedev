@@ -81,7 +81,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       whileTap={{ y: 0 }}
       transition={{ duration: 0.2 }}
       className={`
-        relative overflow-hidden rounded-lg cursor-pointer p-2 h-full w-full
+        relative overflow-hidden rounded-lg cursor-pointer p-1 h-full w-full
         bg-gradient-to-br ${gradientClass} text-white
         shadow-md hover:shadow-lg transition-all duration-200
         border-0 backdrop-blur-sm
@@ -94,7 +94,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
         <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full -translate-y-8 translate-x-8" />
       </div>
 
-      <div className="relative space-y-1">
+      <div className="relative space-y-0.5">
         {/* Header with status and recurrence indicator */}
         <div className="flex items-center justify-between">
           <Badge 
@@ -103,7 +103,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           >
             {getStatusLabel(appointment.status, date)}
           </Badge>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {isOnlineBooking && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -111,7 +111,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
                 transition={{ duration: 0.3 }}
                 title="Agendamento Online"
               >
-                <Globe className="h-3 w-3 text-white/80" />
+                <Globe className="h-2.5 w-2.5 text-white/80" />
               </motion.div>
             )}
             {appointment.recurrence_id && (
@@ -120,7 +120,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
                 transition={{ duration: 0.3 }}
                 title="Agendamento Recorrente"
               >
-                <RotateCcw className="h-3 w-3 text-white/80" />
+                <RotateCcw className="h-2.5 w-2.5 text-white/80" />
               </motion.div>
             )}
           </div>
@@ -128,14 +128,14 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
 
         {/* Client name */}
         <div className="space-y-0">
-          <p className="font-semibold text-xs leading-tight line-clamp-2">
+          <p className="font-semibold text-xs leading-tight line-clamp-1">
             {appointment.client?.name || 'Cliente não identificado'}
           </p>
           
           {/* Modality */}
-          <div className="flex items-center gap-1 opacity-90">
+          <div className="flex items-center gap-0.5 opacity-90">
             <Calendar className="h-2 w-2" />
-            <p className="text-xs font-medium">
+            <p className="text-xs font-medium line-clamp-1">
               {appointment.modality_info ? 
                 appointment.modality_info.name : 
                 appointment.modality || 'Modalidade não definida'
@@ -147,13 +147,13 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
         {/* Recurrence indicator */}
         {appointment.recurrence_id && (
           <motion.div 
-            className="flex items-center gap-1 text-xs font-medium opacity-80"
+            className="flex items-center gap-0.5 text-xs font-medium opacity-80"
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.8 }}
             transition={{ delay: 0.2 }}
           >
             <div className="w-1 h-1 bg-white rounded-full" />
-            <span>Recorrente</span>
+            <span className="text-xs">Recorrente</span>
           </motion.div>
         )}
       </div>

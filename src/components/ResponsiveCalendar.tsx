@@ -266,18 +266,18 @@ const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
       </div>
 
       {/* Week Grid */}
-      <div className="overflow-auto max-h-[400px] rounded-xl border border-slate-200">
-        <div className="min-w-[800px]">
+      <div className="overflow-auto max-h-[600px] rounded-xl border border-slate-200">
+        <div className="min-w-[700px]">
           <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10">
               <tr>
-                <th className="border border-slate-200 p-3 text-left font-bold bg-slate-50 text-slate-700 text-sm min-w-[80px]">
+                <th className="border border-slate-200 p-2 text-left font-bold bg-slate-50 text-slate-700 text-xs min-w-[60px]">
                   Horário
                 </th>
                 {weekDays.map((day, i) => (
                   <motion.th 
                     key={i} 
-                    className={`border border-slate-200 p-3 text-center font-bold text-sm min-w-[120px] ${
+                    className={`border border-slate-200 p-2 text-center font-bold text-xs min-w-[100px] ${
                       isSameDay(day, new Date()) 
                         ? 'bg-blue-50 text-blue-800 border-blue-200' 
                         : 'bg-slate-50 text-slate-700'
@@ -286,8 +286,8 @@ const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.05 }}
                   >
-                    <div className="space-y-1">
-                      <div className="font-bold text-sm">
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-xs">
                         {format(day, 'EEE', { locale: ptBR })}
                       </div>
                       <div className={`text-xs ${
@@ -307,13 +307,13 @@ const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
               {timeSlots.map((timeSlot, i) => (
                 <tr key={i}>
                   <motion.td 
-                    className="border border-slate-200 p-3 font-bold bg-slate-50 text-slate-700 text-sm min-w-[80px] sticky left-0 z-10"
+                    className="border border-slate-200 p-2 font-bold bg-slate-50 text-slate-700 text-xs min-w-[60px] sticky left-0 z-10"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.02 }}
                   >
                     <div className="flex items-center justify-center">
-                      <span className="font-mono text-sm">{timeSlot}</span>
+                      <span className="font-mono text-xs">{timeSlot}</span>
                     </div>
                   </motion.td>
                   {weekDays.map((day, j) => {
@@ -324,7 +324,7 @@ const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
                     return (
                       <motion.td 
                         key={j} 
-                        className={`border border-slate-200 p-1 h-16 align-top cursor-pointer transition-all duration-200 min-w-[120px] relative ${
+                        className={`border border-slate-200 p-1 h-12 align-top cursor-pointer transition-all duration-200 min-w-[100px] relative ${
                           hasAppointment 
                             ? 'bg-gradient-to-br from-blue-50 to-indigo-50' 
                             : isBlocked 
