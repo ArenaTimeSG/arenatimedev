@@ -33,6 +33,7 @@ interface ResponsiveCalendarProps {
   isTimeSlotBlocked: (day: Date, timeSlot: string) => boolean;
   getStatusColor: (status: string) => string;
   getStatusLabel: (status: string) => string;
+  getBlockadeReason?: (day: Date, timeSlot: string) => string | null;
 }
 
 const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
@@ -45,6 +46,7 @@ const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
   isTimeSlotBlocked,
   getStatusColor,
   getStatusLabel,
+  getBlockadeReason,
 }) => {
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
@@ -179,7 +181,7 @@ const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
                   
                   {isBlocked && (
                     <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-                      Bloqueado
+                      {getBlockadeReason ? getBlockadeReason(currentDay, timeSlot) || 'Bloqueado' : 'Bloqueado'}
                     </span>
                   )}
                 </div>
@@ -349,7 +351,7 @@ const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
                             >
                               {isBlocked && (
                                 <div className="text-slate-400 text-xs">
-                                  Bloqueado
+                                  {getBlockadeReason ? getBlockadeReason(day, timeSlot) || 'Bloqueado' : 'Bloqueado'}
                                 </div>
                               )}
                             </motion.div>

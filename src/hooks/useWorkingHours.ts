@@ -1,10 +1,15 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useSettings } from '@/hooks/useSettings';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { DAY_ORDER } from '@/types/settings';
 
 export const useWorkingHours = () => {
   const { settings } = useSettings();
+  const [manualBlockades, setManualBlockades] = useState<{[key: string]: {blocked: boolean, reason: string}}>(() => {
+    // Carregar bloqueios do localStorage
+    const saved = localStorage.getItem('manualBlockades');
+    return saved ? JSON.parse(saved) : {};
+  });
 
   // Mapeamento de dias da semana para as chaves das configurações
   // getDay() retorna: 0 = Domingo, 1 = Segunda, 2 = Terça, etc.
@@ -178,8 +183,15 @@ export const useWorkingHours = () => {
       return true;
     }
 
+    // Verificar bloqueios manuais (seguindo o mesmo padrão do bloqueio do meio-dia)
+    const dateString = format(date, 'yyyy-MM-dd');
+    const blockadeKey = `${dateString}-${timeSlot}`;
+    if (manualBlockades[blockadeKey]?.blocked) {
+      return true;
+    }
+
     return false;
-  }, [isDayEnabled, isTimeSlotAvailable]);
+  }, [isDayEnabled, isTimeSlotAvailable, manualBlockades]);
 
   // Obter cor de fundo para uma célula da agenda
   const getCellBackgroundColor = useCallback((date: Date, timeSlot: string, hasAppointment: boolean = false): string => {
@@ -223,7 +235,12 @@ export const useWorkingHours = () => {
     const availableHours: string[] = [];
     
     // Verificar se o funcionamento atravessa a madrugada
-    if (endHour < startHour) {
+    // Se o horário original termina às 00:00, não atravessa a madrugada (é fim do dia)
+    const originalEndHour = parseInt(daySchedule.end.split(':')[0]);
+    const originalEndMinutes = parseInt(daySchedule.end.split(':')[1] || '0');
+    const crossesMidnight = (originalEndHour !== 0) && (endHour < startHour);
+    
+    if (crossesMidnight) {
       // Funcionamento atravessa a madrugada (ex: 18:00 - 02:00)
       // Gerar horários de startHour até 23:00
       for (let hour = startHour; hour <= 23; hour++) {
@@ -239,7 +256,7 @@ export const useWorkingHours = () => {
       }
     } else {
       // Funcionamento normal no mesmo dia
-      // Incluir o horário final se for 23h
+      // Se endHour é 23 (após conversão de 00:00), incluir até 23:00
       const maxHour = endHour === 23 ? 23 : endHour;
       for (let hour = startHour; hour <= maxHour; hour++) {
         if (hour !== 12) { // Excluir horário do almoço
@@ -248,8 +265,50 @@ export const useWorkingHours = () => {
       }
     }
 
-    return availableHours;
-  }, [isDayEnabled, getDaySchedule, dayMapping]);
+    // Filtrar horários bloqueados manualmente (seguindo o mesmo padrão do bloqueio do meio-dia)
+    const dateString = format(date, 'yyyy-MM-dd');
+    const filteredHours = availableHours.filter(hour => {
+      const blockadeKey = `${dateString}-${hour}`;
+      return !manualBlockades[blockadeKey]?.blocked;
+    });
+
+    return filteredHours;
+  }, [isDayEnabled, getDaySchedule, dayMapping, manualBlockades]);
+
+  // Função para bloquear um horário manualmente
+  const blockTimeSlot = useCallback((date: Date, timeSlot: string, reason: string) => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    const blockadeKey = `${dateString}-${timeSlot}`;
+    setManualBlockades(prev => {
+      const newBlockades = {
+        ...prev,
+        [blockadeKey]: { blocked: true, reason }
+      };
+      // Salvar no localStorage
+      localStorage.setItem('manualBlockades', JSON.stringify(newBlockades));
+      return newBlockades;
+    });
+  }, []);
+
+  // Função para desbloquear um horário manualmente
+  const unblockTimeSlot = useCallback((date: Date, timeSlot: string) => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    const blockadeKey = `${dateString}-${timeSlot}`;
+    setManualBlockades(prev => {
+      const newBlockades = { ...prev };
+      delete newBlockades[blockadeKey];
+      // Salvar no localStorage
+      localStorage.setItem('manualBlockades', JSON.stringify(newBlockades));
+      return newBlockades;
+    });
+  }, []);
+
+  // Função para obter o motivo do bloqueio
+  const getBlockadeReason = useCallback((date: Date, timeSlot: string): string | null => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    const blockadeKey = `${dateString}-${timeSlot}`;
+    return manualBlockades[blockadeKey]?.reason || null;
+  }, [manualBlockades]);
 
   return {
     // Estados
@@ -268,6 +327,11 @@ export const useWorkingHours = () => {
     // Funções de UI
     getCellBackgroundColor,
     getDaySchedule,
+    
+    // Funções de bloqueio manual
+    blockTimeSlot,
+    unblockTimeSlot,
+    getBlockadeReason,
     
     // Utilitários
     dayMapping

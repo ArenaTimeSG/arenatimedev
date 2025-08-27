@@ -11,12 +11,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppointments } from '@/hooks/useAppointments';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Plus, Users, DollarSign, Activity, LogOut, FileText, Settings, ChevronLeft, ChevronRight, User, ChevronDown, Shield, Mail, Phone, Clock, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
+import { Calendar, Plus, Users, DollarSign, Activity, LogOut, FileText, Settings, ChevronLeft, ChevronRight, User, ChevronDown, Shield, Mail, Phone, Clock, TrendingUp, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 
 import { format, startOfWeek, addDays, isSameDay, isBefore, isEqual } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import NewAppointmentModal from '@/components/NewAppointmentModal';
 import AppointmentDetailsModal from '@/components/AppointmentDetailsModal';
+import BlockTimeModal from '@/components/BlockTimeModal';
 import { StatCard } from '@/components/animated/StatCard';
 import { AppointmentCard } from '@/components/animated/AppointmentCard';
 import ResponsiveCalendar from '@/components/ResponsiveCalendar';
@@ -64,6 +65,7 @@ const Dashboard = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [blockedTimeSlot, setBlockedTimeSlot] = useState<{day: Date, timeSlot: string} | null>(null);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     email: string;
@@ -78,7 +80,9 @@ const Dashboard = () => {
     getCellBackgroundColor,
     canCreateAppointment,
     getAvailableHoursForDay,
-    isDayEnabled
+    isDayEnabled,
+    blockTimeSlot,
+    getBlockadeReason
   } = useWorkingHours();
 
   // Hook para sincronizar configurações
@@ -214,13 +218,20 @@ const Dashboard = () => {
     if (appointment) {
       setSelectedAppointment(appointment);
       setIsDetailsModalOpen(true);
-    } else if (!isTimeSlotBlocked(day, timeSlot)) {
-      setSelectedDate(day);
-      setSelectedTime(timeSlot);
-      setIsModalOpen(true);
     } else {
-      setBlockedTimeSlot({ day, timeSlot });
-      setIsConfirmationModalOpen(true);
+      // Verificar se o horário está bloqueado
+      const isBlocked = isTimeSlotBlocked(day, timeSlot);
+      
+      if (isBlocked) {
+        // Se está bloqueado, mostrar confirmação
+        setBlockedTimeSlot({ day, timeSlot });
+        setIsConfirmationModalOpen(true);
+      } else {
+        // Se não está bloqueado, abrir modal de agendamento
+        setSelectedDate(day);
+        setSelectedTime(timeSlot);
+        setIsModalOpen(true);
+      }
     }
   };
 
@@ -255,6 +266,17 @@ const Dashboard = () => {
   const handleCancelBlockedTimeSlot = () => {
     setIsConfirmationModalOpen(false);
     setBlockedTimeSlot(null);
+  };
+
+  const handleBlocked = (reason: string) => {
+    if (selectedDate && selectedTime) {
+      blockTimeSlot(selectedDate, selectedTime, reason);
+    }
+  };
+
+  const handleOpenBlockModal = () => {
+    setIsModalOpen(false);
+    setIsBlockModalOpen(true);
   };
 
   const generateAvailableHoursPDF = () => {
@@ -651,17 +673,18 @@ const Dashboard = () => {
                <span className="ml-3 text-slate-600">Carregando agenda...</span>
              </div>
            ) : (
-             <ResponsiveCalendar
-               currentWeek={currentWeek}
-               setCurrentWeek={setCurrentWeek}
-               appointments={getAppointmentsForCurrentWeek()}
-               timeSlots={timeSlots}
-               onCellClick={handleCellClick}
-               getAppointmentForSlot={getAppointmentForSlot}
-               isTimeSlotBlocked={isTimeSlotBlocked}
-               getStatusColor={getStatusColor}
-               getStatusLabel={getStatusLabel}
-             />
+                           <ResponsiveCalendar
+                currentWeek={currentWeek}
+                setCurrentWeek={setCurrentWeek}
+                appointments={getAppointmentsForCurrentWeek()}
+                timeSlots={timeSlots}
+                onCellClick={handleCellClick}
+                getAppointmentForSlot={getAppointmentForSlot}
+                isTimeSlotBlocked={isTimeSlotBlocked}
+                getStatusColor={getStatusColor}
+                getStatusLabel={getStatusLabel}
+                getBlockadeReason={getBlockadeReason}
+              />
            )}
           </motion.div>
         </div>
@@ -673,6 +696,15 @@ const Dashboard = () => {
         selectedDate={selectedDate}
         selectedTime={selectedTime}
         onAppointmentCreated={handleAppointmentCreated}
+        onBlockTime={handleOpenBlockModal}
+      />
+
+      <BlockTimeModal
+        isOpen={isBlockModalOpen}
+        onClose={() => setIsBlockModalOpen(false)}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
+        onBlocked={handleBlocked}
       />
 
       <AppointmentDetailsModal
@@ -722,6 +754,13 @@ const Dashboard = () => {
                   <span className="font-medium">Dia:</span>
                   <span>{format(blockedTimeSlot.day, 'EEEE', { locale: ptBR })}</span>
                 </div>
+                {getBlockadeReason && getBlockadeReason(blockedTimeSlot.day, blockedTimeSlot.timeSlot) && (
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                    <span className="font-medium">Motivo do bloqueio:</span>
+                    <span className="text-yellow-700">{getBlockadeReason(blockedTimeSlot.day, blockedTimeSlot.timeSlot)}</span>
+                  </div>
+                )}
               </div>
             </div>
             

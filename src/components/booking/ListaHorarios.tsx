@@ -24,31 +24,67 @@ interface ListaHorariosProps {
 
 const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHours, isLoading = false }: ListaHorariosProps) => {
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
+  
+
 
   // Gerar todos os horários possíveis baseados no working_hours
   const generateAllPossibleHours = () => {
-    if (!workingHours) return [];
+    if (!workingHours) {
+      console.log('🔍 ListaHorarios - Sem workingHours');
+      return [];
+    }
     
     const dayOfWeek = data.getDay();
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = dayNames[dayOfWeek];
     const daySchedule = workingHours[dayName];
     
-    if (!daySchedule || !daySchedule.enabled) return [];
+    console.log('🔍 ListaHorarios - Debug generateAllPossibleHours:', {
+      dayOfWeek,
+      dayName,
+      daySchedule,
+      workingHours
+    });
     
-    const startHour = parseInt(daySchedule.start.split(':')[0]);
-    const endHour = parseInt(daySchedule.end.split(':')[0]);
-    
-    const allHours: string[] = [];
-    for (let hour = startHour; hour < endHour; hour++) {
-      const timeString = `${hour.toString().padStart(2, '0')}:00`;
-      allHours.push(timeString);
+    if (!daySchedule || !daySchedule.enabled) {
+      console.log('🔍 ListaHorarios - Dia não habilitado ou sem schedule');
+      return [];
     }
     
+    const startHour = parseInt(daySchedule.start.split(':')[0]);
+    let endHour = parseInt(daySchedule.end.split(':')[0]);
+    
+    // Se end_time = 00:00, tratar como 23:59
+    if (endHour === 0) {
+      endHour = 23;
+    }
+    
+    console.log('🔍 ListaHorarios - Horários calculados:', {
+      startHour,
+      endHour,
+      originalEndHour: parseInt(daySchedule.end.split(':')[0])
+    });
+    
+    const allHours: string[] = [];
+    for (let hour = startHour; hour <= endHour; hour++) {
+      if (hour !== 12) { // Excluir horário do almoço
+        const timeString = `${hour.toString().padStart(2, '0')}:00`;
+        allHours.push(timeString);
+      }
+    }
+    
+    console.log('🔍 ListaHorarios - Horários gerados:', allHours);
     return allHours;
   };
 
   const allPossibleHours = generateAllPossibleHours();
+  
+  console.log('🔍 ListaHorarios - Horários gerados:', {
+    allPossibleHours,
+    allPossibleHoursLength: allPossibleHours.length,
+    horariosDisponiveis: horarios,
+    horariosDisponiveisLength: horarios?.length
+  });
 
   // Verificar se o horário está disponível
   const isHorarioOcupado = (horario: string) => {

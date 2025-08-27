@@ -35,15 +35,47 @@ export const useAvailableHoursCorrect = ({
 
         // 4. Gerar todos os horários possíveis baseados no working_hours
         const startHour = parseInt(daySchedule.start.split(':')[0]);
-        const endHour = parseInt(daySchedule.end.split(':')[0]);
+        const startMinutes = parseInt(daySchedule.start.split(':')[1] || '0');
+        let endHour = parseInt(daySchedule.end.split(':')[0]);
+        const endMinutes = parseInt(daySchedule.end.split(':')[1] || '0');
+        
+        // Se end_time = 00:00, tratar como 23:59
+        if (endHour === 0 && endMinutes === 0) {
+          endHour = 23;
+        }
 
         const allHours: string[] = [];
         
-        // Gerar horários de hora em hora
-        for (let hour = startHour; hour < endHour; hour++) {
-          const timeString = `${hour.toString().padStart(2, '0')}:00`;
-          allHours.push(timeString);
-        }
+                 // Verificar se o funcionamento atravessa a madrugada
+         // Se o horário original termina às 00:00, não atravessa a madrugada (é fim do dia)
+         const originalEndHour = parseInt(daySchedule.end.split(':')[0]);
+         const originalEndMinutes = parseInt(daySchedule.end.split(':')[1] || '0');
+         const crossesMidnight = (originalEndHour !== 0) && (endHour < startHour);
+         
+         if (crossesMidnight) {
+           // Funcionamento atravessa a madrugada (ex: 18:00 - 02:00)
+           // Gerar horários de startHour até 23:00
+           for (let hour = startHour; hour <= 23; hour++) {
+             if (hour !== 12) { // Excluir horário do almoço
+               allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+             }
+           }
+           // Gerar horários de 00:00 até endHour
+           for (let hour = 0; hour < endHour; hour++) {
+             if (hour !== 12) { // Excluir horário do almoço
+               allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+             }
+           }
+         } else {
+           // Funcionamento normal no mesmo dia
+           // Se endHour é 23 (após conversão de 00:00), incluir até 23:00
+           const maxHour = endHour === 23 ? 23 : endHour;
+           for (let hour = startHour; hour <= maxHour; hour++) {
+             if (hour !== 12) { // Excluir horário do almoço
+               allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+             }
+           }
+         }
 
         // 5. Buscar agendamentos existentes para este dia
         const { data: existingAppointments, error: appointmentsError } = await supabase
@@ -68,19 +100,26 @@ export const useAvailableHoursCorrect = ({
         }) || [];
 
         // 7. Filtrar horários disponíveis
-        const availableHours = allHours.filter(hour => {
+        let availableHours = allHours.filter(hour => {
           const isOccupied = occupiedHours.includes(hour);
-          
-          // Verificar regras de bloqueio
-          const hourNumber = parseInt(hour.split(':')[0]);
-          
-          // Horário das 12h - bloqueado todos os dias (almoço)
-          if (hourNumber === 12) {
-            return false;
-          }
-          
           return !isOccupied;
         });
+
+        // 7.1. Verificar bloqueios manuais do localStorage (seguindo o mesmo padrão do bloqueio do meio-dia)
+        try {
+          const savedBlockades = localStorage.getItem('manualBlockades');
+          if (savedBlockades) {
+            const manualBlockades = JSON.parse(savedBlockades);
+            
+            // Filtrar horários bloqueados manualmente
+            availableHours = availableHours.filter(hour => {
+              const blockadeKey = `${normalizedDate}-${hour}`;
+              return !manualBlockades[blockadeKey]?.blocked;
+            });
+          }
+        } catch (error) {
+          console.error('Erro ao verificar bloqueios manuais:', error);
+        }
 
         // 8. Aplicar regra de tempo mínimo de antecedência
         const now = new Date();

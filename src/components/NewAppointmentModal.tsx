@@ -26,6 +26,7 @@ interface NewAppointmentModalProps {
   selectedDate?: Date;
   selectedTime?: string;
   onAppointmentCreated: () => void;
+  onBlockTime?: () => void;
 }
 
 const NewAppointmentModal = ({ 
@@ -33,7 +34,8 @@ const NewAppointmentModal = ({
   onClose, 
   selectedDate, 
   selectedTime, 
-  onAppointmentCreated 
+  onAppointmentCreated,
+  onBlockTime
 }: NewAppointmentModalProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -616,17 +618,31 @@ const NewAppointmentModal = ({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 mt-6">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isLoading ? 'Criando...' : 'Criar Agendamento'}
-            </Button>
+          <div className="flex justify-between items-center mt-6">
+            <div>
+              {onBlockTime && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onBlockTime}
+                  className="border-orange-200 text-orange-600 hover:bg-orange-50"
+                >
+                  Bloquear Horário
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isLoading ? 'Criando...' : 'Criar Agendamento'}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>
