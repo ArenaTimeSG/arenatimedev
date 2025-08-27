@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { format, isBefore, isEqual } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -291,9 +292,10 @@ const NewAppointmentModal = ({
         });
 
         // Inserir todos os agendamentos
-        const { error: insertError } = await supabase
+        const { data: insertedAppointments, error: insertError } = await supabase
           .from('appointments')
-          .insert(appointments);
+          .insert(appointments)
+          .select('*');
 
         if (insertError) throw insertError;
 
@@ -301,6 +303,21 @@ const NewAppointmentModal = ({
           title: 'Agendamentos recorrentes criados!',
           description: `${appointments.length} agendamentos foram criados com sucesso.`,
         });
+
+        // Otimização: Atualizar cache diretamente para agendamentos recorrentes
+        if (insertedAppointments) {
+          const queryClient = useQueryClient();
+          queryClient.setQueryData(['appointments', user.id], (oldData: any[] | undefined) => {
+            if (!oldData) return insertedAppointments;
+            return [...insertedAppointments, ...oldData];
+          });
+          
+          // Invalidar queries relacionadas
+          queryClient.invalidateQueries({ 
+            queryKey: ['appointments'], 
+            exact: false 
+          });
+        }
       } else {
         // Criar agendamento único usando o novo hook
         await createAppointment({

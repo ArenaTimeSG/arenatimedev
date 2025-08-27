@@ -54,7 +54,7 @@ interface Appointment {
 const Dashboard = () => {
   const { user, loading, signOut } = useAuth();
   const { toast } = useToast();
-  const { appointments, getFinancialSummary } = useAppointments();
+  const { appointments, getFinancialSummary, isLoading: appointmentsLoading } = useAppointments();
   const navigate = useNavigate();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -645,17 +645,24 @@ const Dashboard = () => {
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.5 }}
           >
-            <ResponsiveCalendar
-              currentWeek={currentWeek}
-              setCurrentWeek={setCurrentWeek}
-              appointments={getAppointmentsForCurrentWeek()}
-              timeSlots={timeSlots}
-              onCellClick={handleCellClick}
-              getAppointmentForSlot={getAppointmentForSlot}
-              isTimeSlotBlocked={isTimeSlotBlocked}
-              getStatusColor={getStatusColor}
-              getStatusLabel={getStatusLabel}
-            />
+                       {appointmentsLoading ? (
+             <div className="flex items-center justify-center p-8">
+               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+               <span className="ml-3 text-slate-600">Carregando agenda...</span>
+             </div>
+           ) : (
+             <ResponsiveCalendar
+               currentWeek={currentWeek}
+               setCurrentWeek={setCurrentWeek}
+               appointments={getAppointmentsForCurrentWeek()}
+               timeSlots={timeSlots}
+               onCellClick={handleCellClick}
+               getAppointmentForSlot={getAppointmentForSlot}
+               isTimeSlotBlocked={isTimeSlotBlocked}
+               getStatusColor={getStatusColor}
+               getStatusLabel={getStatusLabel}
+             />
+           )}
           </motion.div>
         </div>
       </div>

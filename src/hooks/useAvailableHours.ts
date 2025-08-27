@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { format, addDays, isBefore, startOfDay, addMinutes, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -27,8 +27,11 @@ export const useAvailableHours = ({
   adminUserId,
   modalityDuration = 60
 }: UseAvailableHoursProps) => {
-  return useMemo(() => {
-    const generateAvailableHours = async () => {
+  const dateKey = format(selectedDate, 'yyyy-MM-dd');
+  
+  return useQuery({
+    queryKey: ['availableHours', adminUserId, dateKey, modalityDuration],
+    queryFn: async (): Promise<string[]> => {
       try {
         const dayOfWeek = format(selectedDate, 'EEEE').toLowerCase() as keyof WorkingHours;
         const daySchedule = workingHours[dayOfWeek];
@@ -72,7 +75,7 @@ export const useAvailableHours = ({
           .eq('user_id', adminUserId)
           .gte('date', startOfSelectedDate.toISOString())
           .lt('date', endOfSelectedDate.toISOString())
-          .not('status', 'eq', 'cancelada');
+          .not('status', 'eq', 'cancelado');
 
         if (error) {
           console.error('Erro ao buscar agendamentos:', error);
@@ -106,9 +109,9 @@ export const useAvailableHours = ({
         console.error('Erro ao gerar horários disponíveis:', error);
         return [];
       }
-    };
-
-    // Como useMemo não suporta async, vamos retornar uma função que pode ser chamada
-    return generateAvailableHours;
-  }, [workingHours, selectedDate, tempoMinimoAntecedencia, adminUserId, modalityDuration]);
+    },
+    staleTime: 1000 * 10, // 10 segundos para horários disponíveis (muito responsivo)
+    gcTime: 1000 * 60 * 2, // 2 minutos de cache
+    enabled: !!adminUserId && !!selectedDate,
+  });
 };

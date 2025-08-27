@@ -6,8 +6,9 @@ import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAdminByUsername } from '@/hooks/useAdminByUsername';
 import { useClientBookings } from '@/hooks/useClientBookings';
-import { useAvailableHoursCorrect } from '@/hooks/useAvailableHoursCorrect';
+import { useAvailableHours } from '@/hooks/useAvailableHours';
 import { useClientAuth } from '@/hooks/useClientAuth';
+import { useQueryClient } from '@tanstack/react-query';
 
 import CardModalidade from '@/components/booking/CardModalidade';
 import Calendario from '@/components/booking/Calendario';
@@ -73,6 +74,9 @@ const OnlineBooking = () => {
     isCreating, 
     createError: reservationError 
   } = useClientBookings(adminData?.user?.user_id);
+  
+  // Query client para invalidação de cache
+  const queryClient = useQueryClient();
 
   // Usar modalidades do adminData (já vêm com o admin)
   const modalities = adminData?.modalities || [];
@@ -101,7 +105,7 @@ const OnlineBooking = () => {
   }, [adminData, isOnlineBookingEnabled, navigate]);
 
   // Hook para horários disponíveis (usando tabela horarios)
-  const { data: availableHours = [] } = useAvailableHoursCorrect({
+  const { data: availableHours = [], isLoading: availableHoursLoading } = useAvailableHours({
     adminUserId: adminData?.user?.user_id,
     selectedDate: reserva.data || new Date(),
     workingHours: adminData?.settings?.working_hours || {
@@ -113,7 +117,8 @@ const OnlineBooking = () => {
       saturday: { enabled: true, start: '08:00', end: '18:00' },
       sunday: { enabled: false, start: '08:00', end: '18:00' }
     },
-    tempoMinimoAntecedencia: adminData?.settings?.online_booking?.tempo_minimo_antecedencia || 24
+    tempoMinimoAntecedencia: adminData?.settings?.online_booking?.tempo_minimo_antecedencia || 24,
+    modalityDuration: reserva.modalidade?.duracao || 60
   });
 
   // Função para gerar cor baseada no nome da modalidade
@@ -215,6 +220,23 @@ const OnlineBooking = () => {
       createBooking(bookingData, {
         onSuccess: () => {
           console.log('✅ OnlineBooking: Agendamento criado com sucesso!');
+          
+          // Invalidar cache de horários disponíveis para a data específica
+          const dateKey = format(reserva.data!, 'yyyy-MM-dd');
+          queryClient.invalidateQueries({ 
+            queryKey: ['availableHours', adminData?.user?.user_id, dateKey] 
+          });
+          
+          // Invalidar cache de agendamentos
+          queryClient.invalidateQueries({ 
+            queryKey: ['appointments', adminData?.user?.user_id] 
+          });
+          
+          // Invalidar cache de agendamentos de clientes
+          queryClient.invalidateQueries({ 
+            queryKey: ['clientBookings', adminData?.user?.user_id] 
+          });
+          
           // Se chegou até aqui, a reserva foi criada com sucesso
           setReservationStatus(autoConfirmada ? 'success' : 'pending');
           setReservaConfirmada(true);
@@ -565,6 +587,7 @@ const OnlineBooking = () => {
                   modalidade={reserva.modalidade!}
                   data={reserva.data!}
                   workingHours={adminData?.settings?.working_hours}
+                  isLoading={availableHoursLoading}
                 />
               </div>
             </div>

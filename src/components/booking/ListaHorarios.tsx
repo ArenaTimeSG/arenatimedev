@@ -19,9 +19,10 @@ interface ListaHorariosProps {
   modalidade: Modalidade;
   data: Date;
   workingHours?: any; // Configuração de horários de funcionamento
+  isLoading?: boolean; // Estado de carregamento
 }
 
-const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHours }: ListaHorariosProps) => {
+const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHours, isLoading = false }: ListaHorariosProps) => {
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
 
   // Gerar todos os horários possíveis baseados no working_hours
@@ -90,8 +91,17 @@ const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHou
 
       {/* Horários disponíveis */}
       <div className="space-y-6">
-        {/* Manhã */}
-        {horariosManha.length > 0 && (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="text-gray-600">Carregando horários disponíveis...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Manhã */}
+            {horariosManha.length > 0 && (
           <div>
             <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-orange-500" />
@@ -152,7 +162,9 @@ const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHou
             </div>
           </div>
         )}
-      </div>
+      </>
+    )}
+  </div>
 
       {/* Legenda */}
       <div className="mt-8 pt-6 border-t border-gray-200">

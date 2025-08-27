@@ -125,9 +125,36 @@ export const useClientBookings = (adminUserId?: string) => {
       console.log('✅ useClientBookings: Agendamento criado com sucesso:', newBooking);
       return newBooking;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientBookings', adminUserId] });
-      queryClient.invalidateQueries({ queryKey: ['appointments', adminUserId] });
+    onSuccess: (newBooking) => {
+      // Otimização: Atualizar cache diretamente para agendamentos online
+      queryClient.setQueryData(['clientBookings', adminUserId], (oldData: any[] | undefined) => {
+        if (!oldData) return [newBooking];
+        return [newBooking, ...oldData];
+      });
+      
+      // Atualizar cache principal de agendamentos
+      queryClient.setQueryData(['appointments', adminUserId], (oldData: any[] | undefined) => {
+        if (!oldData) return [newBooking];
+        return [newBooking, ...oldData];
+      });
+      
+      // Invalidar queries relacionadas de forma mais específica
+      queryClient.invalidateQueries({ 
+        queryKey: ['appointments'], 
+        exact: false 
+      });
+      
+      // Invalidar queries de horários disponíveis
+      queryClient.invalidateQueries({ 
+        queryKey: ['availableHours'], 
+        exact: false 
+      });
+      
+      // Invalidar queries de configurações de horários
+      queryClient.invalidateQueries({ 
+        queryKey: ['workingHours'], 
+        exact: false 
+      });
     }
   });
 

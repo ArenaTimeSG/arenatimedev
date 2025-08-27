@@ -56,6 +56,8 @@ export const useAppointments = () => {
     refetch,
   } = useQuery({
     queryKey: ['appointments', user?.id],
+    staleTime: 1000 * 30, // 30 segundos para agendamentos (mais responsivo)
+    gcTime: 1000 * 60 * 3, // 3 minutos de cache
     queryFn: async (): Promise<AppointmentWithModality[]> => {
       if (!user?.id) {
         throw new Error('Usuário não autenticado');
@@ -190,8 +192,17 @@ export const useAppointments = () => {
         description: `Agendamento foi criado com sucesso.`,
       });
       
-      // Invalidate and refetch appointments
-      queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+      // Otimização: Atualizar cache diretamente em vez de invalidar
+      queryClient.setQueryData(['appointments', user?.id], (oldData: AppointmentWithModality[] | undefined) => {
+        if (!oldData) return [newAppointment];
+        return [newAppointment, ...oldData];
+      });
+      
+      // Invalidar queries relacionadas de forma mais específica
+      queryClient.invalidateQueries({ 
+        queryKey: ['appointments'], 
+        exact: false 
+      });
     },
     onError: (error: any) => {
       toast({
@@ -248,8 +259,17 @@ export const useAppointments = () => {
         description: `Agendamento foi atualizado com sucesso.`,
       });
       
-      // Invalidate and refetch appointments
-      queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+      // Otimização: Atualizar cache diretamente
+      queryClient.setQueryData(['appointments', user?.id], (oldData: AppointmentWithModality[] | undefined) => {
+        if (!oldData) return [updatedAppointment];
+        return oldData.map(apt => apt.id === updatedAppointment.id ? updatedAppointment : apt);
+      });
+      
+      // Invalidar queries relacionadas
+      queryClient.invalidateQueries({ 
+        queryKey: ['appointments'], 
+        exact: false 
+      });
     },
     onError: (error: any) => {
       toast({
@@ -278,14 +298,23 @@ export const useAppointments = () => {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast({
         title: 'Agendamento removido!',
         description: 'Agendamento foi removido com sucesso.',
       });
       
-      // Invalidate and refetch appointments
-      queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+      // Otimização: Remover do cache diretamente
+      queryClient.setQueryData(['appointments', user?.id], (oldData: AppointmentWithModality[] | undefined) => {
+        if (!oldData) return [];
+        return oldData.filter(apt => apt.id !== variables);
+      });
+      
+      // Invalidar queries relacionadas
+      queryClient.invalidateQueries({ 
+        queryKey: ['appointments'], 
+        exact: false 
+      });
     },
     onError: (error: any) => {
       toast({
