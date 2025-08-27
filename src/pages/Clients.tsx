@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Users, Search, ArrowLeft, Mail, Phone, Calendar, Eye } from 'lucide-react';
+import { Plus, Users, Search, ArrowLeft, Mail, Phone, Calendar, Eye, Edit } from 'lucide-react';
 import ResponsiveFilters from '@/components/ui/responsive-filters';
 
 interface Client {
@@ -277,6 +277,17 @@ const Clients = () => {
                             >
                               <Eye className="h-4 w-4 mr-2" />
                               Ver Detalhes
+                            </Button>
+                          </motion.div>
+                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/clients/${client.id}?edit=true`)}
+                              className="border-blue-200 hover:bg-blue-50 hover:border-blue-300 text-blue-700"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Editar
                             </Button>
                           </motion.div>
                         </div>

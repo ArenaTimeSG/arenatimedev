@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ const ClientDetail = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   
   const [client, setClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,8 +45,13 @@ const ClientDetail = () => {
   useEffect(() => {
     if (user && id) {
       fetchClient();
+      // Verificar se deve abrir em modo de edição
+      const shouldEdit = searchParams.get('edit') === 'true';
+      if (shouldEdit) {
+        setIsEditing(true);
+      }
     }
-  }, [user, id]);
+  }, [user, id, searchParams]);
 
   const fetchClient = async () => {
     try {
@@ -109,6 +115,8 @@ const ClientDetail = () => {
       } : null);
 
       setIsEditing(false);
+      // Limpar o parâmetro edit da URL
+      navigate(`/clients/${id}`, { replace: true });
       toast({
         title: 'Cliente atualizado!',
         description: 'As informações foram salvas com sucesso.',
@@ -129,6 +137,17 @@ const ClientDetail = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setFormData({
+      name: client?.name || '',
+      email: client?.email || '',
+      phone: client?.phone || '',
+    });
+    // Limpar o parâmetro edit da URL
+    navigate(`/clients/${id}`, { replace: true });
   };
 
   if (loading || isLoading) {
@@ -204,11 +223,10 @@ const ClientDetail = () => {
             {!isEditing && (
               <Button
                 onClick={() => setIsEditing(true)}
-                variant="outline"
-                className="flex items-center gap-2 border-slate-200 hover:bg-slate-50"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <Edit className="h-4 w-4" />
-                <span className="hidden sm:inline">Editar</span>
+                <span className="hidden sm:inline">Editar Cliente</span>
               </Button>
             )}
           </div>
@@ -279,14 +297,7 @@ const ClientDetail = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => {
-                      setIsEditing(false);
-                      setFormData({
-                        name: client.name,
-                        email: client.email || '',
-                        phone: client.phone || '',
-                      });
-                    }}
+                    onClick={handleCancelEdit}
                     className="flex-1 h-12 text-base font-semibold border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl"
                   >
                     Cancelar
