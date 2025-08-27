@@ -141,13 +141,26 @@ const Dashboard = () => {
 
   // Função para filtrar agendamentos da semana atual
   const getAppointmentsForCurrentWeek = () => {
+    // Usar a mesma lógica do ResponsiveCalendar para garantir consistência
     const weekStart = startOfWeek(currentWeek, { locale: ptBR });
     const weekEnd = addDays(weekStart, 6);
+    weekEnd.setHours(23, 59, 59, 999);
     
-    return appointments.filter(apt => {
+    const filteredAppointments = appointments.filter(apt => {
       const appointmentDate = new Date(apt.date);
-      return appointmentDate >= weekStart && appointmentDate <= weekEnd;
+      
+      // Normalizar a data do agendamento para comparar apenas a data (sem hora)
+      const aptDateOnly = new Date(appointmentDate.getFullYear(), appointmentDate.getMonth(), appointmentDate.getDate());
+      
+      // Verificar se o agendamento está dentro da semana
+      const isInWeek = aptDateOnly >= weekStart && aptDateOnly <= weekEnd;
+      
+      return isInWeek;
     });
+    
+
+    
+    return filteredAppointments;
   };
 
   const getStatusColor = (status: string, date?: string, recurrence_id?: string) => {
