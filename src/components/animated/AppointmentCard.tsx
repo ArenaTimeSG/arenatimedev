@@ -81,7 +81,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       whileTap={{ y: 0 }}
       transition={{ duration: 0.2 }}
       className={`
-        relative overflow-hidden rounded-lg cursor-pointer p-1 h-full w-full max-h-[40px]
+        relative overflow-hidden rounded-lg cursor-pointer p-1 h-full w-full max-h-[56px]
         bg-gradient-to-br ${gradientClass} text-white
         shadow-md hover:shadow-lg transition-all duration-200
         border-0 backdrop-blur-sm
@@ -94,69 +94,70 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
         <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full -translate-y-8 translate-x-8" />
       </div>
 
-      <div className="relative space-y-0.5">
-        {/* Header with status and recurrence indicator */}
-        <div className="flex items-center justify-between">
-          <Badge 
-            variant="secondary" 
-            className={`text-xs font-semibold ${getBadgeColor()}`}
-          >
-            {getStatusLabel(appointment.status, date)}
-          </Badge>
-          <div className="flex items-center gap-0.5">
-            {isOnlineBooking && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                title="Agendamento Online"
-              >
-                <Globe className="h-2.5 w-2.5 text-white/80" />
-              </motion.div>
-            )}
-            {appointment.recurrence_id && (
-              <motion.div
-                whileHover={{ rotate: 180 }}
-                transition={{ duration: 0.3 }}
-                title="Agendamento Recorrente"
-              >
-                <RotateCcw className="h-2.5 w-2.5 text-white/80" />
-              </motion.div>
-            )}
-          </div>
-        </div>
+             <div className="relative h-full flex flex-col justify-between">
+         {/* Top row: Status badge and icons */}
+         <div className="flex items-center justify-between">
+           <Badge 
+             variant="secondary" 
+             className={`text-xs font-semibold ${getBadgeColor()}`}
+           >
+             {getStatusLabel(appointment.status, date)}
+           </Badge>
+           <div className="flex items-center gap-0.5">
+             {isOnlineBooking && (
+               <motion.div
+                 initial={{ opacity: 0, scale: 0.8 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 transition={{ duration: 0.3 }}
+                 title="Agendamento Online"
+               >
+                 <Globe className="h-2.5 w-2.5 text-white/80" />
+               </motion.div>
+             )}
+             {appointment.recurrence_id && (
+               <motion.div
+                 whileHover={{ rotate: 180 }}
+                 transition={{ duration: 0.3 }}
+                 title="Agendamento Recorrente"
+               >
+                 <RotateCcw className="h-2.5 w-2.5 text-white/80" />
+               </motion.div>
+             )}
+           </div>
+         </div>
 
-        {/* Client name */}
-        <div className="space-y-0">
-          <p className="font-semibold text-xs leading-tight line-clamp-1">
-            {appointment.client?.name || 'Cliente não identificado'}
-          </p>
-          
-          {/* Modality */}
-          <div className="flex items-center gap-0.5 opacity-90">
-            <Calendar className="h-2 w-2" />
-            <p className="text-xs font-medium line-clamp-1">
-              {appointment.modality_info ? 
-                appointment.modality_info.name : 
-                appointment.modality || 'Modalidade não definida'
-              }
-            </p>
-          </div>
-        </div>
+         {/* Middle: Client name */}
+         <div className="flex-1 flex items-center">
+           <p className="font-semibold text-xs leading-tight line-clamp-1">
+             {appointment.client?.name || 'Cliente não identificado'}
+           </p>
+         </div>
 
-        {/* Recurrence indicator */}
-        {appointment.recurrence_id && (
-          <motion.div 
-            className="flex items-center gap-0.5 text-xs font-medium opacity-80"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.8 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="w-1 h-1 bg-white rounded-full" />
-            <span className="text-xs">Recorrente</span>
-          </motion.div>
-        )}
-      </div>
+         {/* Bottom: Modality and recurrence indicator */}
+         <div className="flex items-center justify-between">
+           <div className="flex items-center gap-0.5 opacity-90">
+             <Calendar className="h-2 w-2" />
+             <p className="text-xs font-medium line-clamp-1">
+               {appointment.modality_info ? 
+                 appointment.modality_info.name : 
+                 appointment.modality || 'Modalidade não definida'
+               }
+             </p>
+           </div>
+           
+           {appointment.recurrence_id && (
+             <motion.div 
+               className="flex items-center gap-0.5 text-xs font-medium opacity-80"
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 0.8 }}
+               transition={{ delay: 0.2 }}
+             >
+               <div className="w-1 h-1 bg-white rounded-full" />
+               <span className="text-xs">Rec</span>
+             </motion.div>
+           )}
+         </div>
+       </div>
     </motion.div>
   );
 };

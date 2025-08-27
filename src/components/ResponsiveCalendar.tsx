@@ -324,7 +324,7 @@ const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
                     return (
                                              <motion.td 
                          key={j} 
-                         className={`border border-slate-200 p-1 h-12 align-top cursor-pointer transition-all duration-200 min-w-[100px] relative ${
+                         className={`border border-slate-200 p-1 h-16 align-top cursor-pointer transition-all duration-200 min-w-[100px] relative ${
                            hasAppointment 
                              ? 'bg-gradient-to-br from-blue-50 to-indigo-50' 
                              : isBlocked 
