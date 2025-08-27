@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, User, Phone, Mail, CheckCircle, ArrowLeft, AlertCircle, X, LogOut } from 'lucide-react';
+import { Calendar, Clock, User, Phone, Mail, CheckCircle, ArrowLeft, AlertCircle, X, LogOut, List } from 'lucide-react';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAdminByUsername } from '@/hooks/useAdminByUsername';
@@ -14,6 +14,7 @@ import Calendario from '@/components/booking/Calendario';
 import ListaHorarios from '@/components/booking/ListaHorarios';
 import FormCliente from '@/components/booking/FormCliente';
 import ResumoReserva from '@/components/booking/ResumoReserva';
+import AgendamentosMenu from '@/components/booking/AgendamentosMenu';
 import ClientAuth from './ClientAuth';
 
 interface Modalidade {
@@ -51,6 +52,7 @@ const OnlineBooking = () => {
   });
   const [reservaConfirmada, setReservaConfirmada] = useState(false);
   const [reservationStatus, setReservationStatus] = useState<'success' | 'pending' | null>(null);
+  const [isAgendamentosMenuOpen, setIsAgendamentosMenuOpen] = useState(false);
 
   // Hook de autenticação do cliente
   const { client, loading: clientLoading, logout } = useClientAuth();
@@ -339,12 +341,12 @@ const OnlineBooking = () => {
             )}
           </div>
           <h1 className="text-2xl font-bold text-slate-900">
-            {reservationStatus === 'success' ? 'Reserva Confirmada!' : 'Reserva Pendente'}
+            {reservationStatus === 'success' ? 'Reserva Confirmada!' : 'Reserva Agendada!'}
           </h1>
           <p className="text-slate-600">
             {reservationStatus === 'success' 
               ? 'Sua reserva foi confirmada automaticamente.' 
-              : 'Sua reserva foi enviada e aguarda confirmação.'
+              : 'Sua reserva foi agendada com sucesso!'
             }
           </p>
         </div>
@@ -376,7 +378,7 @@ const OnlineBooking = () => {
               </div>
             </div>
             
-            {/* Cliente logado e botão de logout */}
+            {/* Cliente logado e botões */}
             <div className="flex items-center gap-4">
               {client && (
                 <div className="text-right">
@@ -384,6 +386,13 @@ const OnlineBooking = () => {
                   <p className="text-xs text-slate-500">{client.email}</p>
                 </div>
               )}
+              <button
+                onClick={() => setIsAgendamentosMenuOpen(true)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
+                title="Meus Agendamentos"
+              >
+                <List className="w-5 h-5" />
+              </button>
               <button
                 onClick={logout}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
@@ -557,6 +566,16 @@ const OnlineBooking = () => {
           )}
         </motion.div>
       </div>
+
+      {/* Menu de Agendamentos */}
+      {client && adminData?.user?.user_id && (
+        <AgendamentosMenu
+          clientId={client.id}
+          adminUserId={adminData.user.user_id}
+          isOpen={isAgendamentosMenuOpen}
+          onClose={() => setIsAgendamentosMenuOpen(false)}
+        />
+      )}
     </div>
   );
 };
