@@ -252,10 +252,10 @@ const OnlineBooking = () => {
   // Loading state
   if (loadingAdmin || modalitiesLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-sm">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-slate-600 font-medium">Carregando agenda...</p>
+          <p className="text-slate-600 font-medium text-sm sm:text-base">Carregando agenda...</p>
         </div>
       </div>
     );
@@ -264,13 +264,13 @@ const OnlineBooking = () => {
   // Error state - Admin não encontrado
   if (adminError || !adminData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-            <X className="w-8 h-8 text-red-600" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+            <X className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Agenda não encontrada</h1>
-          <p className="text-slate-600">O link de agendamento não está disponível ou foi removido.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Agenda não encontrada</h1>
+          <p className="text-slate-600 text-sm sm:text-base">O link de agendamento não está disponível ou foi removido.</p>
         </div>
       </div>
     );
@@ -279,13 +279,13 @@ const OnlineBooking = () => {
   // Se o agendamento online está desativado
   if (!adminData?.settings?.online_enabled) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
-            <AlertCircle className="w-8 h-8 text-orange-600" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Agendamento Online Desativado</h1>
-          <p className="text-slate-600">O agendamento online está temporariamente indisponível.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Agendamento Online Desativado</h1>
+          <p className="text-slate-600 text-sm sm:text-base">O agendamento online está temporariamente indisponível.</p>
         </div>
       </div>
     );
@@ -294,13 +294,13 @@ const OnlineBooking = () => {
   // Se não há modalidades cadastradas
   if (modalidades.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
-            <AlertCircle className="w-8 h-8 text-orange-600" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Nenhuma modalidade disponível</h1>
-          <p className="text-slate-600">Não há modalidades cadastradas para agendamento no momento.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Nenhuma modalidade disponível</h1>
+          <p className="text-slate-600 text-sm sm:text-base">Não há modalidades cadastradas para agendamento no momento.</p>
         </div>
       </div>
     );
@@ -319,10 +319,10 @@ const OnlineBooking = () => {
   // Loading do cliente
   if (clientLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-sm">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-slate-600 font-medium">Carregando...</p>
+          <p className="text-slate-600 font-medium text-sm sm:text-base">Carregando...</p>
         </div>
       </div>
     );
@@ -331,19 +331,19 @@ const OnlineBooking = () => {
   // Success state - Reserva confirmada
   if (reservaConfirmada) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
             {reservationStatus === 'success' ? (
-              <CheckCircle className="w-8 h-8 text-green-600" />
+              <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
             ) : (
-              <Clock className="w-8 h-8 text-yellow-600" />
+              <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
             )}
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
             {reservationStatus === 'success' ? 'Reserva Confirmada!' : 'Reserva Agendada!'}
           </h1>
-          <p className="text-slate-600">
+          <p className="text-slate-600 text-sm sm:text-base">
             {reservationStatus === 'success' 
               ? 'Sua reserva foi confirmada automaticamente.' 
               : 'Sua reserva foi agendada com sucesso!'
@@ -359,54 +359,59 @@ const OnlineBooking = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            {/* Header Principal */}
+            <div className="flex items-center gap-3 sm:gap-4">
               {step > 1 && (
                 <button
                   onClick={handleVoltar}
-                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
                 >
                   <ArrowLeft className="w-5 h-5 text-slate-600" />
                 </button>
               )}
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent truncate">
                   {adminData?.user?.name} - Agendamento
                 </h1>
-                <p className="text-slate-600 text-sm">Reserve seu horário de forma rápida e fácil</p>
+                <p className="text-slate-600 text-xs sm:text-sm hidden sm:block">Reserve seu horário de forma rápida e fácil</p>
               </div>
             </div>
             
             {/* Cliente logado e botões */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4">
               {client && (
-                <div className="text-right">
-                  <p className="text-sm font-medium text-slate-700">{client.name}</p>
-                  <p className="text-xs text-slate-500">{client.email}</p>
+                <div className="text-right hidden sm:block">
+                  <p className="text-sm font-medium text-slate-700 truncate">{client.name}</p>
+                  <p className="text-xs text-slate-500 truncate">{client.email}</p>
                 </div>
               )}
-              <button
-                onClick={() => setIsAgendamentosMenuOpen(true)}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
-                title="Meus Agendamentos"
-              >
-                <List className="w-5 h-5" />
-              </button>
-              <button
-                onClick={logout}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
-                title="Sair"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsAgendamentosMenuOpen(true)}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
+                  title="Meus Agendamentos"
+                >
+                  <List className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={logout}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
+                  title="Sair"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-            
-            {/* Progress Steps */}
-            <div className="hidden md:flex items-center gap-2">
+          </div>
+          
+          {/* Progress Steps - Mobile */}
+          <div className="mt-3 sm:hidden">
+            <div className="flex items-center justify-center gap-1">
               {[1, 2, 3, 4, 5].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
                     stepNumber <= step 
                       ? 'bg-blue-600 text-white' 
                       : 'bg-slate-200 text-slate-500'
@@ -414,7 +419,7 @@ const OnlineBooking = () => {
                     {stepNumber}
                   </div>
                   {stepNumber < 5 && (
-                    <div className={`w-8 h-1 mx-1 ${
+                    <div className={`w-4 h-1 mx-1 ${
                       stepNumber < step ? 'bg-blue-600' : 'bg-slate-200'
                     }`} />
                   )}
@@ -422,11 +427,31 @@ const OnlineBooking = () => {
               ))}
             </div>
           </div>
+          
+          {/* Progress Steps - Desktop */}
+          <div className="hidden sm:flex items-center justify-center gap-2 mt-4">
+            {[1, 2, 3, 4, 5].map((stepNumber) => (
+              <div key={stepNumber} className="flex items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  stepNumber <= step 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-slate-200 text-slate-500'
+                }`}>
+                  {stepNumber}
+                </div>
+                {stepNumber < 5 && (
+                  <div className={`w-8 h-1 mx-1 ${
+                    stepNumber < step ? 'bg-blue-600' : 'bg-slate-200'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <motion.div
           key={step}
           initial={{ opacity: 0, y: 20 }}
@@ -436,12 +461,12 @@ const OnlineBooking = () => {
           {/* Step 1: Seleção da Modalidade */}
           {step === 1 && (
             <div>
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">Escolha sua Modalidade</h2>
-                <p className="text-gray-600">Selecione o esporte que você deseja praticar</p>
+              <div className="text-center mb-6 sm:mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Escolha sua Modalidade</h2>
+                <p className="text-gray-600 text-sm sm:text-base">Selecione o esporte que você deseja praticar</p>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {modalidades.map((modalidade) => (
                   <CardModalidade
                     key={modalidade.id}
@@ -456,72 +481,76 @@ const OnlineBooking = () => {
           {/* Step 2: Calendário */}
           {step === 2 && (
             <div>
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">Escolha a Data</h2>
-                <p className="text-gray-600">
+              <div className="text-center mb-6 sm:mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Escolha a Data</h2>
+                <p className="text-gray-600 text-sm sm:text-base">
                   Selecione a data para sua reserva de {reserva.modalidade?.name}
                 </p>
               </div>
               
-              <Calendario
-                onDataSelect={handleDataSelect}
-                modalidade={reserva.modalidade!}
-                workingHours={adminData?.settings?.working_hours}
-                tempoMinimoAntecedencia={adminData?.settings?.online_booking?.tempo_minimo_antecedencia || 24}
-              />
+              <div className="max-w-md mx-auto">
+                <Calendario
+                  onDataSelect={handleDataSelect}
+                  modalidade={reserva.modalidade!}
+                  workingHours={adminData?.settings?.working_hours}
+                  tempoMinimoAntecedencia={adminData?.settings?.online_booking?.tempo_minimo_antecedencia || 24}
+                />
+              </div>
             </div>
           )}
 
           {/* Step 3: Horários */}
           {step === 3 && (
             <div>
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">Escolha o Horário</h2>
-                <p className="text-gray-600">
+              <div className="text-center mb-6 sm:mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Escolha o Horário</h2>
+                <p className="text-gray-600 text-sm sm:text-base">
                   {reserva.modalidade?.name} - {reserva.data && format(reserva.data, 'dd/MM/yyyy', { locale: ptBR })}
                 </p>
               </div>
               
-              <ListaHorarios
-                horarios={availableHours}
-                onHorarioSelect={handleHorarioSelect}
-                modalidade={reserva.modalidade!}
-                data={reserva.data!}
-                workingHours={adminData?.settings?.working_hours}
-              />
+              <div className="max-w-2xl mx-auto">
+                <ListaHorarios
+                  horarios={availableHours}
+                  onHorarioSelect={handleHorarioSelect}
+                  modalidade={reserva.modalidade!}
+                  data={reserva.data!}
+                  workingHours={adminData?.settings?.working_hours}
+                />
+              </div>
             </div>
           )}
 
           {/* Step 4: Dados do Cliente */}
           {step === 4 && (
             <div>
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">Seus Dados</h2>
-                <p className="text-gray-600">Confirme suas informações para finalizar a reserva</p>
+              <div className="text-center mb-6 sm:mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Seus Dados</h2>
+                <p className="text-gray-600 text-sm sm:text-base">Confirme suas informações para finalizar a reserva</p>
               </div>
               
               {client ? (
                 // Se o cliente está logado, mostrar dados pré-preenchidos
                 <div className="max-w-md mx-auto">
-                  <div className="bg-white rounded-2xl shadow-xl p-6 space-y-4">
-                    <div className="text-center mb-6">
-                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <User className="w-8 h-8 text-blue-600" />
+                  <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 space-y-4">
+                    <div className="text-center mb-4 sm:mb-6">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                        <User className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
                       </div>
-                      <h3 className="text-xl font-semibold text-gray-800">{client.name}</h3>
-                      <p className="text-gray-600">{client.email}</p>
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-800">{client.name}</h3>
+                      <p className="text-gray-600 text-sm sm:text-base">{client.email}</p>
                       {client.phone && (
-                        <p className="text-gray-600">{client.phone}</p>
+                        <p className="text-gray-600 text-sm sm:text-base">{client.phone}</p>
                       )}
                     </div>
                     
                     <div className="space-y-3">
                       <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                        <span className="text-green-800 font-medium">Dados confirmados</span>
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                        <span className="text-green-800 font-medium text-sm sm:text-base">Dados confirmados</span>
                       </div>
                       
-                      <p className="text-sm text-gray-600 text-center">
+                      <p className="text-xs sm:text-sm text-gray-600 text-center">
                         Seus dados estão corretos. Clique em continuar para revisar a reserva.
                       </p>
                     </div>
@@ -532,7 +561,7 @@ const OnlineBooking = () => {
                         email: client.email,
                         telefone: client.phone || ''
                       })}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl text-sm sm:text-base"
                     >
                       Continuar
                     </button>
@@ -551,17 +580,19 @@ const OnlineBooking = () => {
           {/* Step 5: Resumo e Confirmação */}
           {step === 5 && (
             <div>
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">Confirme sua Reserva</h2>
-                <p className="text-gray-600">Revise os dados antes de confirmar</p>
+              <div className="text-center mb-6 sm:mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Confirme sua Reserva</h2>
+                <p className="text-gray-600 text-sm sm:text-base">Revise os dados antes de confirmar</p>
               </div>
               
-              <ResumoReserva
-                reserva={reserva}
-                onConfirmar={handleConfirmarReserva}
-                isCreating={isCreating}
-                autoConfirmada={adminData?.settings?.online_booking?.auto_agendar || false}
-              />
+              <div className="max-w-2xl mx-auto">
+                <ResumoReserva
+                  reserva={reserva}
+                  onConfirmar={handleConfirmarReserva}
+                  isCreating={isCreating}
+                  autoConfirmada={adminData?.settings?.online_booking?.auto_agendar || false}
+                />
+              </div>
             </div>
           )}
         </motion.div>
