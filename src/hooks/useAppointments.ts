@@ -74,51 +74,65 @@ export const useAppointments = () => {
         throw error;
       }
 
-      // Buscar dados dos clientes e modalidades para agendamentos
-      const appointmentsWithDetails = await Promise.all(
-        (data || []).map(async (appointment) => {
-          let appointmentWithDetails = { ...appointment };
+      // Otimização: Buscar todos os clientes de uma vez
+      const uniqueClientIds = [...new Set((data || []).map(apt => apt.client_id).filter(Boolean))];
+      const uniqueModalityIds = [...new Set((data || []).map(apt => apt.modality_id).filter(Boolean))];
+      
+      // Buscar todos os clientes necessários
+      let clientsMap = new Map();
+      if (uniqueClientIds.length > 0) {
+        try {
+          const { data: clientsData } = await supabase
+            .from('booking_clients')
+            .select('id, name')
+            .in('id', uniqueClientIds);
           
-          // Buscar dados do cliente se tiver client_id
-          if (appointment.client_id) {
-            try {
-              const { data: clientData } = await supabase
-                .from('booking_clients')
-                .select('name')
-                .eq('id', appointment.client_id)
-                .single();
-              
-              if (clientData) {
-                appointmentWithDetails.client = clientData;
-              }
-            } catch (clientError) {
-              console.warn('⚠️ Erro ao buscar dados do cliente:', clientError);
-            }
+          if (clientsData) {
+            clientsMap = new Map(clientsData.map(client => [client.id, client]));
           }
+        } catch (clientsError) {
+          console.warn('⚠️ Erro ao buscar dados dos clientes:', clientsError);
+        }
+      }
+      
+      // Buscar todas as modalidades necessárias
+      let modalitiesMap = new Map();
+      if (uniqueModalityIds.length > 0) {
+        try {
+          const { data: modalitiesData } = await supabase
+            .from('modalities')
+            .select('id, name, valor')
+            .in('id', uniqueModalityIds);
           
-          // Buscar dados da modalidade se tiver modality_id
-          if (appointment.modality_id) {
-            try {
-              const { data: modalityData } = await supabase
-                .from('modalities')
-                .select('name, valor')
-                .eq('id', appointment.modality_id)
-                .single();
-              
-              if (modalityData) {
-                appointmentWithDetails.modality_info = {
-                  name: modalityData.name,
-                  valor: modalityData.valor
-                };
-              }
-            } catch (modalityError) {
-              console.warn('⚠️ Erro ao buscar dados da modalidade:', modalityError);
-            }
+          if (modalitiesData) {
+            modalitiesMap = new Map(modalitiesData.map(modality => [modality.id, modality]));
           }
+        } catch (modalitiesError) {
+          console.warn('⚠️ Erro ao buscar dados das modalidades:', modalitiesError);
+        }
+      }
+      
+      // Combinar dados dos agendamentos com clientes e modalidades
+      const appointmentsWithDetails = (data || []).map((appointment) => {
+        let appointmentWithDetails = { ...appointment };
+        
+        // Adicionar dados do cliente
+        if (appointment.client_id && clientsMap.has(appointment.client_id)) {
+          const clientData = clientsMap.get(appointment.client_id);
+          appointmentWithDetails.client = { name: clientData.name };
+        }
+        
+        // Adicionar dados da modalidade
+        if (appointment.modality_id && modalitiesMap.has(appointment.modality_id)) {
+          const modalityData = modalitiesMap.get(appointment.modality_id);
+          appointmentWithDetails.modality_info = {
+            name: modalityData.name,
+            valor: modalityData.valor
+          };
+        }
           
           return appointmentWithDetails;
-        })
-      );
+        });
 
       return appointmentsWithDetails;
     },
@@ -144,51 +158,65 @@ export const useAppointments = () => {
       throw error;
     }
 
-    // Buscar dados dos clientes e modalidades para agendamentos
-    const appointmentsWithDetails = await Promise.all(
-      (data || []).map(async (appointment) => {
-        let appointmentWithDetails = { ...appointment };
+    // Otimização: Buscar todos os clientes e modalidades de uma vez
+    const uniqueClientIds = [...new Set((data || []).map(apt => apt.client_id).filter(Boolean))];
+    const uniqueModalityIds = [...new Set((data || []).map(apt => apt.modality_id).filter(Boolean))];
+    
+    // Buscar todos os clientes necessários
+    let clientsMap = new Map();
+    if (uniqueClientIds.length > 0) {
+      try {
+        const { data: clientsData } = await supabase
+          .from('booking_clients')
+          .select('id, name')
+          .in('id', uniqueClientIds);
         
-        // Buscar dados do cliente se tiver client_id
-        if (appointment.client_id) {
-          try {
-            const { data: clientData } = await supabase
-              .from('booking_clients')
-              .select('name')
-              .eq('id', appointment.client_id)
-              .single();
-            
-            if (clientData) {
-              appointmentWithDetails.client = clientData;
-            }
-          } catch (clientError) {
-            console.warn('⚠️ Erro ao buscar dados do cliente:', clientError);
-          }
+        if (clientsData) {
+          clientsMap = new Map(clientsData.map(client => [client.id, client]));
         }
+      } catch (clientsError) {
+        console.warn('⚠️ Erro ao buscar dados dos clientes:', clientsError);
+      }
+    }
+    
+    // Buscar todas as modalidades necessárias
+    let modalitiesMap = new Map();
+    if (uniqueModalityIds.length > 0) {
+      try {
+        const { data: modalitiesData } = await supabase
+          .from('modalities')
+          .select('id, name, valor')
+          .in('id', uniqueModalityIds);
         
-        // Buscar dados da modalidade se tiver modality_id
-        if (appointment.modality_id) {
-          try {
-            const { data: modalityData } = await supabase
-              .from('modalities')
-              .select('name, valor')
-              .eq('id', appointment.modality_id)
-              .single();
-            
-            if (modalityData) {
-              appointmentWithDetails.modality_info = {
-                name: modalityData.name,
-                valor: modalityData.valor
-              };
-            }
-          } catch (modalityError) {
-            console.warn('⚠️ Erro ao buscar dados da modalidade:', modalityError);
-          }
+        if (modalitiesData) {
+          modalitiesMap = new Map(modalitiesData.map(modality => [modality.id, modality]));
         }
+      } catch (modalitiesError) {
+        console.warn('⚠️ Erro ao buscar dados das modalidades:', modalitiesError);
+      }
+    }
+    
+    // Combinar dados dos agendamentos com clientes e modalidades
+    const appointmentsWithDetails = (data || []).map((appointment) => {
+      let appointmentWithDetails = { ...appointment };
+      
+      // Adicionar dados do cliente
+      if (appointment.client_id && clientsMap.has(appointment.client_id)) {
+        const clientData = clientsMap.get(appointment.client_id);
+        appointmentWithDetails.client = { name: clientData.name };
+      }
+      
+      // Adicionar dados da modalidade
+      if (appointment.modality_id && modalitiesMap.has(appointment.modality_id)) {
+        const modalityData = modalitiesMap.get(appointment.modality_id);
+        appointmentWithDetails.modality_info = {
+          name: modalityData.name,
+          valor: modalityData.valor
+        };
+      }
         
         return appointmentWithDetails;
-      })
-    );
+      });
 
     return appointmentsWithDetails;
   }, [user?.id]);
