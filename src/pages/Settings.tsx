@@ -151,11 +151,14 @@ const Settings = () => {
       }
 
       // Carregar configurações de agendamento online
+      const onlineBookingConfig = settings.online_booking || {};
+      console.log('📋 Carregando configurações de agendamento online:', onlineBookingConfig);
+      
       setConfiguracaoAgendamento(prev => ({
         ...prev,
         ativo: settings.online_enabled ?? false,
-        tempoMinimoAntecedencia: settings.online_booking?.tempo_minimo_antecedencia ?? 24,
-        duracaoPadrao: settings.online_booking?.duracao_padrao ?? 60
+        tempoMinimoAntecedencia: onlineBookingConfig.tempo_minimo_antecedencia ?? 24,
+        duracaoPadrao: onlineBookingConfig.duracao_padrao ?? 60
       }));
     }
   }, [settings]);
@@ -348,6 +351,9 @@ const Settings = () => {
 
 
   const handleUpdateRegras = async (tempoMinimo: number, duracaoPadrao: number) => {
+    console.log('🔄 Atualizando regras:', { tempoMinimo, duracaoPadrao });
+    
+    // Atualizar estado local primeiro
     setConfiguracaoAgendamento(prev => ({ 
       ...prev, 
       tempoMinimoAntecedencia: tempoMinimo,
@@ -355,13 +361,20 @@ const Settings = () => {
     }));
     
     try {
+      // Preparar dados para salvar
+      const onlineBookingUpdate = {
+        ...settings?.online_booking,
+        tempo_minimo_antecedencia: tempoMinimo,
+        duracao_padrao: duracaoPadrao
+      };
+      
+      console.log('💾 Salvando online_booking:', onlineBookingUpdate);
+      
       await updateSettings({
-        online_booking: {
-          ...settings?.online_booking,
-          tempo_minimo_antecedencia: tempoMinimo,
-          duracao_padrao: duracaoPadrao
-        }
+        online_booking: onlineBookingUpdate
       });
+      
+      console.log('✅ Regras atualizadas com sucesso');
       
       toast({
         title: 'Regras Atualizadas',
@@ -369,7 +382,15 @@ const Settings = () => {
         duration: 2000,
       });
     } catch (error) {
-      console.error('Erro ao atualizar regras:', error);
+      console.error('❌ Erro ao atualizar regras:', error);
+      
+      // Reverter estado local em caso de erro
+      setConfiguracaoAgendamento(prev => ({ 
+        ...prev, 
+        tempoMinimoAntecedencia: settings?.online_booking?.tempo_minimo_antecedencia ?? 24,
+        duracaoPadrao: settings?.online_booking?.duracao_padrao ?? 60
+      }));
+      
       toast({
         title: 'Erro ao atualizar',
         description: 'Não foi possível atualizar as regras.',

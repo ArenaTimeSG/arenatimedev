@@ -23,14 +23,16 @@ const ConfiguracoesRegras = ({ tempoMinimo, duracaoPadrao, onUpdate }: Configura
   const handleSalvar = async () => {
     setSalvando(true);
     
-    // Simular salvamento
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    onUpdate(formData.tempoMinimo, formData.duracaoPadrao);
-    setSalvando(false);
-    setSalvo(true);
-    
-    setTimeout(() => setSalvo(false), 3000);
+    try {
+      console.log('💾 Salvando regras:', formData);
+      onUpdate(formData.tempoMinimo, formData.duracaoPadrao);
+      setSalvo(true);
+      setTimeout(() => setSalvo(false), 3000);
+    } catch (error) {
+      console.error('❌ Erro ao salvar regras:', error);
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const hasChanges = formData.tempoMinimo !== tempoMinimo || formData.duracaoPadrao !== duracaoPadrao;
