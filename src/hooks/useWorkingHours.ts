@@ -5,7 +5,16 @@ import { DAY_ORDER } from '@/types/settings';
 
 export const useWorkingHours = () => {
   const { settings } = useSettings();
-  const [manualBlockades, setManualBlockades] = useState<{[key: string]: {blocked: boolean, reason: string}}>(() => {
+  const [manualBlockades, setManualBlockades] = useState<{[key: string]: {
+    blocked: boolean, 
+    reason: string, 
+    description?: string,
+    isRecurring?: boolean,
+    endDate?: string,
+    isIndefinite?: boolean,
+    recurrenceType?: 'daily' | 'weekly' | 'monthly',
+    originalDate?: string
+  }}>(() => {
     // Carregar bloqueios do localStorage
     const saved = localStorage.getItem('manualBlockades');
     return saved ? JSON.parse(saved) : {};
@@ -276,27 +285,145 @@ export const useWorkingHours = () => {
   }, [isDayEnabled, getDaySchedule, dayMapping, manualBlockades]);
 
   // Função para bloquear um horário manualmente
-  const blockTimeSlot = useCallback((date: Date, timeSlot: string, reason: string) => {
+  const blockTimeSlot = useCallback((
+    date: Date, 
+    timeSlot: string, 
+    reason: string,
+    options?: {
+      description?: string;
+      isRecurring?: boolean;
+      endDate?: Date;
+      isIndefinite?: boolean;
+      recurrenceType?: 'daily' | 'weekly' | 'monthly';
+    }
+  ) => {
     const dateString = format(date, 'yyyy-MM-dd');
     const blockadeKey = `${dateString}-${timeSlot}`;
+    
     setManualBlockades(prev => {
-      const newBlockades = {
-        ...prev,
-        [blockadeKey]: { blocked: true, reason }
+      const newBlockades = { ...prev };
+      
+      // Adicionar o bloqueio principal
+      newBlockades[blockadeKey] = {
+        blocked: true,
+        reason,
+        description: options?.description,
+        isRecurring: options?.isRecurring,
+        endDate: options?.endDate ? format(options.endDate, 'yyyy-MM-dd') : undefined,
+        isIndefinite: options?.isIndefinite,
+        recurrenceType: options?.recurrenceType,
+        originalDate: dateString
       };
+
+      // Se for recorrente, criar bloqueios futuros
+      if (options?.isRecurring && options?.recurrenceType) {
+        const futureBlockades = generateRecurringBlockades(
+          date,
+          timeSlot,
+          reason,
+          options.recurrenceType,
+          options.endDate,
+          options.isIndefinite,
+          options.description
+        );
+        
+        Object.assign(newBlockades, futureBlockades);
+      }
+
       // Salvar no localStorage
       localStorage.setItem('manualBlockades', JSON.stringify(newBlockades));
       return newBlockades;
     });
   }, []);
 
+  // Função para gerar bloqueios recorrentes
+  const generateRecurringBlockades = useCallback((
+    startDate: Date,
+    timeSlot: string,
+    reason: string,
+    recurrenceType: 'daily' | 'weekly' | 'monthly',
+    endDate?: Date,
+    isIndefinite?: boolean,
+    description?: string
+  ) => {
+    const blockades: {[key: string]: any} = {};
+    const maxDays = isIndefinite ? 365 : (endDate ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) : 30);
+    
+    let currentDate = new Date(startDate);
+    let daysAdded = 0;
+    
+    while (daysAdded < maxDays) {
+      let nextDate: Date;
+      
+      switch (recurrenceType) {
+        case 'daily':
+          nextDate = new Date(currentDate);
+          nextDate.setDate(currentDate.getDate() + 1);
+          break;
+        case 'weekly':
+          nextDate = new Date(currentDate);
+          nextDate.setDate(currentDate.getDate() + 7);
+          break;
+        case 'monthly':
+          nextDate = new Date(currentDate);
+          nextDate.setMonth(currentDate.getMonth() + 1);
+          break;
+        default:
+          nextDate = new Date(currentDate);
+          nextDate.setDate(currentDate.getDate() + 7);
+      }
+      
+      currentDate = nextDate;
+      daysAdded++;
+      
+      // Verificar se passou da data limite
+      if (endDate && currentDate > endDate) {
+        break;
+      }
+      
+      const dateString = format(currentDate, 'yyyy-MM-dd');
+      const blockadeKey = `${dateString}-${timeSlot}`;
+      
+      blockades[blockadeKey] = {
+        blocked: true,
+        reason,
+        description,
+        isRecurring: true,
+        endDate: endDate ? format(endDate, 'yyyy-MM-dd') : undefined,
+        isIndefinite,
+        recurrenceType,
+        originalDate: format(startDate, 'yyyy-MM-dd')
+      };
+    }
+    
+    return blockades;
+  }, []);
+
   // Função para desbloquear um horário manualmente
-  const unblockTimeSlot = useCallback((date: Date, timeSlot: string) => {
+  const unblockTimeSlot = useCallback((date: Date, timeSlot: string, removeAllFollowing: boolean = false) => {
     const dateString = format(date, 'yyyy-MM-dd');
     const blockadeKey = `${dateString}-${timeSlot}`;
+    
     setManualBlockades(prev => {
       const newBlockades = { ...prev };
-      delete newBlockades[blockadeKey];
+      
+      // Verificar se é um bloqueio recorrente
+      const currentBlockade = newBlockades[blockadeKey];
+      
+      if (removeAllFollowing && currentBlockade?.isRecurring && currentBlockade?.originalDate) {
+        // Remover todos os bloqueios da mesma série recorrente
+        Object.keys(newBlockades).forEach(key => {
+          const blockade = newBlockades[key];
+          if (blockade.originalDate === currentBlockade.originalDate && 
+              key.includes(`-${timeSlot}`)) {
+            delete newBlockades[key];
+          }
+        });
+      } else {
+        // Remover apenas o bloqueio atual
+        delete newBlockades[blockadeKey];
+      }
+      
       // Salvar no localStorage
       localStorage.setItem('manualBlockades', JSON.stringify(newBlockades));
       return newBlockades;
@@ -308,6 +435,20 @@ export const useWorkingHours = () => {
     const dateString = format(date, 'yyyy-MM-dd');
     const blockadeKey = `${dateString}-${timeSlot}`;
     return manualBlockades[blockadeKey]?.reason || null;
+  }, [manualBlockades]);
+
+  // Função para verificar se um bloqueio é recorrente
+  const isRecurringBlockade = useCallback((date: Date, timeSlot: string): boolean => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    const blockadeKey = `${dateString}-${timeSlot}`;
+    return manualBlockades[blockadeKey]?.isRecurring || false;
+  }, [manualBlockades]);
+
+  // Função para obter informações completas do bloqueio
+  const getBlockadeInfo = useCallback((date: Date, timeSlot: string) => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    const blockadeKey = `${dateString}-${timeSlot}`;
+    return manualBlockades[blockadeKey] || null;
   }, [manualBlockades]);
 
   return {
@@ -332,6 +473,8 @@ export const useWorkingHours = () => {
     blockTimeSlot,
     unblockTimeSlot,
     getBlockadeReason,
+    isRecurringBlockade,
+    getBlockadeInfo,
     
     // Utilitários
     dayMapping

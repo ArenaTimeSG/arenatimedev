@@ -60,14 +60,7 @@ export const useAvailableHours = ({
            endHour = 23;
          }
          
-         console.log('🔍 Debug - Configuração:', {
-           dayOfWeek,
-           daySchedule,
-           startHour,
-           endHour,
-           originalEndHour: parseInt(daySchedule.end.split(':')[0]),
-           crossesMidnight: (parseInt(daySchedule.end.split(':')[0]) !== 0) && (endHour < startHour)
-         });
+
          
 
         
@@ -79,13 +72,7 @@ export const useAvailableHours = ({
          const originalEndMinutes = parseInt(daySchedule.end.split(':')[1] || '0');
          const crossesMidnight = (originalEndHour !== 0) && (endHour < startHour);
          
-         console.log('🔍 Debug - Lógica:', {
-           originalEndHour,
-           originalEndMinutes,
-           crossesMidnight,
-           startHour,
-           endHour
-         });
+
          
          if (crossesMidnight) {
            // Funcionamento atravessa a madrugada (ex: 18:00 - 02:00)
@@ -112,7 +99,7 @@ export const useAvailableHours = ({
            }
          }
          
-         console.log('🔍 Debug - Horários Gerados:', allHours);
+
 
                  // Se não há adminUserId, retorna todos os horários
          if (!adminUserId) {
@@ -120,7 +107,7 @@ export const useAvailableHours = ({
            return allHours;
          }
          
-         console.log('🔍 Debug - Com adminUserId, buscando agendamentos...');
+
 
         // Buscar agendamentos existentes para este admin na data selecionada
         const startOfSelectedDate = startOfDay(selectedDate);
@@ -161,11 +148,7 @@ export const useAvailableHours = ({
                  // Filtrar horários disponíveis
          let availableHours = allHours.filter(hour => !occupiedTimes.includes(hour));
          
-         console.log('🔍 Debug - Após filtrar ocupados:', {
-           allHours: allHours.length,
-           occupiedTimes,
-           availableHours: availableHours.length
-         });
+
         
         // Verificar bloqueios manuais do localStorage (seguindo o mesmo padrão do bloqueio do meio-dia)
         try {
@@ -183,7 +166,7 @@ export const useAvailableHours = ({
            console.error('Erro ao verificar bloqueios manuais:', error);
          }
          
-         console.log('🔍 Debug - Horários finais retornados:', availableHours);
+
          return availableHours;
       } catch (error) {
         console.error('Erro ao gerar horários disponíveis:', error);

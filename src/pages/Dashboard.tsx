@@ -11,13 +11,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppointments } from '@/hooks/useAppointments';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Plus, Users, DollarSign, Activity, LogOut, FileText, Settings, ChevronLeft, ChevronRight, User, ChevronDown, Shield, Mail, Phone, Clock, TrendingUp, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Calendar, Plus, Users, DollarSign, Activity, LogOut, FileText, Settings, ChevronLeft, ChevronRight, User, ChevronDown, Shield, Mail, Phone, Clock, TrendingUp, CheckCircle, AlertCircle, AlertTriangle, Repeat } from 'lucide-react';
 
 import { format, startOfWeek, addDays, isSameDay, isBefore, isEqual } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import NewAppointmentModal from '@/components/NewAppointmentModal';
 import AppointmentDetailsModal from '@/components/AppointmentDetailsModal';
 import BlockTimeModal from '@/components/BlockTimeModal';
+import UnblockConfirmModal from '@/components/UnblockConfirmModal';
 import { StatCard } from '@/components/animated/StatCard';
 import { AppointmentCard } from '@/components/animated/AppointmentCard';
 import ResponsiveCalendar from '@/components/ResponsiveCalendar';
@@ -66,6 +67,7 @@ const Dashboard = () => {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [blockedTimeSlot, setBlockedTimeSlot] = useState<{day: Date, timeSlot: string} | null>(null);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [isUnblockModalOpen, setIsUnblockModalOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     email: string;
@@ -82,7 +84,10 @@ const Dashboard = () => {
     getAvailableHoursForDay,
     isDayEnabled,
     blockTimeSlot,
-    getBlockadeReason
+    unblockTimeSlot,
+    getBlockadeReason,
+    isRecurringBlockade,
+    getBlockadeInfo
   } = useWorkingHours();
 
   // Hook para sincronizar configurações
@@ -268,15 +273,46 @@ const Dashboard = () => {
     setBlockedTimeSlot(null);
   };
 
-  const handleBlocked = (reason: string) => {
+  const handleBlocked = (blockData: {
+    reason: string;
+    description?: string;
+    isRecurring: boolean;
+    endDate?: Date;
+    isIndefinite?: boolean;
+  }) => {
     if (selectedDate && selectedTime) {
-      blockTimeSlot(selectedDate, selectedTime, reason);
+      blockTimeSlot(selectedDate, selectedTime, blockData.reason, {
+        description: blockData.description,
+        isRecurring: blockData.isRecurring,
+        endDate: blockData.endDate,
+        isIndefinite: blockData.isIndefinite,
+        recurrenceType: blockData.isRecurring ? 'weekly' : undefined
+      });
     }
   };
 
   const handleOpenBlockModal = () => {
     setIsModalOpen(false);
     setIsBlockModalOpen(true);
+  };
+
+  const handleUnblockTimeSlot = (removeAllFollowing: boolean) => {
+    if (selectedDate && selectedTime) {
+      unblockTimeSlot(selectedDate, selectedTime, removeAllFollowing);
+      toast({ 
+        title: "Sucesso", 
+        description: removeAllFollowing 
+          ? "Todos os bloqueios seguintes foram removidos!" 
+          : "Horário desbloqueado com sucesso!" 
+      });
+    }
+  };
+
+  const handleOpenUnblockModal = () => {
+    if (selectedDate && selectedTime) {
+      const isRecurring = isRecurringBlockade(selectedDate, selectedTime);
+      setIsUnblockModalOpen(true);
+    }
   };
 
   const generateAvailableHoursPDF = () => {
@@ -707,6 +743,15 @@ const Dashboard = () => {
         onBlocked={handleBlocked}
       />
 
+      <UnblockConfirmModal
+        isOpen={isUnblockModalOpen}
+        onClose={() => setIsUnblockModalOpen(false)}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
+        isRecurring={selectedDate && selectedTime ? isRecurringBlockade(selectedDate, selectedTime) : false}
+        onConfirm={handleUnblockTimeSlot}
+      />
+
       <AppointmentDetailsModal
         isOpen={isDetailsModalOpen}
         onClose={() => {
@@ -761,6 +806,12 @@ const Dashboard = () => {
                     <span className="text-yellow-700">{getBlockadeReason(blockedTimeSlot.day, blockedTimeSlot.timeSlot)}</span>
                   </div>
                 )}
+                {isRecurringBlockade && isRecurringBlockade(blockedTimeSlot.day, blockedTimeSlot.timeSlot) && (
+                  <div className="flex items-center gap-2">
+                    <Repeat className="h-4 w-4 text-yellow-600" />
+                    <span className="font-medium text-yellow-700">Bloqueio Recorrente</span>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -775,6 +826,19 @@ const Dashboard = () => {
                 className="border-slate-200 hover:bg-slate-50"
               >
                 Cancelar
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedDate(blockedTimeSlot.day);
+                  setSelectedTime(blockedTimeSlot.timeSlot);
+                  setIsConfirmationModalOpen(false);
+                  setBlockedTimeSlot(null);
+                  handleOpenUnblockModal();
+                }}
+                className="border-orange-200 hover:bg-orange-50 text-orange-700"
+              >
+                Desbloquear
               </Button>
               <Button
                 onClick={handleConfirmBlockedTimeSlot}

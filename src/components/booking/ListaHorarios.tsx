@@ -30,7 +30,6 @@ const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHou
   // Gerar todos os horários possíveis baseados no working_hours
   const generateAllPossibleHours = () => {
     if (!workingHours) {
-      console.log('🔍 ListaHorarios - Sem workingHours');
       return [];
     }
     
@@ -39,15 +38,7 @@ const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHou
     const dayName = dayNames[dayOfWeek];
     const daySchedule = workingHours[dayName];
     
-    console.log('🔍 ListaHorarios - Debug generateAllPossibleHours:', {
-      dayOfWeek,
-      dayName,
-      daySchedule,
-      workingHours
-    });
-    
     if (!daySchedule || !daySchedule.enabled) {
-      console.log('🔍 ListaHorarios - Dia não habilitado ou sem schedule');
       return [];
     }
     
@@ -59,12 +50,6 @@ const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHou
       endHour = 23;
     }
     
-    console.log('🔍 ListaHorarios - Horários calculados:', {
-      startHour,
-      endHour,
-      originalEndHour: parseInt(daySchedule.end.split(':')[0])
-    });
-    
     const allHours: string[] = [];
     for (let hour = startHour; hour <= endHour; hour++) {
       if (hour !== 12) { // Excluir horário do almoço
@@ -73,18 +58,12 @@ const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHou
       }
     }
     
-    console.log('🔍 ListaHorarios - Horários gerados:', allHours);
     return allHours;
   };
 
   const allPossibleHours = generateAllPossibleHours();
   
-  console.log('🔍 ListaHorarios - Horários gerados:', {
-    allPossibleHours,
-    allPossibleHoursLength: allPossibleHours.length,
-    horariosDisponiveis: horarios,
-    horariosDisponiveisLength: horarios?.length
-  });
+
 
   // Verificar se o horário está disponível
   const isHorarioOcupado = (horario: string) => {
