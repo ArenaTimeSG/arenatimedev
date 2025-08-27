@@ -322,47 +322,49 @@ const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
                     const isBlocked = isTimeSlotBlocked(day, timeSlot);
                     
                     return (
-                      <motion.td 
-                        key={j} 
-                        className={`border border-slate-200 p-1 h-12 align-top cursor-pointer transition-all duration-200 min-w-[100px] relative ${
-                          hasAppointment 
-                            ? 'bg-gradient-to-br from-blue-50 to-indigo-50' 
-                            : isBlocked 
-                              ? 'bg-slate-100 border-slate-300' 
-                              : isSameDay(day, new Date()) 
-                                ? 'bg-blue-50/50 hover:bg-blue-100/50' 
-                                : 'bg-white hover:bg-slate-50'
-                        }`}
-                        onClick={() => onCellClick(day, timeSlot)}
-                        whileHover={{ scale: hasAppointment ? 1 : 1.02 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <AnimatePresence mode="wait">
-                          {appointment ? (
-                            <AppointmentCard
-                              key={appointment.id}
-                              appointment={appointment}
-                              onClick={() => onCellClick(day, timeSlot)}
-                              getStatusColor={getStatusColor}
-                              getStatusLabel={getStatusLabel}
-                              date={appointment.date}
-                            />
-                          ) : (
-                            <motion.div
-                              className="w-full h-full flex items-center justify-center"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                            >
-                              {isBlocked && (
-                                <div className="text-slate-400 text-xs">
-                                  {getBlockadeReason ? getBlockadeReason(day, timeSlot) || 'Bloqueado' : 'Bloqueado'}
-                                </div>
-                              )}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.td>
+                                             <motion.td 
+                         key={j} 
+                         className={`border border-slate-200 p-1 h-12 align-top cursor-pointer transition-all duration-200 min-w-[100px] relative ${
+                           hasAppointment 
+                             ? 'bg-gradient-to-br from-blue-50 to-indigo-50' 
+                             : isBlocked 
+                               ? 'bg-slate-100 border-slate-300' 
+                               : isSameDay(day, new Date()) 
+                                 ? 'bg-blue-50/50 hover:bg-blue-100/50' 
+                                 : 'bg-white hover:bg-slate-50'
+                         }`}
+                         onClick={() => onCellClick(day, timeSlot)}
+                         whileHover={{ scale: 1.02 }}
+                         transition={{ duration: 0.2 }}
+                       >
+                         <div className="w-full h-full flex items-center justify-center">
+                           <AnimatePresence mode="wait">
+                             {appointment ? (
+                               <AppointmentCard
+                                 key={appointment.id}
+                                 appointment={appointment}
+                                 onClick={() => onCellClick(day, timeSlot)}
+                                 getStatusColor={getStatusColor}
+                                 getStatusLabel={getStatusLabel}
+                                 date={appointment.date}
+                               />
+                             ) : (
+                               <motion.div
+                                 className="w-full h-full flex items-center justify-center"
+                                 initial={{ opacity: 0 }}
+                                 animate={{ opacity: 1 }}
+                                 exit={{ opacity: 0 }}
+                               >
+                                 {isBlocked && (
+                                   <div className="text-slate-400 text-xs">
+                                     {getBlockadeReason ? getBlockadeReason(day, timeSlot) || 'Bloqueado' : 'Bloqueado'}
+                                   </div>
+                                 )}
+                               </motion.div>
+                             )}
+                           </AnimatePresence>
+                         </div>
+                       </motion.td>
                     );
                   })}
                 </tr>
