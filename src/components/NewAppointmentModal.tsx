@@ -295,29 +295,31 @@ const NewAppointmentModal = ({
         });
 
         // Inserir todos os agendamentos
-        const { data: insertedAppointments, error: insertError } = await supabase
-          .from('appointments')
-          .insert(appointments)
-          .select('*');
+        // Criar agendamentos recorrentes em lote otimizado
+        const batchSize = 50; // Processar em lotes de 50 para melhor performance
+        const insertedAppointments = [];
+        
+        for (let i = 0; i < appointments.length; i += batchSize) {
+          const batch = appointments.slice(i, i + batchSize);
+          const { data: batchData, error: insertError } = await supabase
+            .from('appointments')
+            .insert(batch)
+            .select('*');
 
-        if (insertError) throw insertError;
+          if (insertError) throw insertError;
+          if (batchData) insertedAppointments.push(...batchData);
+        }
 
         toast({
           title: 'Agendamentos recorrentes criados!',
           description: `${appointments.length} agendamentos foram criados com sucesso.`,
         });
 
-        // Otimização: Atualizar cache diretamente para agendamentos recorrentes
-        if (insertedAppointments) {
+        // Atualizar cache diretamente para agendamentos recorrentes
+        if (insertedAppointments.length > 0) {
           queryClient.setQueryData(['appointments', user.id], (oldData: any[] | undefined) => {
             if (!oldData) return insertedAppointments;
             return [...insertedAppointments, ...oldData];
-          });
-          
-          // Invalidar queries relacionadas
-          queryClient.invalidateQueries({ 
-            queryKey: ['appointments'], 
-            exact: false 
           });
         }
       } else {
@@ -357,74 +359,43 @@ const NewAppointmentModal = ({
     }
   };
 
-  // Função para gerar agendamentos recorrentes
+  // Função otimizada para gerar agendamentos recorrentes
   const generateRecurringAppointments = (formData: any, startDate: Date, recurrenceId: string, userId: string) => {
     const appointments = [];
     let currentDate = new Date(startDate);
     let count = 0;
     
-    console.log('🔍 NewAppointmentModal - Gerando agendamentos recorrentes:', {
-      startDate: startDate.toISOString(),
-      recurrenceType: formData.recurrenceType,
-      endDate: formData.endDate,
-      repetitions: formData.repetitions,
-      recurrenceId,
-      userId
-    });
+    // Pré-calcular limites para otimização
+    const maxRepetitions = formData.recurrenceType === 'indeterminado' ? 52 : 
+                          formData.recurrenceType === 'repeticoes' ? formData.repetitions : 
+                          Number.MAX_SAFE_INTEGER;
+    
+    const endDate = formData.recurrenceType === 'data_final' && formData.endDate ? 
+                   new Date(formData.endDate) : null;
 
-    while (true) {
+    // Criar template do agendamento para reutilização
+    const appointmentTemplate = {
+      client_id: formData.client_id,
+      modality_id: formData.modality_id,
+      status: 'agendado' as const,
+      recurrence_id: recurrenceId,
+      booking_source: 'manual' as const,
+      user_id: userId
+    };
+
+    while (count < maxRepetitions) {
       // Verificar se deve parar baseado no tipo de recorrência
-      if (formData.recurrenceType === 'data_final') {
-        if (formData.endDate && currentDate > new Date(formData.endDate)) {
-          break;
-        }
-      } else if (formData.recurrenceType === 'repeticoes') {
-        if (count >= formData.repetitions) {
-          break;
-        }
-      } else if (formData.recurrenceType === 'indeterminado') {
-        // Para recorrência indeterminada, criar por 52 semanas (1 ano)
-        if (count >= 52) {
-          break;
-        }
+      if (endDate && currentDate > endDate) {
+        break;
       }
 
       // Verificar se o dia está habilitado
-      const dayOfWeek = currentDate.getDay();
       const isEnabled = isDayEnabled(currentDate);
-      
-      // Debug específico para sábado
-      if (dayOfWeek === 6) { // Sábado
-        console.log('🔍 NewAppointmentModal - Verificando sábado:', {
-          date: currentDate.toISOString(),
-          dayOfWeek,
-          isEnabled,
-          currentDate: currentDate.toString(),
-          formData: {
-            client_id: formData.client_id,
-            modality_id: formData.modality_id,
-            recurrenceId
-          }
-        });
-      }
       
       if (isEnabled) {
         appointments.push({
-          client_id: formData.client_id,
-          modality_id: formData.modality_id,
-          date: currentDate.toISOString(),
-          status: 'agendado',
-          recurrence_id: recurrenceId, // Usar o UUID da recorrência
-          booking_source: 'manual', // Agendamentos manuais sempre têm source 'manual'
-          user_id: userId
-        });
-      } else {
-        // Debug para dias não habilitados
-        console.log('🔍 NewAppointmentModal - Dia não habilitado:', {
-          date: currentDate.toISOString(),
-          dayOfWeek,
-          dayName: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][dayOfWeek],
-          isEnabled
+          ...appointmentTemplate,
+          date: currentDate.toISOString()
         });
       }
 
@@ -432,14 +403,6 @@ const NewAppointmentModal = ({
       currentDate.setDate(currentDate.getDate() + 7);
       count++;
     }
-
-    console.log('🔍 NewAppointmentModal - Agendamentos gerados:', {
-      total: appointments.length,
-      firstDate: appointments[0]?.date,
-      lastDate: appointments[appointments.length - 1]?.date,
-      recurrenceId,
-      userId
-    });
 
     return appointments;
   };

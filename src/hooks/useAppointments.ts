@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,13 +42,61 @@ export interface UpdateAppointmentData {
   valor_total?: number;
 }
 
+// Cache compartilhado para clientes e modalidades
+const clientsCache = new Map<string, Map<string, any>>();
+const modalitiesCache = new Map<string, Map<string, any>>();
+
 export const useAppointments = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Query para buscar agendamentos com modalidades
+  // Função otimizada para buscar dados relacionados
+  const fetchRelatedData = useCallback(async (appointments: any[]) => {
+    if (!appointments.length) return { clientsMap: new Map(), modalitiesMap: new Map() };
+
+    const uniqueClientIds = [...new Set(appointments.map(apt => apt.client_id).filter(Boolean))];
+    const uniqueModalityIds = [...new Set(appointments.map(apt => apt.modality_id).filter(Boolean))];
+
+    // Verificar cache primeiro
+    const userId = user?.id || '';
+    const cachedClients = clientsCache.get(userId);
+    const cachedModalities = modalitiesCache.get(userId);
+
+    // Filtrar IDs que não estão no cache
+    const missingClientIds = uniqueClientIds.filter(id => !cachedClients?.has(id));
+    const missingModalityIds = uniqueModalityIds.filter(id => !cachedModalities?.has(id));
+
+    // Buscar dados em paralelo apenas para IDs que não estão no cache
+    const [clientsResponse, modalitiesResponse] = await Promise.all([
+      missingClientIds.length > 0 
+        ? supabase.from('booking_clients').select('id, name').in('id', missingClientIds)
+        : Promise.resolve({ data: null, error: null }),
+      missingModalityIds.length > 0 
+        ? supabase.from('modalities').select('id, name, valor').in('id', missingModalityIds)
+        : Promise.resolve({ data: null, error: null })
+    ]);
+
+    // Atualizar cache
+    const newClientsMap = new Map(cachedClients || []);
+    const newModalitiesMap = new Map(cachedModalities || []);
+
+    if (clientsResponse.data) {
+      clientsResponse.data.forEach(client => newClientsMap.set(client.id, client));
+    }
+    if (modalitiesResponse.data) {
+      modalitiesResponse.data.forEach(modality => newModalitiesMap.set(modality.id, modality));
+    }
+
+    // Salvar no cache compartilhado
+    clientsCache.set(userId, newClientsMap);
+    modalitiesCache.set(userId, newModalitiesMap);
+
+    return { clientsMap: newClientsMap, modalitiesMap: newModalitiesMap };
+  }, [user?.id]);
+
+  // Query otimizada para buscar agendamentos
   const {
     data: appointments = [],
     isLoading: isQueryLoading,
@@ -56,8 +104,8 @@ export const useAppointments = () => {
     refetch,
   } = useQuery({
     queryKey: ['appointments', user?.id],
-    staleTime: 1000 * 30, // 30 segundos para agendamentos (mais responsivo)
-    gcTime: 1000 * 60 * 3, // 3 minutos de cache
+    staleTime: 1000 * 60, // 1 minuto (aumentado para reduzir requisições)
+    gcTime: 1000 * 60 * 5, // 5 minutos de cache (aumentado)
     queryFn: async (): Promise<AppointmentWithModality[]> => {
       if (!user?.id) {
         throw new Error('Usuário não autenticado');
@@ -74,72 +122,28 @@ export const useAppointments = () => {
         throw error;
       }
 
-      // Otimização: Buscar todos os clientes de uma vez
-      const uniqueClientIds = [...new Set((data || []).map(apt => apt.client_id).filter(Boolean))];
-      const uniqueModalityIds = [...new Set((data || []).map(apt => apt.modality_id).filter(Boolean))];
-      
-      // Buscar todos os clientes necessários
-      let clientsMap = new Map();
-      if (uniqueClientIds.length > 0) {
-        try {
-          const { data: clientsData } = await supabase
-            .from('booking_clients')
-            .select('id, name')
-            .in('id', uniqueClientIds);
-          
-          if (clientsData) {
-            clientsMap = new Map(clientsData.map(client => [client.id, client]));
-          }
-        } catch (clientsError) {
-          console.warn('⚠️ Erro ao buscar dados dos clientes:', clientsError);
-        }
-      }
-      
-      // Buscar todas as modalidades necessárias
-      let modalitiesMap = new Map();
-      if (uniqueModalityIds.length > 0) {
-        try {
-          const { data: modalitiesData } = await supabase
-            .from('modalities')
-            .select('id, name, valor')
-            .in('id', uniqueModalityIds);
-          
-          if (modalitiesData) {
-            modalitiesMap = new Map(modalitiesData.map(modality => [modality.id, modality]));
-          }
-        } catch (modalitiesError) {
-          console.warn('⚠️ Erro ao buscar dados das modalidades:', modalitiesError);
-        }
-      }
-      
-      // Combinar dados dos agendamentos com clientes e modalidades
-      const appointmentsWithDetails = (data || []).map((appointment) => {
-        let appointmentWithDetails = { ...appointment };
-        
-        // Adicionar dados do cliente
-        if (appointment.client_id && clientsMap.has(appointment.client_id)) {
-          const clientData = clientsMap.get(appointment.client_id);
-          appointmentWithDetails.client = { name: clientData.name };
-        }
-        
-        // Adicionar dados da modalidade
-        if (appointment.modality_id && modalitiesMap.has(appointment.modality_id)) {
-          const modalityData = modalitiesMap.get(appointment.modality_id);
-          appointmentWithDetails.modality_info = {
+      // Buscar dados relacionados de forma otimizada
+      const { clientsMap, modalitiesMap } = await fetchRelatedData(data || []);
+
+      // Combinar dados de forma mais eficiente
+      return (data || []).map((appointment) => {
+        const clientData = appointment.client_id ? clientsMap.get(appointment.client_id) : null;
+        const modalityData = appointment.modality_id ? modalitiesMap.get(appointment.modality_id) : null;
+
+        return {
+          ...appointment,
+          client: clientData ? { name: clientData.name } : undefined,
+          modality_info: modalityData ? {
             name: modalityData.name,
             valor: modalityData.valor
-          };
-        }
-          
-          return appointmentWithDetails;
-        });
-
-      return appointmentsWithDetails;
+          } : undefined
+        };
+      });
     },
     enabled: !!user?.id,
   });
 
-  // Query para buscar agendamentos por período
+  // Query otimizada para buscar agendamentos por período
   const getAppointmentsByPeriod = useCallback(async (startDate: string, endDate: string) => {
     if (!user?.id) {
       throw new Error('Usuário não autenticado');
@@ -158,86 +162,49 @@ export const useAppointments = () => {
       throw error;
     }
 
-    // Otimização: Buscar todos os clientes e modalidades de uma vez
-    const uniqueClientIds = [...new Set((data || []).map(apt => apt.client_id).filter(Boolean))];
-    const uniqueModalityIds = [...new Set((data || []).map(apt => apt.modality_id).filter(Boolean))];
-    
-    // Buscar todos os clientes necessários
-    let clientsMap = new Map();
-    if (uniqueClientIds.length > 0) {
-      try {
-        const { data: clientsData } = await supabase
-          .from('booking_clients')
-          .select('id, name')
-          .in('id', uniqueClientIds);
-        
-        if (clientsData) {
-          clientsMap = new Map(clientsData.map(client => [client.id, client]));
-        }
-      } catch (clientsError) {
-        console.warn('⚠️ Erro ao buscar dados dos clientes:', clientsError);
-      }
-    }
-    
-    // Buscar todas as modalidades necessárias
-    let modalitiesMap = new Map();
-    if (uniqueModalityIds.length > 0) {
-      try {
-        const { data: modalitiesData } = await supabase
-          .from('modalities')
-          .select('id, name, valor')
-          .in('id', uniqueModalityIds);
-        
-        if (modalitiesData) {
-          modalitiesMap = new Map(modalitiesData.map(modality => [modality.id, modality]));
-        }
-      } catch (modalitiesError) {
-        console.warn('⚠️ Erro ao buscar dados das modalidades:', modalitiesError);
-      }
-    }
-    
-    // Combinar dados dos agendamentos com clientes e modalidades
-    const appointmentsWithDetails = (data || []).map((appointment) => {
-      let appointmentWithDetails = { ...appointment };
-      
-      // Adicionar dados do cliente
-      if (appointment.client_id && clientsMap.has(appointment.client_id)) {
-        const clientData = clientsMap.get(appointment.client_id);
-        appointmentWithDetails.client = { name: clientData.name };
-      }
-      
-      // Adicionar dados da modalidade
-      if (appointment.modality_id && modalitiesMap.has(appointment.modality_id)) {
-        const modalityData = modalitiesMap.get(appointment.modality_id);
-        appointmentWithDetails.modality_info = {
+    // Usar a mesma função otimizada para buscar dados relacionados
+    const { clientsMap, modalitiesMap } = await fetchRelatedData(data || []);
+
+    // Combinar dados de forma mais eficiente
+    return (data || []).map((appointment) => {
+      const clientData = appointment.client_id ? clientsMap.get(appointment.client_id) : null;
+      const modalityData = appointment.modality_id ? modalitiesMap.get(appointment.modality_id) : null;
+
+      return {
+        ...appointment,
+        client: clientData ? { name: clientData.name } : undefined,
+        modality_info: modalityData ? {
           name: modalityData.name,
           valor: modalityData.valor
-        };
-      }
-        
-        return appointmentWithDetails;
-      });
+        } : undefined
+      };
+    });
+  }, [user?.id, fetchRelatedData]);
 
-    return appointmentsWithDetails;
-  }, [user?.id]);
-
-  // Mutation para criar agendamento
+  // Mutation otimizada para criar agendamento
   const createAppointmentMutation = useMutation({
     mutationFn: async (appointmentData: CreateAppointmentData): Promise<AppointmentWithModality> => {
       if (!user?.id) {
         throw new Error('Usuário não autenticado');
       }
 
-      // Buscar o valor da modalidade
-      const { data: modalityData, error: modalityError } = await supabase
-        .from('modalities')
-        .select('valor')
-        .eq('id', appointmentData.modality_id)
-        .eq('user_id', user.id)
-        .single();
+      // Buscar o valor da modalidade do cache se disponível
+      const userId = user.id;
+      const cachedModalities = modalitiesCache.get(userId);
+      let modalityData = cachedModalities?.get(appointmentData.modality_id);
 
-      if (modalityError || !modalityData) {
-        throw new Error('Modalidade não encontrada');
+      if (!modalityData) {
+        const { data, error: modalityError } = await supabase
+          .from('modalities')
+          .select('valor')
+          .eq('id', appointmentData.modality_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (modalityError || !data) {
+          throw new Error('Modalidade não encontrada');
+        }
+        modalityData = data;
       }
 
       const { data, error } = await supabase
@@ -268,16 +235,10 @@ export const useAppointments = () => {
         description: `Agendamento foi criado com sucesso.`,
       });
       
-      // Otimização: Atualizar cache diretamente em vez de invalidar
+      // Atualizar cache diretamente
       queryClient.setQueryData(['appointments', user?.id], (oldData: AppointmentWithModality[] | undefined) => {
         if (!oldData) return [newAppointment];
         return [newAppointment, ...oldData];
-      });
-      
-      // Invalidar queries relacionadas de forma mais específica
-      queryClient.invalidateQueries({ 
-        queryKey: ['appointments'], 
-        exact: false 
       });
     },
     onError: (error: any) => {
@@ -289,7 +250,7 @@ export const useAppointments = () => {
     },
   });
 
-  // Mutation para atualizar agendamento
+  // Mutation otimizada para atualizar agendamento
   const updateAppointmentMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateAppointmentData }): Promise<AppointmentWithModality> => {
       if (!user?.id) {
@@ -298,17 +259,24 @@ export const useAppointments = () => {
 
       const updateData: any = { ...data };
 
-      // Se a modalidade foi alterada, buscar o novo valor
+      // Se a modalidade foi alterada, buscar o novo valor do cache se disponível
       if (data.modality_id) {
-        const { data: modalityData, error: modalityError } = await supabase
-          .from('modalities')
-          .select('valor')
-          .eq('id', data.modality_id)
-          .eq('user_id', user.id)
-          .single();
+        const userId = user.id;
+        const cachedModalities = modalitiesCache.get(userId);
+        let modalityData = cachedModalities?.get(data.modality_id);
 
-        if (modalityError || !modalityData) {
-          throw new Error('Modalidade não encontrada');
+        if (!modalityData) {
+          const { data: fetchedModality, error: modalityError } = await supabase
+            .from('modalities')
+            .select('valor')
+            .eq('id', data.modality_id)
+            .eq('user_id', user.id)
+            .single();
+
+          if (modalityError || !fetchedModality) {
+            throw new Error('Modalidade não encontrada');
+          }
+          modalityData = fetchedModality;
         }
 
         updateData.valor_total = modalityData.valor;
@@ -335,16 +303,10 @@ export const useAppointments = () => {
         description: `Agendamento foi atualizado com sucesso.`,
       });
       
-      // Otimização: Atualizar cache diretamente
+      // Atualizar cache diretamente
       queryClient.setQueryData(['appointments', user?.id], (oldData: AppointmentWithModality[] | undefined) => {
         if (!oldData) return [updatedAppointment];
         return oldData.map(apt => apt.id === updatedAppointment.id ? updatedAppointment : apt);
-      });
-      
-      // Invalidar queries relacionadas
-      queryClient.invalidateQueries({ 
-        queryKey: ['appointments'], 
-        exact: false 
       });
     },
     onError: (error: any) => {
@@ -356,7 +318,7 @@ export const useAppointments = () => {
     },
   });
 
-  // Mutation para deletar agendamento
+  // Mutation otimizada para deletar agendamento
   const deleteAppointmentMutation = useMutation({
     mutationFn: async (id: string): Promise<void> => {
       if (!user?.id) {
@@ -380,16 +342,10 @@ export const useAppointments = () => {
         description: 'Agendamento foi removido com sucesso.',
       });
       
-      // Otimização: Remover do cache diretamente
+      // Remover do cache diretamente
       queryClient.setQueryData(['appointments', user?.id], (oldData: AppointmentWithModality[] | undefined) => {
         if (!oldData) return [];
         return oldData.filter(apt => apt.id !== variables);
-      });
-      
-      // Invalidar queries relacionadas
-      queryClient.invalidateQueries({ 
-        queryKey: ['appointments'], 
-        exact: false 
       });
     },
     onError: (error: any) => {
@@ -401,7 +357,7 @@ export const useAppointments = () => {
     },
   });
 
-  // Funções de conveniência
+  // Funções de conveniência otimizadas
   const createAppointment = useCallback(async (data: CreateAppointmentData) => {
     setIsLoading(true);
     try {
@@ -429,20 +385,9 @@ export const useAppointments = () => {
     }
   }, [deleteAppointmentMutation]);
 
-  // Funções para cálculos financeiros
+  // Função otimizada para cálculos financeiros
   const getFinancialSummary = useCallback((appointments: AppointmentWithModality[]) => {
-    const summary = {
-      total_recebido: 0,
-      total_pendente: 0,
-      total_agendado: 0,
-      total_cancelado: 0,
-      agendamentos_pagos: 0,
-      agendamentos_pendentes: 0,
-      agendamentos_agendados: 0,
-      agendamentos_cancelados: 0,
-    };
-
-    appointments.forEach(appointment => {
+    return appointments.reduce((summary, appointment) => {
       const valor = appointment.valor_total || 0;
 
       switch (appointment.status) {
@@ -463,14 +408,29 @@ export const useAppointments = () => {
           summary.agendamentos_cancelados += 1;
           break;
       }
-    });
 
-    return summary;
+      return summary;
+    }, {
+      total_recebido: 0,
+      total_pendente: 0,
+      total_agendado: 0,
+      total_cancelado: 0,
+      agendamentos_pagos: 0,
+      agendamentos_pendentes: 0,
+      agendamentos_agendados: 0,
+      agendamentos_cancelados: 0,
+    });
   }, []);
+
+  // Memoizar o resumo financeiro para evitar recálculos desnecessários
+  const financialSummary = useMemo(() => {
+    return getFinancialSummary(appointments);
+  }, [appointments, getFinancialSummary]);
 
   return {
     // Data
     appointments,
+    financialSummary,
     
     // Loading states
     isLoading: isLoading || isQueryLoading,
