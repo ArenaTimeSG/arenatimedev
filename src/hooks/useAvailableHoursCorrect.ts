@@ -70,6 +70,15 @@ export const useAvailableHoursCorrect = ({
         // 7. Filtrar horários disponíveis
         const availableHours = allHours.filter(hour => {
           const isOccupied = occupiedHours.includes(hour);
+          
+          // Verificar regras de bloqueio
+          const hourNumber = parseInt(hour.split(':')[0]);
+          
+          // Horário das 12h - bloqueado todos os dias (almoço)
+          if (hourNumber === 12) {
+            return false;
+          }
+          
           return !isOccupied;
         });
 
