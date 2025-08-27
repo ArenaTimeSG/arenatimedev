@@ -14,6 +14,7 @@ export interface AppointmentWithModality {
   valor_total: number;
   recurrence_id: string | null;
   user_id: string;
+  booking_source: 'manual' | 'online';
   created_at: string;
   client?: {
     name: string;
@@ -30,6 +31,7 @@ export interface CreateAppointmentData {
   modality_id: string;
   status?: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
   recurrence_id?: string;
+  booking_source?: 'manual' | 'online';
 }
 
 export interface UpdateAppointmentData {
@@ -169,6 +171,7 @@ export const useAppointments = () => {
           valor_total: modalityData.valor,
           status: appointmentData.status || 'agendado',
           recurrence_id: appointmentData.recurrence_id,
+          booking_source: appointmentData.booking_source || 'manual',
           user_id: user.id
         })
         .select('*')

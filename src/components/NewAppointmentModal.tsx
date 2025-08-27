@@ -396,6 +396,7 @@ const NewAppointmentModal = ({
           date: currentDate.toISOString(),
           status: 'agendado',
           recurrence_id: recurrenceId, // Usar o UUID da recorrência
+          booking_source: 'manual', // Agendamentos manuais sempre têm source 'manual'
           user_id: userId
         });
       } else {

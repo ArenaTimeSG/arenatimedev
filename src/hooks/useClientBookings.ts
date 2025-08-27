@@ -111,7 +111,8 @@ export const useClientBookings = (adminUserId?: string) => {
           date: bookingData.date,
           status: autoConfirmada ? 'agendado' : 'a_cobrar', // Status baseado no auto-agendamento
           modality: bookingData.modality,
-          valor_total: bookingData.valor_total
+          valor_total: bookingData.valor_total,
+          booking_source: 'online' // Agendamentos online sempre têm source 'online'
         })
         .select()
         .single();

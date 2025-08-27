@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, RotateCcw } from 'lucide-react';
+import { Calendar, RotateCcw, Globe } from 'lucide-react';
 
 interface AppointmentCardProps {
   appointment: {
@@ -9,7 +9,9 @@ interface AppointmentCardProps {
     client: { name: string };
     modality: string;
     status: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
+    client_id?: string;
     recurrence_id?: string;
+    booking_source?: 'manual' | 'online';
   };
   onClick: () => void;
   getStatusColor: (status: string, date?: string, recurrence_id?: string) => string;
@@ -24,6 +26,8 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   getStatusLabel,
   date,
 }) => {
+  // Verificar se o agendamento foi feito online
+  const isOnlineBooking = appointment.booking_source === 'online';
   // Determinar a cor baseada no tipo de agendamento (recorrente vs único)
   const getGradientClass = () => {
     if (appointment.recurrence_id) {
@@ -94,14 +98,27 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           >
             {getStatusLabel(appointment.status, date)}
           </Badge>
-          {appointment.recurrence_id && (
-            <motion.div
-              whileHover={{ rotate: 180 }}
-              transition={{ duration: 0.3 }}
-            >
-              <RotateCcw className="h-3 w-3 text-white/80" />
-            </motion.div>
-          )}
+          <div className="flex items-center gap-1">
+            {isOnlineBooking && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                title="Agendamento Online"
+              >
+                <Globe className="h-3 w-3 text-white/80" />
+              </motion.div>
+            )}
+            {appointment.recurrence_id && (
+              <motion.div
+                whileHover={{ rotate: 180 }}
+                transition={{ duration: 0.3 }}
+                title="Agendamento Recorrente"
+              >
+                <RotateCcw className="h-3 w-3 text-white/80" />
+              </motion.div>
+            )}
+          </div>
         </div>
 
         {/* Client name */}

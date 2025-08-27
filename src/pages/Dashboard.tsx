@@ -42,6 +42,8 @@ interface Appointment {
   client: {
     name: string;
   };
+  client_id?: string;
+  booking_source?: 'manual' | 'online';
   modality_info?: {
     name: string;
     valor: number;

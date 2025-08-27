@@ -18,7 +18,9 @@ interface Appointment {
   client: {
     name: string;
   };
+  client_id?: string;
   recurrence_id?: string;
+  booking_source?: 'manual' | 'online';
 }
 
 interface ResponsiveCalendarProps {
