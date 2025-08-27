@@ -15,6 +15,11 @@ interface Appointment {
   date: string;
   status: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
   modality: string;
+  modality_id?: string | null;
+  modality_info?: {
+    name: string;
+    valor: number;
+  };
   client: {
     name: string;
   };

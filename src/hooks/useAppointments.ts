@@ -74,9 +74,12 @@ export const useAppointments = () => {
         throw error;
       }
 
-      // Buscar dados dos clientes para agendamentos que têm client_id
-      const appointmentsWithClients = await Promise.all(
+      // Buscar dados dos clientes e modalidades para agendamentos
+      const appointmentsWithDetails = await Promise.all(
         (data || []).map(async (appointment) => {
+          let appointmentWithDetails = { ...appointment };
+          
+          // Buscar dados do cliente se tiver client_id
           if (appointment.client_id) {
             try {
               const { data: clientData } = await supabase
@@ -86,17 +89,38 @@ export const useAppointments = () => {
                 .single();
               
               if (clientData) {
-                return { ...appointment, client: clientData };
+                appointmentWithDetails.client = clientData;
               }
             } catch (clientError) {
               console.warn('⚠️ Erro ao buscar dados do cliente:', clientError);
             }
           }
-          return appointment;
+          
+          // Buscar dados da modalidade se tiver modality_id
+          if (appointment.modality_id) {
+            try {
+              const { data: modalityData } = await supabase
+                .from('modalities')
+                .select('name, valor')
+                .eq('id', appointment.modality_id)
+                .single();
+              
+              if (modalityData) {
+                appointmentWithDetails.modality_info = {
+                  name: modalityData.name,
+                  valor: modalityData.valor
+                };
+              }
+            } catch (modalityError) {
+              console.warn('⚠️ Erro ao buscar dados da modalidade:', modalityError);
+            }
+          }
+          
+          return appointmentWithDetails;
         })
       );
 
-      return appointmentsWithClients;
+      return appointmentsWithDetails;
     },
     enabled: !!user?.id,
   });
@@ -120,9 +144,12 @@ export const useAppointments = () => {
       throw error;
     }
 
-    // Buscar dados dos clientes para agendamentos que têm client_id
-    const appointmentsWithClients = await Promise.all(
+    // Buscar dados dos clientes e modalidades para agendamentos
+    const appointmentsWithDetails = await Promise.all(
       (data || []).map(async (appointment) => {
+        let appointmentWithDetails = { ...appointment };
+        
+        // Buscar dados do cliente se tiver client_id
         if (appointment.client_id) {
           try {
             const { data: clientData } = await supabase
@@ -132,17 +159,38 @@ export const useAppointments = () => {
               .single();
             
             if (clientData) {
-              return { ...appointment, client: clientData };
+              appointmentWithDetails.client = clientData;
             }
           } catch (clientError) {
             console.warn('⚠️ Erro ao buscar dados do cliente:', clientError);
           }
         }
-        return appointment;
+        
+        // Buscar dados da modalidade se tiver modality_id
+        if (appointment.modality_id) {
+          try {
+            const { data: modalityData } = await supabase
+              .from('modalities')
+              .select('name, valor')
+              .eq('id', appointment.modality_id)
+              .single();
+            
+            if (modalityData) {
+              appointmentWithDetails.modality_info = {
+                name: modalityData.name,
+                valor: modalityData.valor
+              };
+            }
+          } catch (modalityError) {
+            console.warn('⚠️ Erro ao buscar dados da modalidade:', modalityError);
+          }
+        }
+        
+        return appointmentWithDetails;
       })
     );
 
-    return appointmentsWithClients;
+    return appointmentsWithDetails;
   }, [user?.id]);
 
   // Mutation para criar agendamento

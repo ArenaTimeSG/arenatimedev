@@ -8,6 +8,11 @@ interface AppointmentCardProps {
     id: string;
     client: { name: string };
     modality: string;
+    modality_id?: string | null;
+    modality_info?: {
+      name: string;
+      valor: number;
+    };
     status: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
     client_id?: string;
     recurrence_id?: string;
@@ -131,7 +136,10 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           <div className="flex items-center gap-1 opacity-90">
             <Calendar className="h-2 w-2" />
             <p className="text-xs font-medium">
-              {appointment.modality}
+              {appointment.modality_info ? 
+                appointment.modality_info.name : 
+                appointment.modality || 'Modalidade não definida'
+              }
             </p>
           </div>
         </div>
