@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, Clock, User, Mail, Phone, DollarSign, CheckCircle, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Phone, DollarSign, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -115,36 +115,7 @@ const ResumoReserva = ({ reserva, onConfirmar, isCreating = false, autoConfirmad
         </div>
       </div>
 
-      {/* Informações Importantes */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-6">
-        <h3 className="text-lg font-bold text-yellow-800 mb-4 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-yellow-600" />
-          Informações Importantes
-        </h3>
-        
-        <ul className="space-y-2 text-sm text-yellow-800">
-          <li className="flex items-start gap-2">
-            <span className="w-2 h-2 bg-yellow-600 rounded-full mt-2 flex-shrink-0"></span>
-            <span>Chegue com <strong>10 minutos de antecedência</strong> do horário marcado</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="w-2 h-2 bg-yellow-600 rounded-full mt-2 flex-shrink-0"></span>
-            <span>Traga <strong>roupas e calçados adequados</strong> para a prática esportiva</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="w-2 h-2 bg-yellow-600 rounded-full mt-2 flex-shrink-0"></span>
-            <span>O pagamento será realizado <strong>no local</strong> antes da atividade</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="w-2 h-2 bg-yellow-600 rounded-full mt-2 flex-shrink-0"></span>
-            <span>Você receberá um <strong>e-mail de confirmação</strong> com todos os detalhes</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="w-2 h-2 bg-yellow-600 rounded-full mt-2 flex-shrink-0"></span>
-            <span>Em caso de cancelamento, entre em contato com <strong>antecedência mínima de 24h</strong></span>
-          </li>
-        </ul>
-      </div>
+
 
       {/* Botão de Confirmação */}
       <div className="bg-white rounded-2xl shadow-lg p-6">

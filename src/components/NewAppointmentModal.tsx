@@ -42,6 +42,7 @@ const NewAppointmentModal = ({
   const { getAvailableHoursForDay, isDayEnabled } = useWorkingHours();
   const { modalities = [] } = useModalities();
   const { createAppointment } = useAppointments();
+  const queryClient = useQueryClient();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -308,7 +309,6 @@ const NewAppointmentModal = ({
 
         // Otimização: Atualizar cache diretamente para agendamentos recorrentes
         if (insertedAppointments) {
-          const queryClient = useQueryClient();
           queryClient.setQueryData(['appointments', user.id], (oldData: any[] | undefined) => {
             if (!oldData) return insertedAppointments;
             return [...insertedAppointments, ...oldData];
@@ -402,7 +402,7 @@ const NewAppointmentModal = ({
           currentDate: currentDate.toString(),
           formData: {
             client_id: formData.client_id,
-            modality: formData.modality,
+            modality_id: formData.modality_id,
             recurrenceId
           }
         });
@@ -411,7 +411,7 @@ const NewAppointmentModal = ({
       if (isEnabled) {
         appointments.push({
           client_id: formData.client_id,
-          modality: formData.modality,
+          modality_id: formData.modality_id,
           date: currentDate.toISOString(),
           status: 'agendado',
           recurrence_id: recurrenceId, // Usar o UUID da recorrência
