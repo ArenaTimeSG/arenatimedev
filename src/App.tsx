@@ -22,6 +22,7 @@ import TestBooking from "./pages/TestBooking";
 import ClientLogin from "./pages/ClientLogin";
 import ClientRegister from "./pages/ClientRegister";
 import NotFound from "./pages/NotFound";
+import ClientDashboard from "./pages/ClientDashboard";
 
 const AppContent = () => {
   // Inicializar o tema
@@ -47,6 +48,7 @@ const AppContent = () => {
         <Route path="/booking-debug/:username" element={<OnlineBookingDebug />} />
         <Route path="/cliente/login" element={<ClientLogin />} />
         <Route path="/cliente/register" element={<ClientRegister />} />
+        <Route path="/cliente/dashboard/:username" element={<ClientDashboard />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

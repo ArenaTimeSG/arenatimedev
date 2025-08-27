@@ -19,16 +19,102 @@ export const useClientAuth = () => {
 
   // Verificar se há cliente logado no localStorage
   useEffect(() => {
-    const savedClient = localStorage.getItem('client');
-    if (savedClient) {
-      try {
-        setClient(JSON.parse(savedClient));
-      } catch (error) {
-        localStorage.removeItem('client');
+    const checkSavedClient = async () => {
+      const savedClient = localStorage.getItem('client');
+      if (savedClient) {
+        try {
+          const parsedClient = JSON.parse(savedClient);
+          // Verificar se o cliente ainda é válido (tem id e email)
+          if (parsedClient && parsedClient.id && parsedClient.email) {
+            // Definir o cliente imediatamente para evitar flash de loading
+            setClient(parsedClient);
+            // Verificar se o cliente ainda existe no banco em background
+            verifyClientExists(parsedClient.id, parsedClient.email);
+          } else {
+            localStorage.removeItem('client');
+            setClient(null);
+          }
+        } catch (error) {
+          console.error('Erro ao parsear cliente do localStorage:', error);
+          localStorage.removeItem('client');
+          setClient(null);
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    checkSavedClient();
   }, []);
+
+  // Verificar se o cliente ainda existe no banco
+  const verifyClientExists = async (clientId: string, email: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('booking_clients')
+        .select('id, name, email, phone')
+        .eq('id', clientId)
+        .eq('email', email)
+        .single();
+
+      if (error || !data) {
+        console.log('Cliente não encontrado no banco, removendo do localStorage');
+        localStorage.removeItem('client');
+        setClient(null);
+        return false;
+      }
+
+      // Atualizar dados do cliente caso tenha mudanças
+      if (JSON.stringify(data) !== localStorage.getItem('client')) {
+        saveClientToStorage(data);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao verificar cliente no banco:', error);
+      return false;
+    }
+  };
+
+  // Listener para sincronizar mudanças no localStorage entre abas
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'client') {
+        if (e.newValue) {
+          try {
+            const parsedClient = JSON.parse(e.newValue);
+            setClient(parsedClient);
+          } catch (error) {
+            console.error('Erro ao parsear cliente do storage event:', error);
+            setClient(null);
+          }
+        } else {
+          setClient(null);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Listener para manter sessão ao recarregar página
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Garantir que o cliente seja salvo antes de recarregar
+      if (client) {
+        localStorage.setItem('client', JSON.stringify(client));
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [client]);
 
   // Salvar cliente no localStorage
   const saveClientToStorage = (clientData: Client) => {
@@ -139,6 +225,7 @@ export const useClientAuth = () => {
     login: loginMutation.mutate,
     update: updateMutation.mutate,
     logout,
+    verifyClientExists,
     isRegistering: registerMutation.isPending,
     isLoggingIn: loginMutation.isPending,
     isUpdating: updateMutation.isPending,

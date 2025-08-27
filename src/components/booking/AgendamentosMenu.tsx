@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, User, X, CheckCircle, AlertCircle, Trash2, Eye } from 'lucide-react';
+import { Calendar, Clock, User, CheckCircle, AlertCircle, Eye } from 'lucide-react';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -196,7 +196,7 @@ const AgendamentosMenu = ({ clientId, adminUserId, isOpen, onClose }: Agendament
       case 'a_cobrar':
         return <AlertCircle className="w-4 h-4" />;
       case 'cancelado':
-        return <X className="w-4 h-4" />;
+        return <AlertCircle className="w-4 h-4" />;
       default:
         return <Clock className="w-4 h-4" />;
     }
@@ -226,12 +226,12 @@ const AgendamentosMenu = ({ clientId, adminUserId, isOpen, onClose }: Agendament
               <Calendar className="w-6 h-6" />
               <h2 className="text-xl font-bold">Meus Agendamentos</h2>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+                         <button
+               onClick={onClose}
+               className="px-3 py-1 hover:bg-white/20 rounded-lg transition-colors text-sm font-medium"
+             >
+               Fechar
+             </button>
           </div>
         </div>
 
@@ -306,13 +306,13 @@ const AgendamentosMenu = ({ clientId, adminUserId, isOpen, onClose }: Agendament
                              <button
                                onClick={() => handleCancelar(agendamento.id)}
                                disabled={cancelingId === agendamento.id}
-                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                               className="px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 text-sm font-medium border border-red-200 hover:border-red-300"
                                title="Cancelar agendamento"
                              >
                                {cancelingId === agendamento.id ? (
                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
                                ) : (
-                                 <Trash2 className="w-4 h-4" />
+                                 'Cancelar'
                                )}
                              </button>
                            )}

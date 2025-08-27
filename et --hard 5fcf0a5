@@ -1,0 +1,10 @@
+[33m5fcf0a5[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m v2.0 - agendamento online funcional
+[33m38de463[m improve online booking page responsiveness for mobile devices
+[33m9fe1c60[m fix appointment cancellation - use correct enum value 'cancelado' instead of 'cancelada'
+[33m02904c7[m fix blocked hours in online booking - exclude lunch time (12h)
+[33mc378f6c[m fix online booking rules panel with improved error handling and logging
+[33m4293cad[m remove AutoAgendar and ListaReservas panels from online booking settings
+[33m018d601[m fix 404 error on Vercel - all routes redirect to index.html
+[33mf4ab779[m fix vercel routing and MIME type issues
+[33maf5dd54[m fix buttons auth clients
+[33m2b4b4ab[m commit v1.8

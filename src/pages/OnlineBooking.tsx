@@ -332,22 +332,71 @@ const OnlineBooking = () => {
   if (reservaConfirmada) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
-        <div className="text-center space-y-4 max-w-sm">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+        <div className="text-center space-y-6 max-w-md">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
             {reservationStatus === 'success' ? (
-              <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
+              <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
             ) : (
-              <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
+              <Clock className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-600" />
             )}
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-            {reservationStatus === 'success' ? 'Reserva Confirmada!' : 'Reserva Agendada!'}
-          </h1>
-          <p className="text-slate-600 text-sm sm:text-base">
-            {reservationStatus === 'success' 
-              ? 'Sua reserva foi confirmada automaticamente.' 
-              : 'Sua reserva foi agendada com sucesso!'
-            }
+          
+          <div className="space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+              {reservationStatus === 'success' ? 'Reserva Confirmada!' : 'Reserva Agendada!'}
+            </h1>
+            <p className="text-slate-600 text-sm sm:text-base">
+              {reservationStatus === 'success' 
+                ? 'Sua reserva foi confirmada automaticamente.' 
+                : 'Sua reserva foi agendada com sucesso!'
+              }
+            </p>
+          </div>
+
+          {/* Detalhes da reserva */}
+          <div className="bg-white rounded-xl shadow-lg p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 ${reserva.modalidade?.cor} rounded-full flex items-center justify-center`}>
+                <span className="text-white font-bold text-sm">{reserva.modalidade?.name.charAt(0)}</span>
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-gray-800">{reserva.modalidade?.name}</p>
+                <p className="text-sm text-gray-600">
+                  {reserva.data && format(reserva.data, 'dd/MM/yyyy', { locale: ptBR })} às {reserva.horario}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Botões de ação */}
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                setReservaConfirmada(false);
+                setReservationStatus(null);
+                setReserva({
+                  modalidade: null,
+                  data: null,
+                  horario: null,
+                  cliente: { nome: '', email: '', telefone: '' }
+                });
+                setStep(1);
+              }}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
+            >
+              Novo Agendamento
+            </button>
+            
+            <button
+              onClick={() => navigate(`/cliente/dashboard/${username}`)}
+              className="w-full bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl border-2 border-gray-200 hover:border-gray-300 transition-all duration-300"
+            >
+              Menu Principal
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-500">
+            Você receberá um e-mail de confirmação com todos os detalhes.
           </p>
         </div>
       </div>
