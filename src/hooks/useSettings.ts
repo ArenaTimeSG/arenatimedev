@@ -48,8 +48,6 @@ export const useSettings = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      console.log('🔍 Buscando configurações para usuário:', userId);
-
       const { data, error } = await supabase
         .from('settings')
         .select('*')
@@ -59,8 +57,6 @@ export const useSettings = () => {
       if (error) {
         if (error.code === 'PGRST116') {
           // Nenhum registro encontrado, criar configurações padrão
-          console.log('📝 Criando configurações padrão para usuário:', userId);
-          
           const defaultSettings = {
             ...DEFAULT_SETTINGS,
             personal_data: {
@@ -93,21 +89,19 @@ export const useSettings = () => {
             throw insertError;
           }
           
-          console.log('✅ Configurações padrão criadas com sucesso');
           return newSettings as unknown as Settings;
         }
         console.error('❌ Erro ao buscar configurações:', error);
         throw error;
       }
 
-      console.log('✅ Configurações carregadas com sucesso');
       return data as unknown as Settings;
     },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 10, // 10 minutes
     refetchOnWindowFocus: false,
-    retry: false, // Não tentar novamente para evitar loops
-    gcTime: 1000 * 60 * 10, // 10 minutes
+    retry: 1,
+    gcTime: 1000 * 60 * 30, // 30 minutes
     refetchOnMount: false,
   });
 
@@ -121,8 +115,6 @@ export const useSettings = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      console.log('💾 Salvando configurações:', updates);
-
       const { data, error } = await supabase
         .from('settings')
         .update(updates as any)
@@ -135,7 +127,6 @@ export const useSettings = () => {
         throw error;
       }
 
-      console.log('✅ Configurações salvas com sucesso');
       return data as unknown as Settings;
     },
     onSuccess: (data) => {
@@ -171,31 +162,26 @@ export const useSettings = () => {
 
   // Função para atualizar modalidades habilitadas (memoizada)
   const updateModalitiesEnabled = useCallback(async (modalities_enabled: Record<string, boolean>) => {
-    console.log('🔄 Atualizando modalidades habilitadas:', modalities_enabled);
     await updateSettings({ modalities_enabled });
   }, [updateSettings]);
 
   // Função para atualizar cores das modalidades (memoizada)
   const updateModalitiesColors = useCallback(async (modalities_colors: Record<string, string>) => {
-    console.log('🎨 Atualizando cores das modalidades:', modalities_colors);
     await updateSettings({ modalities_colors });
   }, [updateSettings]);
 
   // Função para atualizar intervalo padrão (memoizada)
   const updateDefaultInterval = useCallback(async (default_interval: number) => {
-    console.log('⏰ Atualizando intervalo padrão:', default_interval);
     await updateSettings({ default_interval });
   }, [updateSettings]);
 
   // Função para atualizar notificações (memoizada)
   const updateNotifications = useCallback(async (notifications_enabled: Settings['notifications_enabled']) => {
-    console.log('🔔 Atualizando notificações:', notifications_enabled);
     await updateSettings({ notifications_enabled });
   }, [updateSettings]);
 
   // Função para atualizar dados pessoais (memoizada)
   const updatePersonalData = useCallback(async (personal_data: Settings['personal_data']) => {
-    console.log('👤 Atualizando dados pessoais:', personal_data);
     await updateSettings({ personal_data });
   }, [updateSettings]);
 

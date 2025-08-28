@@ -37,7 +37,6 @@ export const useUserProfile = () => {
           throw error;
         }
 
-        console.log('🔍 useUserProfile - Perfil carregado:', data);
         return data;
       } catch (error) {
         console.error('Erro ao buscar perfil:', error);
@@ -45,7 +44,9 @@ export const useUserProfile = () => {
       }
     },
     retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 10 * 60 * 1000, // 10 minutos
+    refetchOnWindowFocus: false,
+    gcTime: 30 * 60 * 1000, // 30 minutos
   });
 
   // Criar perfil de usuário

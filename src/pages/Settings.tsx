@@ -29,13 +29,16 @@ const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { settings, isLoading: settingsLoading, error, updateSettings } = useSettings();
+  
+  // Carregar agendamentos de clientes apenas quando necessário (lazy loading)
+  const [showClientBookings, setShowClientBookings] = useState(false);
   const { 
     agendamentos, 
     isLoading: bookingsLoading, 
     confirmBooking, 
     cancelBooking, 
     markCompleted 
-  } = useClientBookings(user?.id);
+  } = useClientBookings(showClientBookings ? user?.id : undefined);
 
   // Estado para controlar a aba ativa
   const [activeTab, setActiveTab] = useState('profile');
@@ -53,6 +56,12 @@ const Settings = () => {
         return;
       }
     }
+    
+    // Carregar agendamentos de clientes apenas quando a aba for acessada
+    if (newTab === 'online-booking' && !showClientBookings) {
+      setShowClientBookings(true);
+    }
+    
     setActiveTab(newTab);
   };
 
@@ -107,8 +116,6 @@ const Settings = () => {
       : `${window.location.origin}/agendar`
   });
 
-
-
   // Carregar configurações quando disponíveis
   useEffect(() => {
     if (settings) {
@@ -151,14 +158,11 @@ const Settings = () => {
       }
 
       // Carregar configurações de agendamento online
-      const onlineBookingConfig = settings.online_booking || {};
-      console.log('📋 Carregando configurações de agendamento online:', onlineBookingConfig);
-      
       setConfiguracaoAgendamento(prev => ({
         ...prev,
         ativo: settings.online_enabled ?? false,
-        tempoMinimoAntecedencia: onlineBookingConfig.tempo_minimo_antecedencia ?? 24,
-        duracaoPadrao: onlineBookingConfig.duracao_padrao ?? 60
+        tempoMinimoAntecedencia: 24,
+        duracaoPadrao: 60
       }));
     }
   }, [settings]);
@@ -401,8 +405,8 @@ const Settings = () => {
 
 
 
-  // Loading states
-  if (authLoading || settingsLoading || bookingsLoading) {
+  // Loading states - apenas auth e settings são essenciais para carregar a página
+  if (authLoading || settingsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="flex flex-col items-center space-y-4">

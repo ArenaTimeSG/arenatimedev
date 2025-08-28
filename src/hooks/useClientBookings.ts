@@ -41,59 +41,34 @@ export const useClientBookings = (adminUserId?: string) => {
     queryFn: async () => {
       if (!adminUserId) return [];
 
-      // Buscar apenas agendamentos que têm client_id (feitos por clientes)
-      // Primeiro, buscar os IDs dos clientes da tabela booking_clients
-      const { data: clientIds, error: clientError } = await supabase
-        .from('booking_clients')
-        .select('id');
-
-      if (clientError) {
-        console.error('Erro ao buscar clientes:', clientError);
-        return [];
-      }
-
-      const clientIdArray = clientIds?.map(c => c.id) || [];
-
-      // Agora buscar agendamentos que têm client_id que existe na tabela booking_clients
-              const { data, error } = await supabase
-          .from('appointments')
-          .select('*')
-          .eq('user_id', adminUserId)
-          .not('client_id', 'is', null)
-          .order('date', { ascending: true });
+      // Buscar agendamentos com dados dos clientes em uma única consulta usando join
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+          *,
+          booking_clients (
+            id,
+            name,
+            email,
+            phone
+          )
+        `)
+        .eq('user_id', adminUserId)
+        .not('client_id', 'is', null)
+        .order('date', { ascending: true });
 
       if (error) {
         console.error('Erro ao buscar agendamentos de clientes:', error);
         return [];
       }
       
-      // Buscar dados dos clientes para agendamentos que têm client_id
-      const appointmentsWithClients = await Promise.all(
-        (data || []).map(async (appointment) => {
-          if (appointment.client_id) {
-            try {
-              const { data: clientData } = await supabase
-                .from('booking_clients')
-                .select('name')
-                .eq('id', appointment.client_id)
-                .single();
-              
-              if (clientData) {
-                return { ...appointment, client: clientData };
-              }
-            } catch (clientError) {
-              console.warn('⚠️ Erro ao buscar dados do cliente:', clientError);
-            }
-          }
-          return appointment;
-        })
-      );
-      
-      console.log('✅ useClientBookings: Agendamentos de clientes encontrados:', appointmentsWithClients);
-      console.log('✅ useClientBookings: Quantidade de agendamentos:', appointmentsWithClients?.length || 0);
-      return appointmentsWithClients;
+      console.log('✅ useClientBookings: Agendamentos de clientes encontrados:', data?.length || 0);
+      return data || [];
     },
-    enabled: !!adminUserId
+    enabled: !!adminUserId,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnWindowFocus: false,
+    retry: 1
   });
 
   const createBookingMutation = useMutation({
