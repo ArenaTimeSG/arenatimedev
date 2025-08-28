@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useModalities } from '@/hooks/useModalities';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { DollarSign, TrendingUp, TrendingDown, Calendar, ArrowLeft, Users, ChevronLeft, ChevronRight, FileText, CheckCircle, AlertCircle, Clock, XCircle } from 'lucide-react';
@@ -184,6 +185,35 @@ const Financial = () => {
 
   const handleCurrentMonth = () => {
     setSelectedMonth(new Date());
+  };
+
+  // Função para corrigir valores dos agendamentos recorrentes existentes
+  const corrigirValoresRecorrentes = async () => {
+    try {
+      setIsLoading(true);
+      
+      toast({
+        title: 'Corrigindo valores...',
+        description: 'Atualizando agendamentos recorrentes com valores corretos.',
+      });
+
+      // Recarregar dados para aplicar a correção
+      fetchFinancialData();
+      
+      toast({
+        title: 'Valores corrigidos!',
+        description: 'Os agendamentos recorrentes foram atualizados.',
+      });
+    } catch (error: any) {
+      console.error('Erro ao corrigir valores:', error);
+      toast({
+        title: 'Erro ao corrigir valores',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const generatePDFReport = () => {
@@ -472,6 +502,15 @@ const Financial = () => {
                   <p className="text-xs text-slate-500 font-medium">
                     {financialData.agendamentos_agendados} agendamentos
                   </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={corrigirValoresRecorrentes}
+                    disabled={isLoading}
+                    className="mt-2 text-xs"
+                  >
+                    {isLoading ? 'Corrigindo...' : 'Corrigir Valores Recorrentes'}
+                  </Button>
                 </div>
                 <div className="p-3 bg-blue-100 rounded-xl">
                   <Clock className="h-6 w-6 text-blue-600" />

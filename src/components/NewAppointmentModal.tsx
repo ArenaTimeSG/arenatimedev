@@ -291,7 +291,11 @@ const NewAppointmentModal = ({
         console.log('🔍 NewAppointmentModal - Criando agendamentos recorrentes:', {
           total: appointments.length,
           recurrenceId: recurrenceData.id,
-          appointments: appointments.map(a => ({ date: a.date, time: a.time }))
+          appointments: appointments.map(a => ({ 
+            date: a.date, 
+            time: a.time, 
+            valor_total: a.valor_total 
+          }))
         });
 
         // Inserir todos os agendamentos
@@ -373,10 +377,21 @@ const NewAppointmentModal = ({
     const endDate = formData.recurrenceType === 'data_final' && formData.endDate ? 
                    new Date(formData.endDate) : null;
 
+    // Buscar o valor da modalidade
+    const selectedModality = modalities.find(m => m.id === formData.modality_id);
+    const modalityValue = selectedModality?.valor || 0;
+    
+    console.log('🔍 NewAppointmentModal - Valor da modalidade para agendamentos recorrentes:', {
+      modalityId: formData.modality_id,
+      modalityName: selectedModality?.name,
+      modalityValue: modalityValue
+    });
+
     // Criar template do agendamento para reutilização
     const appointmentTemplate = {
       client_id: formData.client_id,
       modality_id: formData.modality_id,
+      valor_total: modalityValue,
       status: 'agendado' as const,
       recurrence_id: recurrenceId,
       booking_source: 'manual' as const,
