@@ -103,6 +103,12 @@ const Financial = () => {
         return aptYear === selectedYear && aptMonth === selectedMonthNum;
       });
 
+      // Debug: verificar agendamentos cancelados
+      const agendamentosCancelados = monthAppointments.filter(apt => apt.status === 'cancelado');
+      console.log('🔍 Financial - Agendamentos cancelados encontrados:', agendamentosCancelados);
+      console.log('🔍 Financial - Total de agendamentos do mês:', monthAppointments.length);
+      console.log('🔍 Financial - Status dos agendamentos:', monthAppointments.map(apt => ({ id: apt.id, status: apt.status, date: apt.date, valor_total: apt.valor_total })));
+
       setAppointmentsData(monthAppointments.map(apt => ({
         id: apt.client_id,
         date: apt.date,
@@ -114,6 +120,11 @@ const Financial = () => {
 
       // Usar o hook para calcular dados financeiros
       const summary = getFinancialSummary(monthAppointments);
+      
+      // Debug: verificar resumo financeiro
+      console.log('🔍 Financial - Resumo financeiro calculado:', summary);
+      console.log('🔍 Financial - Agendamentos cancelados no resumo:', summary.agendamentos_cancelados);
+      console.log('🔍 Financial - Total cancelado no resumo:', summary.total_cancelado);
       
       const agendamentosRealizados = monthAppointments.filter(a => {
         const aptDate = new Date(a.date);
@@ -235,32 +246,26 @@ const Financial = () => {
       doc.setFontSize(10);
       doc.text(`Valor Recebido: R$ ${financialData.total_recebido.toFixed(2)}`, 20, 75);
       doc.text(`A Cobrar: R$ ${financialData.total_pendente.toFixed(2)}`, 20, 85);
-      doc.text(`A Receber: R$ ${financialData.total_agendado.toFixed(2)}`, 20, 95);
-      doc.text(`Cancelados: R$ ${financialData.total_cancelado.toFixed(2)}`, 20, 105);
-      doc.text(`Agendamentos Pagos: ${financialData.agendamentos_pagos}`, 20, 115);
-      doc.text(`Agendamentos Pendentes: ${financialData.agendamentos_pendentes}`, 20, 125);
-      doc.text(`Agendamentos Agendados: ${financialData.agendamentos_agendados}`, 20, 135);
-      doc.text(`Agendamentos Cancelados: ${financialData.agendamentos_cancelados}`, 20, 145);
-      doc.text(`Jogos Realizados: ${financialData.agendamentos_realizados}`, 20, 155);
-      doc.text(`Receita Total: R$ ${(financialData.total_recebido + financialData.total_pendente + financialData.total_agendado).toFixed(2)}`, 20, 165);
+      doc.text(`Cancelados: R$ ${financialData.total_cancelado.toFixed(2)}`, 20, 95);
+      doc.text(`Jogos Realizados: ${financialData.agendamentos_realizados}`, 20, 105);
       
       // Tabela de agendamentos
       doc.setFontSize(16);
-      doc.text('Lista de Agendamentos', 20, 170);
+      doc.text('Lista de Agendamentos', 20, 130);
       
       const tableData = appointmentsData.map(apt => [
         format(new Date(apt.date), 'dd/MM/yyyy', { locale: ptBR }),
         format(new Date(apt.date), 'HH:mm', { locale: ptBR }),
         apt.client.name,
         apt.modality,
-        apt.status === 'pago' ? 'Pago' : apt.status === 'a_cobrar' ? 'A Cobrar' : 'Cancelado',
-        'R$ 50,00'
+        apt.status === 'pago' ? 'Pago' : apt.status === 'a_cobrar' ? 'A Cobrar' : apt.status === 'agendado' ? 'Agendado' : apt.status === 'cancelado' ? 'Cancelado' : apt.status,
+        `R$ ${apt.valor_total.toFixed(2).replace('.', ',')}`
       ]);
       
       autoTable(doc, {
         head: [['Data', 'Horário', 'Cliente', 'Modalidade', 'Status', 'Valor']],
         body: tableData,
-        startY: 180,
+        startY: 140,
         styles: {
           fontSize: 8,
           cellPadding: 2,
@@ -502,15 +507,7 @@ const Financial = () => {
                   <p className="text-xs text-slate-500 font-medium">
                     {financialData.agendamentos_agendados} agendamentos
                   </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={corrigirValoresRecorrentes}
-                    disabled={isLoading}
-                    className="mt-2 text-xs"
-                  >
-                    {isLoading ? 'Corrigindo...' : 'Corrigir Valores Recorrentes'}
-                  </Button>
+                  
                 </div>
                 <div className="p-3 bg-blue-100 rounded-xl">
                   <Clock className="h-6 w-6 text-blue-600" />

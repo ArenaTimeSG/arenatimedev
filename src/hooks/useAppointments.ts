@@ -122,6 +122,8 @@ export const useAppointments = () => {
         throw error;
       }
 
+
+
       // Buscar dados relacionados de forma otimizada
       const { clientsMap, modalitiesMap } = await fetchRelatedData(data || []);
 
