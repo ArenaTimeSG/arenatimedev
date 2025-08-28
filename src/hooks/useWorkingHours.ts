@@ -1,10 +1,16 @@
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useSettings } from '@/hooks/useSettings';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { DAY_ORDER } from '@/types/settings';
 
 export const useWorkingHours = () => {
   const { settings } = useSettings();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
   const [manualBlockades, setManualBlockades] = useState<{[key: string]: {
     blocked: boolean, 
     reason: string, 
@@ -14,11 +20,49 @@ export const useWorkingHours = () => {
     isIndefinite?: boolean,
     recurrenceType?: 'daily' | 'weekly' | 'monthly',
     originalDate?: string
-  }}>(() => {
-    // Carregar bloqueios do localStorage
-    const saved = localStorage.getItem('manualBlockades');
-    return saved ? JSON.parse(saved) : {};
-  });
+  }}>({});
+
+  // Carregar bloqueios do banco de dados
+  useEffect(() => {
+    if (user?.id) {
+      loadBlockadesFromDatabase();
+    }
+  }, [user?.id]);
+
+  const loadBlockadesFromDatabase = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('time_blockades')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true })
+        .order('time_slot', { ascending: true });
+
+      if (error) {
+        console.error('Erro ao carregar bloqueios:', error);
+        return;
+      }
+
+      // Converter dados do banco para o formato local
+      const blockadesMap: {[key: string]: any} = {};
+      data?.forEach(blockade => {
+        const blockadeKey = `${blockade.date}-${blockade.time_slot}`;
+        blockadesMap[blockadeKey] = {
+          blocked: true,
+          reason: blockade.reason,
+          description: blockade.description,
+          isRecurring: false, // Por enquanto, não implementamos recorrencia no banco
+          originalDate: blockade.date
+        };
+      });
+
+      setManualBlockades(blockadesMap);
+    } catch (error) {
+      console.error('Erro ao carregar bloqueios:', error);
+    }
+  };
 
   // Mapeamento de dias da semana para as chaves das configurações
   // getDay() retorna: 0 = Domingo, 1 = Segunda, 2 = Terça, etc.
@@ -285,7 +329,7 @@ export const useWorkingHours = () => {
   }, [isDayEnabled, getDaySchedule, dayMapping, manualBlockades]);
 
   // Função para bloquear um horário manualmente
-  const blockTimeSlot = useCallback((
+  const blockTimeSlot = useCallback(async (
     date: Date, 
     timeSlot: string, 
     reason: string,
@@ -297,44 +341,70 @@ export const useWorkingHours = () => {
       recurrenceType?: 'daily' | 'weekly' | 'monthly';
     }
   ) => {
+    if (!user?.id) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const dateString = format(date, 'yyyy-MM-dd');
     const blockadeKey = `${dateString}-${timeSlot}`;
     
-    setManualBlockades(prev => {
-      const newBlockades = { ...prev };
-      
-      // Adicionar o bloqueio principal
-      newBlockades[blockadeKey] = {
-        blocked: true,
-        reason,
-        description: options?.description,
-        isRecurring: options?.isRecurring,
-        endDate: options?.endDate ? format(options.endDate, 'yyyy-MM-dd') : undefined,
-        isIndefinite: options?.isIndefinite,
-        recurrenceType: options?.recurrenceType,
-        originalDate: dateString
-      };
+    try {
+      // Salvar no banco de dados
+      const { error } = await supabase
+        .from('time_blockades')
+        .insert({
+          user_id: user.id,
+          date: dateString,
+          time_slot: timeSlot,
+          reason: reason,
+          description: options?.description
+        });
 
-      // Se for recorrente, criar bloqueios futuros
-      if (options?.isRecurring && options?.recurrenceType) {
-        const futureBlockades = generateRecurringBlockades(
-          date,
-          timeSlot,
-          reason,
-          options.recurrenceType,
-          options.endDate,
-          options.isIndefinite,
-          options.description
-        );
-        
-        Object.assign(newBlockades, futureBlockades);
+      if (error) {
+        console.error('Erro ao salvar bloqueio:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao salvar bloqueio no banco de dados",
+          variant: "destructive"
+        });
+        return;
       }
 
-      // Salvar no localStorage
-      localStorage.setItem('manualBlockades', JSON.stringify(newBlockades));
-      return newBlockades;
-    });
-  }, []);
+      // Atualizar estado local
+      setManualBlockades(prev => {
+        const newBlockades = { ...prev };
+        newBlockades[blockadeKey] = {
+          blocked: true,
+          reason,
+          description: options?.description,
+          isRecurring: options?.isRecurring,
+          endDate: options?.endDate ? format(options.endDate, 'yyyy-MM-dd') : undefined,
+          isIndefinite: options?.isIndefinite,
+          recurrenceType: options?.recurrenceType,
+          originalDate: dateString
+        };
+        return newBlockades;
+      });
+
+      toast({
+        title: "Sucesso",
+        description: "Horário bloqueado com sucesso!",
+      });
+
+    } catch (error) {
+      console.error('Erro ao bloquear horário:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao bloquear horário",
+        variant: "destructive"
+      });
+    }
+  }, [user?.id, toast]);
 
   // Função para gerar bloqueios recorrentes
   const generateRecurringBlockades = useCallback((
@@ -400,35 +470,59 @@ export const useWorkingHours = () => {
   }, []);
 
   // Função para desbloquear um horário manualmente
-  const unblockTimeSlot = useCallback((date: Date, timeSlot: string, removeAllFollowing: boolean = false) => {
+  const unblockTimeSlot = useCallback(async (date: Date, timeSlot: string, removeAllFollowing: boolean = false) => {
+    if (!user?.id) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const dateString = format(date, 'yyyy-MM-dd');
     const blockadeKey = `${dateString}-${timeSlot}`;
     
-    setManualBlockades(prev => {
-      const newBlockades = { ...prev };
-      
-      // Verificar se é um bloqueio recorrente
-      const currentBlockade = newBlockades[blockadeKey];
-      
-      if (removeAllFollowing && currentBlockade?.isRecurring && currentBlockade?.originalDate) {
-        // Remover todos os bloqueios da mesma série recorrente
-        Object.keys(newBlockades).forEach(key => {
-          const blockade = newBlockades[key];
-          if (blockade.originalDate === currentBlockade.originalDate && 
-              key.includes(`-${timeSlot}`)) {
-            delete newBlockades[key];
-          }
+    try {
+      // Remover do banco de dados
+      const { error } = await supabase
+        .from('time_blockades')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('date', dateString)
+        .eq('time_slot', timeSlot);
+
+      if (error) {
+        console.error('Erro ao remover bloqueio:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao remover bloqueio do banco de dados",
+          variant: "destructive"
         });
-      } else {
-        // Remover apenas o bloqueio atual
-        delete newBlockades[blockadeKey];
+        return;
       }
-      
-      // Salvar no localStorage
-      localStorage.setItem('manualBlockades', JSON.stringify(newBlockades));
-      return newBlockades;
-    });
-  }, []);
+
+      // Atualizar estado local
+      setManualBlockades(prev => {
+        const newBlockades = { ...prev };
+        delete newBlockades[blockadeKey];
+        return newBlockades;
+      });
+
+      toast({
+        title: "Sucesso",
+        description: "Horário desbloqueado com sucesso!",
+      });
+
+    } catch (error) {
+      console.error('Erro ao desbloquear horário:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao desbloquear horário",
+        variant: "destructive"
+      });
+    }
+  }, [user?.id, toast]);
 
   // Função para obter o motivo do bloqueio
   const getBlockadeReason = useCallback((date: Date, timeSlot: string): string | null => {

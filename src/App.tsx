@@ -24,6 +24,7 @@ import ClientRegister from "./pages/ClientRegister";
 import NotFound from "./pages/NotFound";
 import ClientDashboard from "./pages/ClientDashboard";
 
+
 const AppContent = () => {
   // Inicializar o tema
   useTheme();
@@ -42,6 +43,7 @@ const AppContent = () => {
         <Route path="/appointments/new" element={<NewAppointment />} />
         <Route path="/financial" element={<Financial />} />
         <Route path="/settings" element={<Settings />} />
+
         <Route path="/agendar/:username" element={<OnlineBooking />} />
         <Route path="/booking/:username" element={<OnlineBooking />} />
         <Route path="/booking" element={<OnlineBooking />} />
