@@ -20,6 +20,7 @@ const NewClient = () => {
     email: '',
     phone: '',
   });
+  const [isClientWithoutEmail, setIsClientWithoutEmail] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -39,6 +40,16 @@ const NewClient = () => {
       return;
     }
 
+    // Validar email se não for cliente sem email
+    if (!isClientWithoutEmail && !formData.email.trim()) {
+      toast({
+        title: 'Erro no cadastro',
+        description: 'Email é obrigatório ou marque "Cliente sem email"',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -52,7 +63,7 @@ const NewClient = () => {
         .from('booking_clients')
         .insert({
           name: formData.name.trim(),
-          email: formData.email.trim() || null,
+          email: isClientWithoutEmail ? 'sem_email@cliente.local' : (formData.email.trim() || null),
           phone: formData.phone.trim() || null,
           password_hash: 'temp_hash', // Hash temporário para clientes criados pelo admin
         });
@@ -174,8 +185,24 @@ const NewClient = () => {
                     placeholder="email@exemplo.com"
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
-                    className="h-12 text-base border-slate-200 focus:border-blue-300 focus:ring-blue-200 rounded-xl"
+                    disabled={isClientWithoutEmail}
+                    className={`h-12 text-base border-slate-200 focus:border-blue-300 focus:ring-blue-200 rounded-xl ${
+                      isClientWithoutEmail ? 'opacity-50' : ''
+                    }`}
                   />
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="noEmail"
+                    checked={isClientWithoutEmail}
+                    onChange={(e) => setIsClientWithoutEmail(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <Label htmlFor="noEmail" className="text-sm font-medium text-slate-700">
+                    Cliente sem email
+                  </Label>
                 </div>
 
                 <div className="space-y-3">

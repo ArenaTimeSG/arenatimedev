@@ -15,14 +15,9 @@ export const LinkCompartilhamento = () => {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
-  // Debug: Log do perfil do usuário
-  console.log('🔍 LinkCompartilhamento - userProfile:', userProfile);
-  console.log('🔍 LinkCompartilhamento - user:', user);
-
   // Forçar refetch do perfil se não estiver carregado
   useEffect(() => {
     if (!userProfile && user) {
-      console.log('🔄 Forçando refetch do perfil...');
       refetchProfile();
     }
   }, [userProfile, user, refetchProfile]);
@@ -83,21 +78,8 @@ export const LinkCompartilhamento = () => {
               Username não configurado
             </Badge>
             
-            {/* Debug info */}
-            <div className="text-xs text-orange-600 bg-orange-100 p-2 rounded">
-              <p><strong>Debug Info:</strong></p>
-              <p>User: {user?.email || 'N/A'}</p>
-              <p>Profile: {userProfile ? 'Carregado' : 'Não carregado'}</p>
-              <p>Username: {userProfile?.username || 'N/A'}</p>
-              <p>Name: {userProfile?.name || 'N/A'}</p>
-            </div>
-            
-            {/* Botão de debug */}
             <Button
-              onClick={() => {
-                console.log('🔄 Forçando refetch...');
-                refetchProfile();
-              }}
+              onClick={() => refetchProfile()}
               variant="outline"
               size="sm"
               className="text-orange-700 border-orange-300"

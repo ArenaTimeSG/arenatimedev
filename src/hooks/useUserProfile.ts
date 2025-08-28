@@ -44,9 +44,9 @@ export const useUserProfile = () => {
       }
     },
     retry: 1,
-    staleTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 15 * 60 * 1000, // 15 minutos
     refetchOnWindowFocus: false,
-    gcTime: 30 * 60 * 1000, // 30 minutos
+    gcTime: 60 * 60 * 1000, // 60 minutos
   });
 
   // Criar perfil de usuário

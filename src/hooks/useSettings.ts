@@ -98,10 +98,10 @@ export const useSettings = () => {
       return data as unknown as Settings;
     },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 15, // 15 minutes
     refetchOnWindowFocus: false,
     retry: 1,
-    gcTime: 1000 * 60 * 30, // 30 minutes
+    gcTime: 1000 * 60 * 60, // 60 minutes
     refetchOnMount: false,
   });
 

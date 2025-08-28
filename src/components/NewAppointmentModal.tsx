@@ -14,10 +14,14 @@ import { useModalities } from '@/hooks/useModalities';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { ClientSearchDropdown } from '@/components/ClientSearchDropdown';
+import { AddClientModal } from '@/components/AddClientModal';
 
 interface Client {
   id: string;
   name: string;
+  email?: string;
+  phone?: string;
 }
 
 interface NewAppointmentModalProps {
@@ -45,6 +49,7 @@ const NewAppointmentModal = ({
   const queryClient = useQueryClient();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     client_id: '',
     modality_id: '',
@@ -111,7 +116,7 @@ const NewAppointmentModal = ({
     try {
       const { data, error } = await supabase
         .from('booking_clients')
-        .select('id, name')
+        .select('id, name, email, phone')
         .order('name');
 
       if (error) throw error;
@@ -443,24 +448,15 @@ const NewAppointmentModal = ({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Cliente */}
-          <div>
-            <Label htmlFor="client">Cliente *</Label>
-            <Select
-              value={formData.client_id}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, client_id: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <ClientSearchDropdown
+            clients={clients}
+            selectedClientId={formData.client_id}
+            onClientSelect={(clientId) => setFormData(prev => ({ ...prev, client_id: clientId }))}
+            onAddNewClient={() => {
+              setIsAddClientModalOpen(true);
+            }}
+            placeholder="Digite para buscar..."
+          />
 
           {/* Modalidade */}
           <div>
@@ -624,6 +620,16 @@ const NewAppointmentModal = ({
           </div>
         </form>
       </DialogContent>
+
+      {/* Modal para adicionar novo cliente */}
+      <AddClientModal
+        isOpen={isAddClientModalOpen}
+        onClose={() => setIsAddClientModalOpen(false)}
+        onClientAdded={() => {
+          // Recarregar lista de clientes
+          fetchClients();
+        }}
+      />
     </Dialog>
   );
 };

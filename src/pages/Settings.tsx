@@ -30,15 +30,8 @@ const Settings = () => {
   const { toast } = useToast();
   const { settings, isLoading: settingsLoading, error, updateSettings } = useSettings();
   
-  // Carregar agendamentos de clientes apenas quando necessário (lazy loading)
-  const [showClientBookings, setShowClientBookings] = useState(false);
-  const { 
-    agendamentos, 
-    isLoading: bookingsLoading, 
-    confirmBooking, 
-    cancelBooking, 
-    markCompleted 
-  } = useClientBookings(showClientBookings ? user?.id : undefined);
+  // Hook para agendamentos de clientes
+  const { agendamentos, isLoading: bookingsLoading, confirmBooking, cancelBooking, markCompleted } = useClientBookings(user?.id);
 
   // Estado para controlar a aba ativa
   const [activeTab, setActiveTab] = useState('profile');
@@ -55,11 +48,6 @@ const Settings = () => {
       if (!confirmed) {
         return;
       }
-    }
-    
-    // Carregar agendamentos de clientes apenas quando a aba for acessada
-    if (newTab === 'online-booking' && !showClientBookings) {
-      setShowClientBookings(true);
     }
     
     setActiveTab(newTab);
@@ -111,9 +99,7 @@ const Settings = () => {
     ativo: false,
     tempoMinimoAntecedencia: 24,
     duracaoPadrao: 60,
-    linkPublico: profile?.username 
-      ? `${window.location.origin}/agendar/${profile.username}`
-      : `${window.location.origin}/agendar`
+    linkPublico: `${window.location.origin}/agendar`
   });
 
   // Carregar configurações quando disponíveis
@@ -161,8 +147,8 @@ const Settings = () => {
       setConfiguracaoAgendamento(prev => ({
         ...prev,
         ativo: settings.online_enabled ?? false,
-        tempoMinimoAntecedencia: 24,
-        duracaoPadrao: 60
+        tempoMinimoAntecedencia: settings.online_booking?.tempo_minimo_antecedencia ?? 24,
+        duracaoPadrao: settings.online_booking?.duracao_padrao ?? 60
       }));
     }
   }, [settings]);
@@ -355,8 +341,6 @@ const Settings = () => {
 
 
   const handleUpdateRegras = async (tempoMinimo: number, duracaoPadrao: number) => {
-    console.log('🔄 Atualizando regras:', { tempoMinimo, duracaoPadrao });
-    
     // Atualizar estado local primeiro
     setConfiguracaoAgendamento(prev => ({ 
       ...prev, 
@@ -372,13 +356,9 @@ const Settings = () => {
         duracao_padrao: duracaoPadrao
       };
       
-      console.log('💾 Salvando online_booking:', onlineBookingUpdate);
-      
       await updateSettings({
         online_booking: onlineBookingUpdate
       });
-      
-      console.log('✅ Regras atualizadas com sucesso');
       
       toast({
         title: 'Regras Atualizadas',
@@ -386,7 +366,7 @@ const Settings = () => {
         duration: 2000,
       });
     } catch (error) {
-      console.error('❌ Erro ao atualizar regras:', error);
+      console.error('Erro ao atualizar regras:', error);
       
       // Reverter estado local em caso de erro
       setConfiguracaoAgendamento(prev => ({ 
@@ -406,7 +386,7 @@ const Settings = () => {
 
 
   // Loading states - apenas auth e settings são essenciais para carregar a página
-  if (authLoading || settingsLoading) {
+  if (authLoading || settingsLoading || !settings) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="flex flex-col items-center space-y-4">
@@ -678,23 +658,23 @@ const Settings = () => {
               </Card>
             </TabsContent>
 
-            {/* Aba Agendamento Online */}
-            <TabsContent value="online-booking" className="space-y-6">
-              <div className="grid gap-6">
-                <ToggleAgendamento 
-                  ativo={configuracaoAgendamento.ativo}
-                  onToggle={handleToggleAgendamento}
-                />
-                
-                <LinkCompartilhamento />
-                
-                <ConfiguracoesRegras 
-                  tempoMinimo={configuracaoAgendamento.tempoMinimoAntecedencia}
-                  duracaoPadrao={configuracaoAgendamento.duracaoPadrao}
-                  onUpdate={handleUpdateRegras}
-                />
-              </div>
-            </TabsContent>
+                         {/* Aba Agendamento Online */}
+             <TabsContent value="online-booking" className="space-y-6">
+               <div className="grid gap-6">
+                 <ToggleAgendamento 
+                   ativo={configuracaoAgendamento.ativo}
+                   onToggle={handleToggleAgendamento}
+                 />
+                 
+                 <LinkCompartilhamento />
+                 
+                 <ConfiguracoesRegras 
+                   tempoMinimo={configuracaoAgendamento.tempoMinimoAntecedencia}
+                   duracaoPadrao={configuracaoAgendamento.duracaoPadrao}
+                   onUpdate={handleUpdateRegras}
+                 />
+               </div>
+             </TabsContent>
 
             {/* Aba Notificações */}
             <TabsContent value="notifications" className="space-y-6">

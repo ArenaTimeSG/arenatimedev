@@ -121,6 +121,10 @@ const OnlineBooking = () => {
     modalityDuration: reserva.modalidade?.duracao || 60
   });
 
+
+
+
+
   // Função para gerar cor baseada no nome da modalidade
   const getModalidadeColor = useCallback((name: string): string => {
     const colors = [

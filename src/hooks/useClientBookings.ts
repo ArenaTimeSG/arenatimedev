@@ -62,7 +62,7 @@ export const useClientBookings = (adminUserId?: string) => {
         return [];
       }
       
-      console.log('✅ useClientBookings: Agendamentos de clientes encontrados:', data?.length || 0);
+
       return data || [];
     },
     enabled: !!adminUserId,
@@ -75,8 +75,7 @@ export const useClientBookings = (adminUserId?: string) => {
     mutationFn: async (data: CreateClientBookingData & { autoConfirmada?: boolean }) => {
       const { autoConfirmada, ...bookingData } = data;
       
-      console.log('🔍 useClientBookings: Tentando criar agendamento:', bookingData);
-      console.log('🔍 useClientBookings: autoConfirmada:', autoConfirmada);
+
       
       const { data: newBooking, error } = await supabase
         .from('appointments')
@@ -97,7 +96,7 @@ export const useClientBookings = (adminUserId?: string) => {
         throw error;
       }
       
-      console.log('✅ useClientBookings: Agendamento criado com sucesso:', newBooking);
+
       return newBooking;
     },
     onSuccess: (newBooking) => {
@@ -206,7 +205,7 @@ export const useClientBookings = (adminUserId?: string) => {
   });
 
   return {
-    agendamentos,
+    agendamentos: agendamentos || [],
     isLoading,
     error,
     createBooking: createBookingMutation.mutate,

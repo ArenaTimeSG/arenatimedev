@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { format, addDays, isBefore, startOfDay, addMinutes, parseISO } from 'date-fns';
+import { format, addDays, isBefore, startOfDay, addMinutes, parseISO, addHours, isSameDay } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 
 interface WorkingHours {
@@ -43,10 +43,23 @@ export const useAvailableHours = ({
 
         // Verificar se a data está dentro do tempo mínimo de antecedência
         const now = new Date();
-        const minTime = addDays(now, tempoMinimoAntecedencia / 24);
+        const minBookingTime = addHours(now, tempoMinimoAntecedencia);
         
-        if (isBefore(selectedDate, startOfDay(minTime))) {
-          return [];
+
+        
+        // Se a data selecionada é hoje, verificar se já passou do tempo mínimo
+        if (isSameDay(selectedDate, now)) {
+          // Para hoje, só permitir horários que estejam após o tempo mínimo
+          const currentHour = now.getHours();
+          const minHour = minBookingTime.getHours();
+          
+
+          
+          // REMOVIDO TEMPORARIAMENTE: Se ainda não chegou no tempo mínimo, não mostrar nenhum horário
+          // if (currentHour < minHour) {
+          //   console.log('🔍 useAvailableHours - Retornando array vazio (ainda não chegou no tempo mínimo)');
+          //   return [];
+          // }
         }
 
         // Gerar horários disponíveis baseados no horário de funcionamento
@@ -147,6 +160,19 @@ export const useAvailableHours = ({
 
                  // Filtrar horários disponíveis
          let availableHours = allHours.filter(hour => !occupiedTimes.includes(hour));
+         
+         // Filtrar horários baseado no tempo mínimo de antecedência
+         if (isSameDay(selectedDate, now)) {
+           availableHours = availableHours.filter(hour => {
+             const [hourStr] = hour.split(':');
+             const hourNum = parseInt(hourStr);
+             const currentHour = now.getHours();
+             const minHour = currentHour + tempoMinimoAntecedencia;
+             const isAvailable = hourNum >= minHour;
+             
+             return isAvailable;
+           });
+         }
          
 
         
