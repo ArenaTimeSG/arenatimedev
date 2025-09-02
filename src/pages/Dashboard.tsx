@@ -234,7 +234,7 @@ const Dashboard = () => {
     return appointment;
   };
 
-  const handleCellClick = (day: Date, timeSlot: string) => {
+  const handleCellClick = (day: Date, timeSlot: string, event?: React.MouseEvent) => {
     const appointment = getAppointmentForSlot(day, timeSlot);
     
     if (appointment) {
@@ -249,10 +249,17 @@ const Dashboard = () => {
         setBlockedTimeSlot({ day, timeSlot });
         setIsConfirmationModalOpen(true);
       } else {
-        // Se não está bloqueado, abrir modal de agendamento
-        setSelectedDate(day);
-        setSelectedTime(timeSlot);
-        setIsModalOpen(true);
+        // Se Ctrl está pressionado, abrir modal de bloqueio
+        if (event && event.ctrlKey) {
+          setSelectedDate(day);
+          setSelectedTime(timeSlot);
+          setIsBlockModalOpen(true);
+        } else {
+          // Se não está bloqueado, abrir modal de agendamento
+          setSelectedDate(day);
+          setSelectedTime(timeSlot);
+          setIsModalOpen(true);
+        }
       }
     }
   };

@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useWorkingHours } from '@/hooks/useWorkingHours';
 
 interface CellOptionsDropdownProps {
   isOpen: boolean;
@@ -31,6 +31,7 @@ const CellOptionsDropdown: React.FC<CellOptionsDropdownProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { blockTimeSlot } = useWorkingHours();
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [reason, setReason] = useState('');
   const [description, setDescription] = useState('');
@@ -59,23 +60,9 @@ const CellOptionsDropdown: React.FC<CellOptionsDropdownProps> = ({
     setIsLoading(true);
 
     try {
-      const { error } = await (supabase as any)
-        .from('time_blockades')
-        .insert({
-          user_id: user.id,
-          date: format(selectedDate, 'yyyy-MM-dd'),
-          time_slot: selectedTime,
-          reason: reason.trim(),
-          description: description.trim() || null
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Sucesso",
-        description: "Horário bloqueado com sucesso!",
+      // Usar o sistema de bloqueio do useWorkingHours
+      await blockTimeSlot(selectedDate, selectedTime, reason.trim(), {
+        description: description.trim() || undefined
       });
 
       // Limpar formulário

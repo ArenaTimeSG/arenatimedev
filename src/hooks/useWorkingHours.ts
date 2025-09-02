@@ -33,7 +33,7 @@ export const useWorkingHours = () => {
     if (!user?.id) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('time_blockades')
         .select('*')
         .eq('user_id', user.id)
@@ -48,7 +48,9 @@ export const useWorkingHours = () => {
       // Converter dados do banco para o formato local
       const blockadesMap: {[key: string]: any} = {};
       data?.forEach(blockade => {
-        const blockadeKey = `${blockade.date}-${blockade.time_slot}`;
+        // Garante que o time_slot esteja no formato HH:MM para consistência
+        const formattedTimeSlot = (blockade.time_slot as string).substring(0, 5);
+        const blockadeKey = `${blockade.date}-${formattedTimeSlot}`;
         blockadesMap[blockadeKey] = {
           blocked: true,
           reason: blockade.reason,
@@ -354,9 +356,9 @@ export const useWorkingHours = () => {
     const blockadeKey = `${dateString}-${timeSlot}`;
     
     try {
-      // Salvar no banco de dados
-      const { error } = await supabase
-        .from('time_blockades')
+             // Salvar no banco de dados
+       const { error } = await (supabase as any)
+         .from('time_blockades')
         .insert({
           user_id: user.id,
           date: dateString,
@@ -485,7 +487,7 @@ export const useWorkingHours = () => {
     
     try {
       // Remover do banco de dados
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('time_blockades')
         .delete()
         .eq('user_id', user.id)
