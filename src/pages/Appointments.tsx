@@ -17,26 +17,27 @@ import ResponsiveFilters from '@/components/ui/responsive-filters';
 import { format, isBefore, isEqual, startOfMonth, endOfMonth, addMonths, subMonths, isAfter, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import AppointmentDetailsModal from '@/components/AppointmentDetailsModal';
+import { AppointmentWithModality } from '@/hooks/useAppointments';
 
-interface Appointment {
-  id: string;
-  date: string;
-  status: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
-  modality: string | null;
-  modality_id: string | null;
-  valor_total: number;
-  client: {
-    name: string;
-  };
-  modality_info?: {
-    name: string;
-    valor: number;
-  };
-  recurrence_id?: string;
-}
+// Função auxiliar para exibir modalidade com valor e indicador de cortesia
+const formatModalityWithCortesia = (appointment: AppointmentWithModality) => {
+  if (appointment.modality_info) {
+    return (
+      <div className="flex items-center gap-2">
+        <span>{formatModalityWithValue(appointment.modality_info.name, appointment.valor_total)}</span>
+        {appointment.is_cortesia && (
+          <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 text-xs">
+            🎁 Cortesia
+          </Badge>
+        )}
+      </div>
+    );
+  }
+  return appointment.modality || 'Modalidade não definida';
+};
 
 interface GroupedAppointments {
-  [clientName: string]: Appointment[];
+  [clientName: string]: AppointmentWithModality[];
 }
 
 const Appointments = () => {
@@ -47,9 +48,9 @@ const Appointments = () => {
   // Hook para real-time dos agendamentos
   const { isConnected: isRealtimeConnected } = useAppointmentsRealtime();
   const navigate = useNavigate();
-  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
+  const [filteredAppointments, setFilteredAppointments] = useState<AppointmentWithModality[]>([]);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithModality | null>(null);
   
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,7 +133,7 @@ const Appointments = () => {
     }
   };
 
-  const handleAppointmentClick = (appointment: Appointment) => {
+  const handleAppointmentClick = (appointment: AppointmentWithModality) => {
     setSelectedAppointment(appointment);
     setIsDetailsModalOpen(true);
   };
@@ -174,11 +175,11 @@ const Appointments = () => {
   };
 
   // Agrupar agendamentos por cliente
-  const groupAppointmentsByClient = (appointments: Appointment[]): GroupedAppointments => {
+  const groupAppointmentsByClient = (appointments: AppointmentWithModality[]): GroupedAppointments => {
     const grouped: GroupedAppointments = {};
     
     appointments.forEach(appointment => {
-      const clientName = appointment.client.name;
+      const clientName = appointment.client?.name || 'Cliente não identificado';
       if (!grouped[clientName]) {
         grouped[clientName] = [];
       }
@@ -497,10 +498,7 @@ const Appointments = () => {
                               <div className="flex items-center gap-4">
                                 <div>
                                   <p className="text-sm text-slate-600 font-medium">
-                                    {appointment.modality_info ? 
-                                      formatModalityWithValue(appointment.modality_info.name, appointment.valor_total) :
-                                      appointment.modality || 'Modalidade não definida'
-                                    }
+                                    {formatModalityWithCortesia(appointment)}
                                   </p>
                                   <div className="flex items-center gap-2 mt-2">
                                     {appointment.recurrence_id ? (
@@ -603,10 +601,7 @@ const Appointments = () => {
                               <div className="flex items-center gap-4">
                                 <div>
                                   <p className="text-sm text-slate-600 font-medium">
-                                    {appointment.modality_info ? 
-                                      formatModalityWithValue(appointment.modality_info.name, appointment.valor_total) :
-                                      appointment.modality || 'Modalidade não definida'
-                                    }
+                                    {formatModalityWithCortesia(appointment)}
                                   </p>
                                   <div className="flex items-center gap-2 mt-2">
                                     {appointment.recurrence_id ? (

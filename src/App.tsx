@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { queryClient } from "@/lib/queryClient";
 import { useTheme } from "@/hooks/useTheme";
+import { useRecurringStatusUpdate } from "@/hooks/useRecurringStatusUpdate";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -28,6 +29,9 @@ import ClientDashboard from "./pages/ClientDashboard";
 const AppContent = () => {
   // Inicializar o tema
   useTheme();
+  
+  // Atualizar automaticamente o status dos agendamentos recorrentes
+  useRecurringStatusUpdate();
   
   return (
     <BrowserRouter>

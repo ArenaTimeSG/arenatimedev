@@ -9,31 +9,14 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Trash2, DollarSign, X, Calendar, User, Activity, Loader2, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
-import { useAppointments } from '@/hooks/useAppointments';
+import { useAppointments, AppointmentWithModality } from '@/hooks/useAppointments';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-
-interface Appointment {
-  id: string;
-  date: string;
-  status: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
-  modality: string | null;
-  modality_id: string | null;
-  valor_total: number;
-  client: {
-    name: string;
-  };
-  modality_info?: {
-    name: string;
-    valor: number;
-  };
-  recurrence_id?: string;
-}
 
 interface AppointmentDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  appointment: Appointment | null;
+  appointment: AppointmentWithModality | null;
   onAppointmentUpdated: () => void;
 }
 
@@ -359,7 +342,7 @@ const AppointmentDetailsModal = ({
               <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
                 <User className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="font-medium">{appointment.client.name}</p>
+                  <p className="font-medium">{appointment.client?.name || 'Cliente não identificado'}</p>
                   <p className="text-sm text-muted-foreground">Cliente</p>
                 </div>
               </div>

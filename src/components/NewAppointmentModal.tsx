@@ -58,8 +58,12 @@ const NewAppointmentModal = ({
     isRecurring: false,
     recurrenceType: 'data_final' as 'data_final' | 'repeticoes' | 'indeterminado',
     endDate: '',
-    repetitions: 1
+    repetitions: 1,
+    isCortesia: false
   });
+
+  // Debug: verificar estado inicial
+  console.log('🔍 NewAppointmentModal - Estado inicial formData:', formData);
 
   // useEffect separado para carregar clientes quando modal abrir
   useEffect(() => {
@@ -87,11 +91,17 @@ const NewAppointmentModal = ({
         isRecurring: false,
         recurrenceType: 'data_final' as 'data_final' | 'repeticoes' | 'indeterminado',
         endDate: '',
-        repetitions: 1
+        repetitions: 1,
+        isCortesia: false
       };
       
       console.log('🔍 NewAppointmentModal - FormData atualizado:', newFormData);
       setFormData(newFormData);
+      
+      // Debug: verificar se o estado foi atualizado
+      setTimeout(() => {
+        console.log('🔍 NewAppointmentModal - Estado após setFormData:', formData);
+      }, 0);
     }
   }, [isOpen, selectedDate, selectedTime]);
 
@@ -107,7 +117,8 @@ const NewAppointmentModal = ({
         isRecurring: false,
         recurrenceType: 'data_final',
         endDate: '',
-        repetitions: 1
+        repetitions: 1,
+        isCortesia: false
       });
     }
   }, [isOpen]);
@@ -337,7 +348,8 @@ const NewAppointmentModal = ({
           client_id: formData.client_id,
           modality_id: formData.modality_id,
           date: appointmentDate.toISOString(),
-          status: 'agendado'
+          status: 'agendado',
+          is_cortesia: formData.isCortesia
         });
       }
 
@@ -353,7 +365,8 @@ const NewAppointmentModal = ({
         isRecurring: false,
         recurrenceType: 'data_final',
         endDate: '',
-        repetitions: 1
+        repetitions: 1,
+        isCortesia: false
       });
 
     } catch (error: any) {
@@ -396,7 +409,8 @@ const NewAppointmentModal = ({
     const appointmentTemplate = {
       client_id: formData.client_id,
       modality_id: formData.modality_id,
-      valor_total: modalityValue,
+      valor_total: formData.isCortesia ? 0 : modalityValue,
+      is_cortesia: formData.isCortesia,
       status: 'agendado' as const,
       recurrence_id: recurrenceId,
       booking_source: 'manual' as const,
@@ -476,6 +490,21 @@ const NewAppointmentModal = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Cortesia */}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="cortesia"
+              checked={formData.isCortesia}
+              onCheckedChange={(checked) => {
+                console.log('🔍 Checkbox cortesia alterado:', checked);
+                setFormData(prev => ({ ...prev, isCortesia: checked as boolean }));
+              }}
+            />
+            <Label htmlFor="cortesia" className="text-sm font-medium">
+              Cortesia (valor R$ 0,00)
+            </Label>
           </div>
 
           {/* Data */}
