@@ -59,7 +59,8 @@ const NewAppointmentModal = ({
     recurrenceType: 'data_final' as 'data_final' | 'repeticoes' | 'indeterminado',
     endDate: '',
     repetitions: 1,
-    isCortesia: false
+    isCortesia: false,
+    customValue: null as number | null
   });
 
   // Debug: verificar estado inicial
@@ -92,7 +93,8 @@ const NewAppointmentModal = ({
         recurrenceType: 'data_final' as 'data_final' | 'repeticoes' | 'indeterminado',
         endDate: '',
         repetitions: 1,
-        isCortesia: false
+        isCortesia: false,
+        customValue: null
       };
       
       console.log('🔍 NewAppointmentModal - FormData atualizado:', newFormData);
@@ -118,7 +120,8 @@ const NewAppointmentModal = ({
         recurrenceType: 'data_final',
         endDate: '',
         repetitions: 1,
-        isCortesia: false
+        isCortesia: false,
+        customValue: null
       });
     }
   }, [isOpen]);
@@ -349,7 +352,8 @@ const NewAppointmentModal = ({
           modality_id: formData.modality_id,
           date: appointmentDate.toISOString(),
           status: 'agendado',
-          is_cortesia: formData.isCortesia
+          is_cortesia: formData.isCortesia,
+          customValue: formData.customValue
         });
       }
 
@@ -409,7 +413,7 @@ const NewAppointmentModal = ({
     const appointmentTemplate = {
       client_id: formData.client_id,
       modality_id: formData.modality_id,
-      valor_total: formData.isCortesia ? 0 : modalityValue,
+      valor_total: formData.isCortesia ? 0 : (formData.customValue !== null ? formData.customValue : modalityValue),
       is_cortesia: formData.isCortesia,
       status: 'agendado' as const,
       recurrence_id: recurrenceId,
@@ -477,7 +481,14 @@ const NewAppointmentModal = ({
             <Label htmlFor="modality">Modalidade *</Label>
             <Select
               value={formData.modality_id}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, modality_id: value }))}
+              onValueChange={(value) => {
+                const selectedModality = modalities.find(m => m.id === value);
+                setFormData(prev => ({ 
+                  ...prev, 
+                  modality_id: value,
+                  customValue: null // Reset custom value when modality changes
+                }));
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione uma modalidade" />
@@ -492,11 +503,60 @@ const NewAppointmentModal = ({
             </Select>
           </div>
 
+          {/* Valor Personalizado */}
+          {formData.modality_id && (
+            <div>
+              <Label htmlFor="customValue">Valor do Agendamento</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="customValue"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder={(() => {
+                    const selectedModality = modalities.find(m => m.id === formData.modality_id);
+                    return selectedModality ? `Valor padrão: R$ ${selectedModality.valor.toFixed(2).replace('.', ',')}` : '';
+                  })()}
+                  value={formData.customValue !== null ? formData.customValue.toString() : ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData(prev => ({ ...prev, customValue: null }));
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        setFormData(prev => ({ ...prev, customValue: numValue }));
+                      }
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const selectedModality = modalities.find(m => m.id === formData.modality_id);
+                    if (selectedModality) {
+                      setFormData(prev => ({ ...prev, customValue: selectedModality.valor }));
+                    }
+                  }}
+                >
+                  Usar Padrão
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Deixe em branco para usar o valor padrão da modalidade
+              </p>
+            </div>
+          )}
+
           {/* Cortesia */}
           <div className="flex items-center space-x-2">
             <Checkbox
               id="cortesia"
               checked={formData.isCortesia}
+              disabled={formData.customValue !== null}
               onCheckedChange={(checked) => {
                 const newValue = checked as boolean;
                 console.log('🔍 Checkbox cortesia alterado:', checked, 'Tipo:', typeof checked, 'Novo valor:', newValue);
@@ -509,6 +569,11 @@ const NewAppointmentModal = ({
             />
             <Label htmlFor="cortesia" className="text-sm font-medium">
               Cortesia (valor R$ 0,00)
+              {formData.customValue !== null && (
+                <span className="text-xs text-muted-foreground block">
+                  Desabilitado quando valor personalizado é definido
+                </span>
+              )}
             </Label>
           </div>
 

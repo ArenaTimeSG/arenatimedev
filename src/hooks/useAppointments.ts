@@ -33,6 +33,7 @@ export interface CreateAppointmentData {
   recurrence_id?: string;
   booking_source?: 'manual' | 'online';
   is_cortesia?: boolean;
+  customValue?: number | null;
 }
 
 export interface UpdateAppointmentData {
@@ -209,7 +210,7 @@ export const useAppointments = () => {
           client_id: appointmentData.client_id,
           date: appointmentData.date,
           modality_id: appointmentData.modality_id,
-          valor_total: appointmentData.is_cortesia ? 0 : modalityData.valor,
+          valor_total: appointmentData.is_cortesia ? 0 : (appointmentData.customValue !== null ? appointmentData.customValue : modalityData.valor),
           is_cortesia: appointmentData.is_cortesia || false,
           status: appointmentData.status || 'agendado',
           recurrence_id: appointmentData.recurrence_id,
