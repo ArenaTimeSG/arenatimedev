@@ -498,8 +498,13 @@ const NewAppointmentModal = ({
               id="cortesia"
               checked={formData.isCortesia}
               onCheckedChange={(checked) => {
-                console.log('🔍 Checkbox cortesia alterado:', checked);
-                setFormData(prev => ({ ...prev, isCortesia: checked as boolean }));
+                const newValue = checked as boolean;
+                console.log('🔍 Checkbox cortesia alterado:', checked, 'Tipo:', typeof checked, 'Novo valor:', newValue);
+                setFormData(prev => {
+                  const updated = { ...prev, isCortesia: newValue };
+                  console.log('🔍 FormData atualizado:', updated);
+                  return updated;
+                });
               }}
             />
             <Label htmlFor="cortesia" className="text-sm font-medium">

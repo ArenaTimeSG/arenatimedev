@@ -32,6 +32,7 @@ export interface CreateAppointmentData {
   status?: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
   recurrence_id?: string;
   booking_source?: 'manual' | 'online';
+  is_cortesia?: boolean;
 }
 
 export interface UpdateAppointmentData {
@@ -190,23 +191,16 @@ export const useAppointments = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      // Buscar o valor da modalidade do cache se disponível
-      const userId = user.id;
-      const cachedModalities = modalitiesCache.get(userId);
-      let modalityData = cachedModalities?.get(appointmentData.modality_id);
+      // Buscar o valor da modalidade
+      const { data: modalityData, error: modalityError } = await (supabase as any)
+        .from('modalities')
+        .select('valor')
+        .eq('id', appointmentData.modality_id)
+        .eq('user_id', user.id)
+        .single();
 
-      if (!modalityData) {
-        const { data, error: modalityError } = await supabase
-          .from('modalities')
-          .select('valor')
-          .eq('id', appointmentData.modality_id)
-          .eq('user_id', user.id)
-          .single();
-
-        if (modalityError || !data) {
-          throw new Error('Modalidade não encontrada');
-        }
-        modalityData = data;
+      if (modalityError || !modalityData) {
+        throw new Error('Modalidade não encontrada');
       }
 
       const { data, error } = await supabase
@@ -215,7 +209,8 @@ export const useAppointments = () => {
           client_id: appointmentData.client_id,
           date: appointmentData.date,
           modality_id: appointmentData.modality_id,
-          valor_total: modalityData.valor,
+          valor_total: appointmentData.is_cortesia ? 0 : modalityData.valor,
+          is_cortesia: appointmentData.is_cortesia || false,
           status: appointmentData.status || 'agendado',
           recurrence_id: appointmentData.recurrence_id,
           booking_source: appointmentData.booking_source || 'manual',
