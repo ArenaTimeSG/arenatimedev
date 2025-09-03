@@ -188,9 +188,36 @@ export const useAvailableHours = ({
               return !manualBlockades[blockadeKey]?.blocked;
             });
           }
-                 } catch (error) {
-           console.error('Erro ao verificar bloqueios manuais:', error);
-         }
+        } catch (error) {
+          console.error('Erro ao verificar bloqueios manuais:', error);
+        }
+
+        // Verificar bloqueios da tabela time_blockades do banco de dados
+        try {
+          const { data: timeBlockades, error: blockadesError } = await supabase
+            .from('time_blockades')
+            .select('time_slot')
+            .eq('user_id', adminUserId)
+            .eq('date', dateKey);
+
+          if (blockadesError) {
+            console.error('Erro ao buscar bloqueios do banco:', blockadesError);
+          } else if (timeBlockades && timeBlockades.length > 0) {
+            // Criar array de horários bloqueados
+            const blockedTimes = timeBlockades.map(blockade => blockade.time_slot);
+            
+            // Filtrar horários bloqueados
+            availableHours = availableHours.filter(hour => {
+              // Verificar se o horário está na lista de bloqueios
+              return !blockedTimes.includes(hour);
+            });
+            
+            console.log('🔍 Horários bloqueados encontrados:', blockedTimes);
+            console.log('🔍 Horários disponíveis após filtro de bloqueios:', availableHours);
+          }
+        } catch (error) {
+          console.error('Erro ao verificar bloqueios do banco:', error);
+        }
          
 
          return availableHours;

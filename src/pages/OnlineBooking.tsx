@@ -260,6 +260,26 @@ const OnlineBooking = () => {
         },
         onError: (error) => {
           console.error('❌ OnlineBooking: Erro ao criar agendamento:', error);
+          
+          // Mostrar mensagem de erro específica para o usuário
+          let errorMessage = 'Erro ao criar agendamento. Tente novamente.';
+          
+          if (error.message?.includes('não está disponível')) {
+            errorMessage = 'Este horário não está mais disponível. Por favor, selecione outro horário.';
+            // Voltar para a seleção de horário
+            setStep(3);
+          } else if (error.message?.includes('já está ocupado')) {
+            errorMessage = 'Este horário já foi ocupado por outro cliente. Por favor, selecione outro horário.';
+            // Voltar para a seleção de horário
+            setStep(3);
+          } else if (error.message?.includes('verificar disponibilidade')) {
+            errorMessage = 'Erro ao verificar disponibilidade do horário. Tente novamente.';
+            // Voltar para a seleção de horário
+            setStep(3);
+          }
+          
+          // Mostrar erro para o usuário
+          alert(errorMessage);
           setReservationStatus('pending');
           setReservaConfirmada(true);
         }

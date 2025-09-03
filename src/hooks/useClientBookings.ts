@@ -75,7 +75,53 @@ export const useClientBookings = (adminUserId?: string) => {
     mutationFn: async (data: CreateClientBookingData & { autoConfirmada?: boolean }) => {
       const { autoConfirmada, ...bookingData } = data;
       
+      // Verificar se o horário está bloqueado antes de criar o agendamento
+      try {
+        const appointmentDate = new Date(bookingData.date);
+        const dateKey = appointmentDate.toISOString().split('T')[0];
+        const timeSlot = appointmentDate.toTimeString().substring(0, 5);
+        
+        // Verificar bloqueios na tabela time_blockades
+        const { data: timeBlockades, error: blockadesError } = await supabase
+          .from('time_blockades')
+          .select('id')
+          .eq('user_id', bookingData.user_id)
+          .eq('date', dateKey)
+          .eq('time_slot', timeSlot);
 
+        if (blockadesError) {
+          console.error('❌ Erro ao verificar bloqueios:', blockadesError);
+          throw new Error('Erro ao verificar disponibilidade do horário');
+        }
+
+        if (timeBlockades && timeBlockades.length > 0) {
+          console.error('❌ Horário bloqueado:', { date: dateKey, time: timeSlot });
+          throw new Error('Este horário não está disponível para agendamento');
+        }
+
+        // Verificar se já existe um agendamento neste horário
+        const { data: existingAppointments, error: existingError } = await supabase
+          .from('appointments')
+          .select('id')
+          .eq('user_id', bookingData.user_id)
+          .eq('date', dateKey)
+          .eq('status', 'agendado')
+          .not('status', 'eq', 'cancelado');
+
+        if (existingError) {
+          console.error('❌ Erro ao verificar agendamentos existentes:', existingError);
+          throw new Error('Erro ao verificar disponibilidade do horário');
+        }
+
+        if (existingAppointments && existingAppointments.length > 0) {
+          console.error('❌ Horário já ocupado:', { date: dateKey, time: timeSlot });
+          throw new Error('Este horário já está ocupado');
+        }
+
+      } catch (error) {
+        console.error('❌ Validação de horário falhou:', error);
+        throw error;
+      }
       
       const { data: newBooking, error } = await supabase
         .from('appointments')
