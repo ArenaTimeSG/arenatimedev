@@ -340,11 +340,14 @@ export const useWorkingHours = () => {
       return slotTimeInMinutes >= startTimeInMinutes || slotTimeInMinutes < endTimeInMinutes;
     } else {
       // Funcionamento normal no mesmo dia
-      // Se o horário final é 23:59, incluir até 23:00
-      if (endHour === 23 && endMinutes === 59) {
+      // Se endHour é 00:00 (convertido para 23:59), incluir até 23:00
+      if (endHour === 0) {
+        // Funcionamento termina às 00:00, então incluir até 23:00
         return slotTimeInMinutes >= startTimeInMinutes && slotTimeInMinutes <= (23 * 60);
+      } else {
+        // Funcionamento termina em outro horário
+        return slotTimeInMinutes >= startTimeInMinutes && slotTimeInMinutes < endTimeInMinutes;
       }
-      return slotTimeInMinutes >= startTimeInMinutes && slotTimeInMinutes < endTimeInMinutes;
     }
   }, [settings?.working_hours, dayMapping, isDayEnabled]);
 
@@ -474,20 +477,22 @@ export const useWorkingHours = () => {
     }
 
     const startHour = parseInt((daySchedule as any).start.split(':')[0]);
+    const startMinutes = parseInt((daySchedule as any).start.split(':')[1] || '0');
+    const startTimeInMinutes = startHour * 60 + startMinutes;
+
     let endHour = parseInt((daySchedule as any).end.split(':')[0]);
-    
-    // Se end_time = 00:00, tratar como 23:59
-    if (endHour === 0) {
-      endHour = 23;
+    const endMinutes = parseInt((daySchedule as any).end.split(':')[1] || '0');
+    let endTimeInMinutes = endHour * 60 + endMinutes;
+
+    // Se end_time = 00:00, tratar como 23:59:59 (fim do dia)
+    if (endHour === 0 && endMinutes === 0) {
+      endTimeInMinutes = 23 * 60 + 59; // 23:59
     }
-    
+
     const availableHours: string[] = [];
     
     // Verificar se o funcionamento atravessa a madrugada
-    // Se o horário original termina às 00:00, não atravessa a madrugada (é fim do dia)
-    const originalEndHour = parseInt((daySchedule as any).end.split(':')[0]);
-    const originalEndMinutes = parseInt((daySchedule as any).end.split(':')[1] || '0');
-    const crossesMidnight = (originalEndHour !== 0) && (endHour < startHour);
+    const crossesMidnight = endTimeInMinutes < startTimeInMinutes;
     
     if (crossesMidnight) {
       // Funcionamento atravessa a madrugada (ex: 18:00 - 02:00)
@@ -505,16 +510,25 @@ export const useWorkingHours = () => {
       }
     } else {
       // Funcionamento normal no mesmo dia
-      // Se endHour é 23 (após conversão de 00:00), incluir até 23:00
-      const maxHour = endHour === 23 ? 23 : endHour;
-      for (let hour = startHour; hour <= maxHour; hour++) {
-        if (hour !== 12) { // Excluir horário do almoço
-          availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+      // Se endHour é 00:00 (convertido para 23:59), incluir até 23:00
+      if (endHour === 0) {
+        // Funcionamento termina às 00:00, então incluir até 23:00
+        for (let hour = startHour; hour <= 23; hour++) {
+          if (hour !== 12) { // Excluir horário do almoço
+            availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+          }
+        }
+      } else {
+        // Funcionamento termina em outro horário
+        for (let hour = startHour; hour < endHour; hour++) {
+          if (hour !== 12) { // Excluir horário do almoço
+            availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+          }
         }
       }
     }
 
-    // Filtrar horários bloqueados manualmente (seguindo o mesmo padrão do bloqueio do meio-dia)
+    // Filtrar horários bloqueados manualmente
     const dateString = format(date, 'yyyy-MM-dd');
     const filteredHours = availableHours.filter(hour => {
       const blockadeKey = `${dateString}-${hour}`;
