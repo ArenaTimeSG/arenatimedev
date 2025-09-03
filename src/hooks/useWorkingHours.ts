@@ -22,13 +22,171 @@ export const useWorkingHours = () => {
     originalDate?: string
   }}>({});
 
-  // Carregar bloqueios do banco de dados
-  useEffect(() => {
-    if (user?.id) {
-      loadBlockadesFromDatabase();
+
+
+  // Detectar e atualizar bloqueios recorrentes
+  const detectAndUpdateRecurringBlockades = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      // Buscar todos os bloqueios para recalcular recorrência
+      const { data, error } = await (supabase as any)
+        .from('time_blockades')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true })
+        .order('time_slot', { ascending: true });
+
+      if (error) {
+        console.error('Erro ao recarregar bloqueios para detecção de recorrência:', error);
+        return;
+      }
+
+      // Converter dados do banco para o formato local
+      const blockadesMap: {[key: string]: any} = {};
+      data?.forEach(blockade => {
+        const formattedTimeSlot = (blockade.time_slot as string).substring(0, 5);
+        const blockadeKey = `${blockade.date}-${formattedTimeSlot}`;
+        blockadesMap[blockadeKey] = {
+          blocked: true,
+          reason: blockade.reason,
+          description: blockade.description,
+          isRecurring: false, // Será detectado automaticamente
+          originalDate: blockade.date
+        };
+      });
+      
+      // Detectar bloqueios recorrentes baseado em múltiplos horários iguais
+      const timeSlotCounts: {[timeSlot: string]: number} = {};
+      data?.forEach(blockade => {
+        const timeSlot = (blockade.time_slot as string).substring(0, 5);
+        timeSlotCounts[timeSlot] = (timeSlotCounts[timeSlot] || 0) + 1;
+      });
+      
+      // Marcar como recorrentes os bloqueios que têm múltiplas ocorrências
+      Object.entries(blockadesMap).forEach(([key, blockade]) => {
+        const timeSlot = key.split('-')[1]; // Extrair horário da chave
+        if (timeSlotCounts[timeSlot] > 1) {
+          blockade.isRecurring = true;
+        }
+      });
+
+      setManualBlockades(blockadesMap);
+    } catch (error) {
+      console.error('Erro ao detectar bloqueios recorrentes:', error);
     }
   }, [user?.id]);
 
+  // Lidar com mudanças em tempo real
+  const handleRealtimeChange = useCallback((payload: any) => {
+    if (payload.eventType === 'INSERT') {
+      // Novo bloqueio inserido
+      const newBlockade = payload.new;
+      const blockadeKey = `${newBlockade.date}-${newBlockade.time_slot}`;
+      
+      setManualBlockades(prev => {
+        const newBlockades = { ...prev };
+        newBlockades[blockadeKey] = {
+          blocked: true,
+          reason: newBlockade.reason,
+          description: newBlockade.description,
+          isRecurring: false, // Será detectado automaticamente
+          originalDate: newBlockade.date
+        };
+        return newBlockades;
+      });
+
+      // Detectar se é recorrente e atualizar outros bloqueios similares
+      detectAndUpdateRecurringBlockades();
+    } else if (payload.eventType === 'DELETE') {
+      // Bloqueio removido
+      const deletedBlockade = payload.old;
+      const blockadeKey = `${deletedBlockade.date}-${deletedBlockade.time_slot}`;
+      
+      setManualBlockades(prev => {
+        const newBlockades = { ...prev };
+        delete newBlockades[blockadeKey];
+        return newBlockades;
+      });
+
+      // Recalcular recorrência após remoção
+      detectAndUpdateRecurringBlockades();
+    } else if (payload.eventType === 'UPDATE') {
+      // Bloqueio atualizado
+      const updatedBlockade = payload.new;
+      const blockadeKey = `${updatedBlockade.date}-${updatedBlockade.time_slot}`;
+      
+      setManualBlockades(prev => {
+        const newBlockades = { ...prev };
+        newBlockades[blockadeKey] = {
+          blocked: true,
+          reason: updatedBlockade.reason,
+          description: updatedBlockade.description,
+          isRecurring: false, // Será detectado automaticamente
+          originalDate: updatedBlockade.date
+        };
+        return newBlockades;
+      });
+
+      // Recalcular recorrência após atualização
+      detectAndUpdateRecurringBlockades();
+    }
+  }, [detectAndUpdateRecurringBlockades]);
+
+  // Configurar subscription em tempo real para mudanças na tabela time_blockades
+  const setupRealtimeSubscription = useCallback(() => {
+    if (!user?.id) return null;
+
+    try {
+      const subscription = (supabase as any)
+        .channel('time_blockades_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'time_blockades',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload: any) => {
+            console.log('🔄 Mudança detectada na tabela time_blockades:', payload);
+            handleRealtimeChange(payload);
+          }
+        )
+        .subscribe();
+
+      console.log('✅ Subscription Realtime configurada com sucesso');
+      return subscription;
+    } catch (error) {
+      console.warn('⚠️ Realtime não disponível, usando polling como fallback:', error);
+      return null;
+    }
+  }, [user?.id, handleRealtimeChange]);
+
+  // Fallback para polling quando Realtime não estiver disponível
+  const setupPollingFallback = useCallback(() => {
+    if (!user?.id) return null;
+
+    console.log('🔄 Configurando polling como fallback para sincronização');
+    
+    // Polling a cada 5 segundos
+    const pollInterval = setInterval(async () => {
+      try {
+        await loadBlockadesFromDatabase();
+      } catch (error) {
+        console.warn('Erro durante polling:', error);
+      }
+    }, 5000);
+
+    return pollInterval;
+  }, [user?.id]);
+
+  // Limpar subscription
+  const cleanupRealtimeSubscription = useCallback(() => {
+    (supabase as any).removeAllChannels();
+  }, []);
+
+  // Carregar bloqueios do banco de dados
   const loadBlockadesFromDatabase = async () => {
     if (!user?.id) return;
 
@@ -45,41 +203,67 @@ export const useWorkingHours = () => {
         return;
       }
 
-             // Converter dados do banco para o formato local
-       const blockadesMap: {[key: string]: any} = {};
-       data?.forEach(blockade => {
-         // Garante que o time_slot esteja no formato HH:MM para consistência
-         const formattedTimeSlot = (blockade.time_slot as string).substring(0, 5);
-         const blockadeKey = `${blockade.date}-${formattedTimeSlot}`;
-         blockadesMap[blockadeKey] = {
-           blocked: true,
-           reason: blockade.reason,
-           description: blockade.description,
-           isRecurring: false, // Será detectado automaticamente
-           originalDate: blockade.date
-         };
-       });
-       
-       // Detectar bloqueios recorrentes baseado em múltiplos horários iguais
-       const timeSlotCounts: {[timeSlot: string]: number} = {};
-       data?.forEach(blockade => {
-         const timeSlot = (blockade.time_slot as string).substring(0, 5);
-         timeSlotCounts[timeSlot] = (timeSlotCounts[timeSlot] || 0) + 1;
-       });
-       
-       // Marcar como recorrentes os bloqueios que têm múltiplas ocorrências
-       Object.entries(blockadesMap).forEach(([key, blockade]) => {
-         const timeSlot = key.split('-')[1]; // Extrair horário da chave
-         if (timeSlotCounts[timeSlot] > 1) {
-           blockade.isRecurring = true;
-         }
-       });
+      // Converter dados do banco para o formato local
+      const blockadesMap: {[key: string]: any} = {};
+      data?.forEach(blockade => {
+        // Garante que o time_slot esteja no formato HH:MM para consistência
+        const formattedTimeSlot = (blockade.time_slot as string).substring(0, 5);
+        const blockadeKey = `${blockade.date}-${formattedTimeSlot}`;
+        blockadesMap[blockadeKey] = {
+          blocked: true,
+          reason: blockade.reason,
+          description: blockade.description,
+          isRecurring: false, // Será detectado automaticamente
+          originalDate: blockade.date
+        };
+      });
+      
+      // Detectar bloqueios recorrentes baseado em múltiplos horários iguais
+      const timeSlotCounts: {[timeSlot: string]: number} = {};
+      data?.forEach(blockade => {
+        const timeSlot = (blockade.time_slot as string).substring(0, 5);
+        timeSlotCounts[timeSlot] = (timeSlotCounts[timeSlot] || 0) + 1;
+      });
+      
+      // Marcar como recorrentes os bloqueios que têm múltiplas ocorrências
+      Object.entries(blockadesMap).forEach(([key, blockade]) => {
+        const timeSlot = key.split('-')[1]; // Extrair horário da chave
+        if (timeSlotCounts[timeSlot] > 1) {
+          blockade.isRecurring = true;
+        }
+      });
 
       setManualBlockades(blockadesMap);
     } catch (error) {
       console.error('Erro ao carregar bloqueios:', error);
     }
   };
+
+  // Carregar bloqueios do banco de dados
+  useEffect(() => {
+    let subscription: any = null;
+    let pollInterval: any = null;
+
+    if (user?.id) {
+      loadBlockadesFromDatabase();
+      subscription = setupRealtimeSubscription();
+      
+      // Se não conseguiu configurar Realtime, configurar polling
+      if (!subscription) {
+        pollInterval = setupPollingFallback();
+      }
+    }
+
+    // Cleanup da subscription e polling
+    return () => {
+      if (subscription) {
+        cleanupRealtimeSubscription();
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [user?.id, setupRealtimeSubscription, setupPollingFallback, cleanupRealtimeSubscription]);
 
   // Mapeamento de dias da semana para as chaves das configurações
   // getDay() retorna: 0 = Domingo, 1 = Segunda, 2 = Terça, etc.
@@ -478,14 +662,26 @@ export const useWorkingHours = () => {
 
         console.log('🔍 Bloqueios recorrentes gerados:', recurringBlockades);
 
+        // ATUALIZAR ESTADO LOCAL IMEDIATAMENTE para feedback visual instantâneo
+        setManualBlockades(prev => {
+          const newBlockades = { ...prev };
+          Object.entries(recurringBlockades).forEach(([key, blockade]) => {
+            newBlockades[key] = {
+              ...blockade,
+              isRecurring: true,
+              recurrenceType: options.recurrenceType,
+              endDate: options.endDate ? format(options.endDate, 'yyyy-MM-dd') : undefined,
+              isIndefinite: options.isIndefinite
+            };
+          });
+          return newBlockades;
+        });
+
         // Salvar todos os bloqueios recorrentes no banco de dados
         const blockadeData = Object.entries(recurringBlockades).map(([key, blockade]) => {
-          // O key tem formato "2025-01-27-10:00", precisamos extrair apenas a data (2025-01-27)
           const parts = key.split('-');
           const dateStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
           const blockadeInfo = blockade as any;
-          
-          console.log('🔍 Processando key:', key, 'parts:', parts, 'dateStr:', dateStr);
           
           return {
             user_id: user.id,
@@ -496,35 +692,11 @@ export const useWorkingHours = () => {
           };
         });
 
-        console.log('🔍 Dados para inserção no banco:', blockadeData);
-
         // Inserir um por vez para evitar problemas de validação
         let insertedCount = 0;
         let skippedCount = 0;
         
         for (const blockade of blockadeData) {
-          console.log('🔍 Tentando inserir bloqueio:', blockade);
-          
-          // Validar dados antes de enviar
-          if (!blockade.user_id || !blockade.date || !blockade.time_slot || !blockade.reason) {
-            console.error('❌ Dados inválidos para inserção:', blockade);
-            throw new Error('Dados inválidos para inserção no banco');
-          }
-          
-          // Verificar se a data está no formato correto
-          const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-          if (!dateRegex.test(blockade.date)) {
-            console.error('❌ Formato de data inválido:', blockade.date);
-            throw new Error('Formato de data inválido');
-          }
-          
-          // Verificar se o time_slot está no formato correto
-          const timeRegex = /^\d{2}:\d{2}$/;
-          if (!timeRegex.test(blockade.time_slot)) {
-            console.error('❌ Formato de horário inválido:', blockade.time_slot);
-            throw new Error('Formato de horário inválido');
-          }
-          
           // Verificar se o bloqueio já existe antes de inserir
           const { data: existingBlockade, error: checkError } = await (supabase as any)
             .from('time_blockades')
@@ -534,7 +706,7 @@ export const useWorkingHours = () => {
             .eq('time_slot', blockade.time_slot)
             .single();
           
-          if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = "no rows returned"
+          if (checkError && checkError.code !== 'PGRST116') {
             console.error('❌ Erro ao verificar bloqueio existente:', checkError);
             throw checkError;
           }
@@ -542,10 +714,8 @@ export const useWorkingHours = () => {
           if (existingBlockade) {
             console.log('⚠️ Bloqueio já existe, pulando inserção:', blockade);
             skippedCount++;
-            continue; // Pular este bloqueio e continuar com o próximo
+            continue;
           }
-          
-          console.log('🔍 Dados validados, enviando para o Supabase...');
           
           const { error } = await (supabase as any)
             .from('time_blockades')
@@ -553,34 +723,12 @@ export const useWorkingHours = () => {
 
           if (error) {
             console.error('❌ Erro ao salvar bloqueio individual:', error);
-            console.error('❌ Dados do bloqueio que falhou:', blockade);
-            console.error('❌ Tipo de erro:', typeof error);
-            console.error('❌ Mensagem de erro:', error.message);
-            console.error('❌ Código de erro:', error.code);
-            console.error('❌ Detalhes do erro:', error.details);
             throw error;
           } else {
-            console.log('✅ Bloqueio inserido com sucesso:', blockade);
             insertedCount++;
           }
         }
 
-        // Atualizar estado local com todos os bloqueios recorrentes
-        setManualBlockades(prev => {
-          const newBlockades = { ...prev };
-          Object.entries(recurringBlockades).forEach(([key, blockade]) => {
-            newBlockades[key] = {
-              ...blockade,
-              isRecurring: true, // Marcar explicitamente como recorrente
-              recurrenceType: options.recurrenceType,
-              endDate: options.endDate ? format(options.endDate, 'yyyy-MM-dd') : undefined,
-              isIndefinite: options.isIndefinite
-            };
-          });
-          return newBlockades;
-        });
-
-        // Usar as variáveis já declaradas no loop
         let message = `${insertedCount} horários foram bloqueados recorrentemente!`;
         if (skippedCount > 0) {
           message += ` (${skippedCount} já existiam e foram pulados)`;
@@ -595,6 +743,18 @@ export const useWorkingHours = () => {
         const dateString = format(date, 'yyyy-MM-dd');
         const blockadeKey = `${dateString}-${timeSlot}`;
         
+        // ATUALIZAR ESTADO LOCAL IMEDIATAMENTE para feedback visual instantâneo
+        setManualBlockades(prev => {
+          const newBlockades = { ...prev };
+          newBlockades[blockadeKey] = {
+            blocked: true,
+            reason,
+            description: options?.description,
+            isRecurring: false
+          };
+          return newBlockades;
+        });
+
         // Salvar no banco de dados
         const { error } = await (supabase as any)
           .from('time_blockades')
@@ -607,6 +767,13 @@ export const useWorkingHours = () => {
           });
 
         if (error) {
+          // Se falhou no banco, reverter o estado local
+          setManualBlockades(prev => {
+            const newBlockades = { ...prev };
+            delete newBlockades[blockadeKey];
+            return newBlockades;
+          });
+
           console.error('Erro ao salvar bloqueio:', error);
           toast({
             title: "Erro",
@@ -615,18 +782,6 @@ export const useWorkingHours = () => {
           });
           return;
         }
-
-        // Atualizar estado local
-        setManualBlockades(prev => {
-          const newBlockades = { ...prev };
-          newBlockades[blockadeKey] = {
-            blocked: true,
-            reason,
-            description: options?.description,
-            isRecurring: false
-          };
-          return newBlockades;
-        });
 
         toast({
           title: "Sucesso",
@@ -662,6 +817,19 @@ export const useWorkingHours = () => {
         // Desbloquear toda a recorrência
         console.log('🔍 Desbloqueando toda a recorrência para:', timeSlot);
         
+        // ATUALIZAR ESTADO LOCAL IMEDIATAMENTE para feedback visual instantâneo
+        setManualBlockades(prev => {
+          const newBlockades = { ...prev };
+          // Remover todos os bloqueios com o mesmo horário a partir da data selecionada
+          Object.keys(newBlockades).forEach(key => {
+            const [blockadeDate, blockadeTime] = key.split('-');
+            if (blockadeTime === timeSlot && blockadeDate >= dateString) {
+              delete newBlockades[key];
+            }
+          });
+          return newBlockades;
+        });
+        
         // Buscar todos os bloqueios com o mesmo horário
         const { data: allBlockades, error: fetchError } = await (supabase as any)
           .from('time_blockades')
@@ -671,6 +839,8 @@ export const useWorkingHours = () => {
           .gte('date', dateString); // A partir da data selecionada
         
         if (fetchError) {
+          // Se falhou na busca, reverter o estado local
+          await loadBlockadesFromDatabase();
           console.error('Erro ao buscar bloqueios para remoção:', fetchError);
           toast({
             title: "Erro",
@@ -692,6 +862,8 @@ export const useWorkingHours = () => {
             .gte('date', dateString);
           
           if (deleteError) {
+            // Se falhou na remoção, reverter o estado local
+            await loadBlockadesFromDatabase();
             console.error('Erro ao remover bloqueios recorrentes:', deleteError);
             toast({
               title: "Erro",
@@ -700,16 +872,6 @@ export const useWorkingHours = () => {
             });
             return;
           }
-          
-          // Atualizar estado local removendo todos os bloqueios
-          setManualBlockades(prev => {
-            const newBlockades = { ...prev };
-            allBlockades.forEach(blockade => {
-              const key = `${blockade.date}-${blockade.time_slot}`;
-              delete newBlockades[key];
-            });
-            return newBlockades;
-          });
           
           toast({
             title: "Sucesso",
@@ -724,6 +886,13 @@ export const useWorkingHours = () => {
         }
       } else {
         // Desbloquear apenas o horário específico
+        // ATUALIZAR ESTADO LOCAL IMEDIATAMENTE para feedback visual instantâneo
+        setManualBlockades(prev => {
+          const newBlockades = { ...prev };
+          delete newBlockades[blockadeKey];
+          return newBlockades;
+        });
+
         const { error } = await (supabase as any)
           .from('time_blockades')
           .delete()
@@ -732,6 +901,8 @@ export const useWorkingHours = () => {
           .eq('time_slot', timeSlot);
 
         if (error) {
+          // Se falhou no banco, reverter o estado local
+          await loadBlockadesFromDatabase();
           console.error('Erro ao remover bloqueio:', error);
           toast({
             title: "Erro",
@@ -741,13 +912,6 @@ export const useWorkingHours = () => {
           return;
         }
 
-        // Atualizar estado local
-        setManualBlockades(prev => {
-          const newBlockades = { ...prev };
-          delete newBlockades[blockadeKey];
-          return newBlockades;
-        });
-
         toast({
           title: "Sucesso",
           description: "Horário desbloqueado com sucesso!",
@@ -755,6 +919,8 @@ export const useWorkingHours = () => {
       }
 
     } catch (error) {
+      // Em caso de erro, recarregar o estado do banco para garantir consistência
+      await loadBlockadesFromDatabase();
       console.error('Erro ao desbloquear horário:', error);
       toast({
         title: "Erro",
@@ -762,7 +928,7 @@ export const useWorkingHours = () => {
         variant: "destructive"
       });
     }
-  }, [user?.id, toast]);
+  }, [user?.id, toast, loadBlockadesFromDatabase]);
 
   // Função para obter o motivo do bloqueio
   const getBlockadeReason = useCallback((date: Date, timeSlot: string): string | null => {
@@ -827,9 +993,15 @@ export const useWorkingHours = () => {
     return manualBlockades[blockadeKey] || null;
   }, [manualBlockades]);
 
+  // Função para forçar atualização do estado (útil para sincronização manual)
+  const refreshBlockades = useCallback(async () => {
+    await loadBlockadesFromDatabase();
+  }, [loadBlockadesFromDatabase]);
+
   return {
     // Estados
     workingHours: settings?.working_hours,
+    manualBlockades, // Expor o estado para debugging
     
     // Funções de verificação
     isDayEnabled,
@@ -852,6 +1024,9 @@ export const useWorkingHours = () => {
     isRecurringBlockade,
     isRecurringBlockadeFromDB,
     getBlockadeInfo,
+    
+    // Funções de sincronização
+    refreshBlockades,
     
     // Utilitários
     dayMapping
