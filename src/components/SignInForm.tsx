@@ -65,6 +65,11 @@ export const SignInForm = ({ onSuccess, onSwitchToSignUp }: SignInFormProps) => 
       [field]: value
     }));
     
+    // Limpar erro geral quando o usuário começar a digitar
+    if (errors.general) {
+      setErrors(prev => ({ ...prev, general: undefined }));
+    }
+    
     // Validar campo
     validateField(field, value);
   };
@@ -74,13 +79,17 @@ export const SignInForm = ({ onSuccess, onSwitchToSignUp }: SignInFormProps) => 
     return (
       formData.email &&
       formData.password &&
-      Object.keys(errors).length === 0
+      !errors.email &&
+      !errors.password
     );
   };
 
   // Submeter formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Limpar erros anteriores para permitir nova tentativa
+    setErrors({});
     
     // Validar campos
     validateField('email', formData.email);
