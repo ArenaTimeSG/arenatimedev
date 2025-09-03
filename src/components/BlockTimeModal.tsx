@@ -21,6 +21,7 @@ interface BlockTimeModalProps {
     isRecurring: boolean;
     endDate?: Date;
     isIndefinite?: boolean;
+    recurrenceType?: 'daily' | 'weekly' | 'monthly';
   }) => void;
 }
 
@@ -67,7 +68,8 @@ const BlockTimeModal: React.FC<BlockTimeModalProps> = ({
       description: description.trim() || undefined,
       isRecurring,
       endDate: calculatedEndDate,
-      isIndefinite: endDateType === 'indefinite'
+      isIndefinite: endDateType === 'indefinite',
+      recurrenceType: recurrenceType
     });
     
     toast({ title: "Sucesso", description: "Horário bloqueado com sucesso!" });

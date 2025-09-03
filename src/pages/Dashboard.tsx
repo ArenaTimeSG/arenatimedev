@@ -72,6 +72,7 @@ const Dashboard = () => {
   const [blockedTimeSlot, setBlockedTimeSlot] = useState<{day: Date, timeSlot: string} | null>(null);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [isUnblockModalOpen, setIsUnblockModalOpen] = useState(false);
+  const [isRecurringForUnblock, setIsRecurringForUnblock] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     email: string;
@@ -91,6 +92,7 @@ const Dashboard = () => {
     unblockTimeSlot,
     getBlockadeReason,
     isRecurringBlockade,
+    isRecurringBlockadeFromDB,
     getBlockadeInfo
   } = useWorkingHours();
 
@@ -303,6 +305,7 @@ const Dashboard = () => {
     isRecurring: boolean;
     endDate?: Date;
     isIndefinite?: boolean;
+    recurrenceType?: 'daily' | 'weekly' | 'monthly';
   }) => {
     if (selectedDate && selectedTime) {
       blockTimeSlot(selectedDate, selectedTime, blockData.reason, {
@@ -310,7 +313,7 @@ const Dashboard = () => {
         isRecurring: blockData.isRecurring,
         endDate: blockData.endDate,
         isIndefinite: blockData.isIndefinite,
-        recurrenceType: blockData.isRecurring ? 'weekly' : undefined
+        recurrenceType: blockData.recurrenceType
       });
     }
   };
@@ -332,9 +335,12 @@ const Dashboard = () => {
     }
   };
 
-  const handleOpenUnblockModal = () => {
+  const handleOpenUnblockModal = async () => {
     if (selectedDate && selectedTime) {
-      const isRecurring = isRecurringBlockade(selectedDate, selectedTime);
+      // Verificar se é recorrente baseado no banco de dados
+      const isRecurring = await isRecurringBlockadeFromDB(selectedDate, selectedTime);
+      console.log('🔍 Modal de desbloqueio - é recorrente?', isRecurring);
+      setIsRecurringForUnblock(isRecurring);
       setIsUnblockModalOpen(true);
     }
   };
@@ -782,7 +788,7 @@ const Dashboard = () => {
         onClose={() => setIsUnblockModalOpen(false)}
         selectedDate={selectedDate}
         selectedTime={selectedTime}
-        isRecurring={selectedDate && selectedTime ? isRecurringBlockade(selectedDate, selectedTime) : false}
+        isRecurring={isRecurringForUnblock}
         onConfirm={handleUnblockTimeSlot}
       />
 
