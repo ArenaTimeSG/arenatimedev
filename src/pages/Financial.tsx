@@ -10,7 +10,8 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useModalities } from '@/hooks/useModalities';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
-import { DollarSign, TrendingUp, TrendingDown, Calendar, ArrowLeft, Users, ChevronLeft, ChevronRight, FileText, CheckCircle, AlertCircle, Clock, XCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, Calendar, ArrowLeft, Users, ChevronLeft, ChevronRight, FileText, CheckCircle, AlertCircle, Clock, XCircle, CreditCard } from 'lucide-react';
+import BulkPaymentModal from '@/components/BulkPaymentModal';
 import { isBefore, isEqual, startOfMonth, endOfMonth, addMonths, subMonths, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -71,6 +72,14 @@ const Financial = () => {
   
   // Navegação por mês
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  
+  // Estado para modal de pagamento em lote
+  const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
+  const [selectedClientForPayment, setSelectedClientForPayment] = useState<{
+    id: string;
+    name: string;
+    appointments: AppointmentData[];
+  } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -196,6 +205,83 @@ const Financial = () => {
 
   const handleCurrentMonth = () => {
     setSelectedMonth(new Date());
+  };
+
+  // Função para abrir modal de pagamento em lote
+  const handleOpenBulkPayment = (client: ClientFinancial) => {
+    const clientAppointments = appointmentsData.filter(apt => apt.id === client.id);
+    setSelectedClientForPayment({
+      id: client.id,
+      name: client.name,
+      appointments: clientAppointments
+    });
+    setIsBulkPaymentModalOpen(true);
+  };
+
+  // Função para fechar modal e recarregar dados
+  const handleBulkPaymentCompleted = () => {
+    setIsBulkPaymentModalOpen(false);
+    setSelectedClientForPayment(null);
+    fetchFinancialData(); // Recarregar dados financeiros
+  };
+
+  // Função para marcar todos os agendamentos pendentes como pagos
+  const handleMarkAllAsPaid = async (client: ClientFinancial) => {
+    try {
+      setIsLoading(true);
+      
+      // Buscar todos os agendamentos pendentes do cliente no mês selecionado
+      const startOfSelectedMonth = startOfMonth(selectedMonth);
+      const endOfSelectedMonth = endOfMonth(selectedMonth);
+      
+      const { data: pendingAppointments, error: fetchError } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('user_id', user?.id)
+        .eq('client_id', client.id)
+        .eq('status', 'a_cobrar')
+        .gte('date', startOfSelectedMonth.toISOString())
+        .lte('date', endOfSelectedMonth.toISOString());
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      if (!pendingAppointments || pendingAppointments.length === 0) {
+        toast({
+          title: 'Nenhum agendamento pendente',
+          description: 'Este cliente não possui agendamentos pendentes no mês selecionado.',
+        });
+        return;
+      }
+
+      // Marcar todos como pagos
+      const { error: updateError } = await supabase
+        .from('appointments')
+        .update({ status: 'pago' })
+        .in('id', pendingAppointments.map(apt => apt.id));
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      toast({
+        title: 'Pagamentos processados!',
+        description: `${pendingAppointments.length} agendamentos foram marcados como pagos.`,
+      });
+
+      // Recarregar dados
+      fetchFinancialData();
+    } catch (error: any) {
+      console.error('Erro ao marcar agendamentos como pagos:', error);
+      toast({
+        title: 'Erro ao processar pagamentos',
+        description: error.message || 'Ocorreu um erro inesperado',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Função para corrigir valores dos agendamentos recorrentes existentes
@@ -633,6 +719,26 @@ const Financial = () => {
                               {formatCurrency(client.total_pago + client.total_pendente)}
                             </p>
                           </div>
+                          {client.total_pendente > 0 && (
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleOpenBulkPayment(client)}
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 h-8"
+                              >
+                                <CreditCard className="h-3 w-3 mr-1" />
+                                Pagar
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleMarkAllAsPaid(client)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 h-8"
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Marcar Todos
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -690,6 +796,18 @@ const Financial = () => {
           </Card>
         </motion.div>
       </div>
+
+      {/* Modal de Pagamento em Lote */}
+      {selectedClientForPayment && (
+        <BulkPaymentModal
+          isOpen={isBulkPaymentModalOpen}
+          onClose={() => setIsBulkPaymentModalOpen(false)}
+          clientId={selectedClientForPayment.id}
+          clientName={selectedClientForPayment.name}
+          appointments={selectedClientForPayment.appointments}
+          onPaymentCompleted={handleBulkPaymentCompleted}
+        />
+      )}
     </div>
   );
 };

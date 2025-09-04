@@ -141,6 +141,7 @@ const Dashboard = () => {
     }
   };
 
+
   // Função para filtrar agendamentos da semana atual
   const getAppointmentsForCurrentWeek = () => {
     // Usar a mesma lógica do ResponsiveCalendar para garantir consistência
@@ -541,7 +542,6 @@ const Dashboard = () => {
                 <DollarSign className="h-5 w-5" />
               </Button>
             </motion.div>
-
 
 
             {/* Settings */}
