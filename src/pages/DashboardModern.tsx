@@ -593,7 +593,7 @@ const Dashboard = () => {
                     className="bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm"
                   >
                     <FileText className="h-4 w-4 mr-2" />
-                    Exportar Horários
+                    Horários Disponíveis
                   </Button>
                 </motion.div>
               </div>

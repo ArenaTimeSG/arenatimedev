@@ -9,7 +9,6 @@ import { useWorkingHours } from '@/hooks/useWorkingHours';
 import { useSettingsSync } from '@/hooks/useSettingsSync';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointments } from '@/hooks/useAppointments';
-import { useAppointmentsRealtime } from '@/hooks/useAppointmentsRealtime';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Plus, Users, DollarSign, Activity, LogOut, FileText, Settings, ChevronLeft, ChevronRight, User, ChevronDown, Shield, Mail, Phone, Clock, TrendingUp, CheckCircle, AlertCircle, AlertTriangle, Repeat } from 'lucide-react';
@@ -59,8 +58,6 @@ const Dashboard = () => {
   const { toast } = useToast();
   const { appointments, getFinancialSummary, isLoading: appointmentsLoading } = useAppointments();
   
-  // Hook para real-time dos agendamentos
-  const { isConnected: isRealtimeConnected } = useAppointmentsRealtime();
   const navigate = useNavigate();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -659,13 +656,6 @@ const Dashboard = () => {
               </div>
               
               <div className="flex items-center gap-4">
-                {/* Indicador de Real-time */}
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${isRealtimeConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-                  <span className="text-xs text-gray-600">
-                    {isRealtimeConnected ? 'Tempo Real' : 'Offline'}
-                  </span>
-                </div>
                 
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
@@ -675,7 +665,7 @@ const Dashboard = () => {
                     className="bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm"
                   >
                     <FileText className="h-4 w-4 mr-2" />
-                    Exportar Horários
+                    Horários Disponíveis
                   </Button>
                 </motion.div>
               </div>

@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointments } from '@/hooks/useAppointments';
-import { useAppointmentsRealtime } from '@/hooks/useAppointmentsRealtime';
 import { formatCurrency, formatModalityWithValue } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, ArrowLeft, Search, Filter, Plus, ChevronLeft, ChevronRight, Clock, CheckCircle, TrendingUp, Users, AlertCircle } from 'lucide-react';
@@ -45,8 +44,6 @@ const Appointments = () => {
   const { toast } = useToast();
   const { appointments, isLoading } = useAppointments();
   
-  // Hook para real-time dos agendamentos
-  const { isConnected: isRealtimeConnected } = useAppointmentsRealtime();
   const navigate = useNavigate();
   const [filteredAppointments, setFilteredAppointments] = useState<AppointmentWithModality[]>([]);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -240,13 +237,6 @@ const Appointments = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              {/* Indicador de Real-time */}
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isRealtimeConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-                <span className="text-xs text-gray-600">
-                  {isRealtimeConnected ? 'Tempo Real' : 'Offline'}
-                </span>
-              </div>
               
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button
