@@ -60,7 +60,8 @@ export const initializeUserSettings = async (userId: string, userEmail: string, 
         default_interval: defaultSettings.default_interval,
         notifications_enabled: defaultSettings.notifications_enabled as any,
         theme: defaultSettings.theme,
-        personal_data: defaultSettings.personal_data as any
+        personal_data: defaultSettings.personal_data as any,
+        payment_policy: defaultSettings.payment_policy
       });
 
     if (error) {

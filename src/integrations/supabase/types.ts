@@ -187,6 +187,7 @@ export type Database = {
           notifications_enabled: Json
           theme: string
           personal_data: Json
+          payment_policy: string
           updated_at: string
           user_id: string
         }
@@ -200,6 +201,7 @@ export type Database = {
           notifications_enabled?: Json
           theme?: string
           personal_data?: Json
+          payment_policy?: string
           updated_at?: string
           user_id: string
         }
@@ -213,6 +215,7 @@ export type Database = {
           notifications_enabled?: Json
           theme?: string
           personal_data?: Json
+          payment_policy?: string
           updated_at?: string
           user_id?: string
         }

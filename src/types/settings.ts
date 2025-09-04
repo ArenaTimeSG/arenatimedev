@@ -61,6 +61,11 @@ export interface Settings {
   personal_data: UserProfile;
   online_enabled: boolean;
   online_booking: OnlineBookingConfig;
+  payment_policy: 'sem_pagamento' | 'obrigatorio' | 'opcional';
+  mercado_pago_access_token?: string;
+  mercado_pago_public_key?: string;
+  mercado_pago_webhook_url?: string;
+  mercado_pago_enabled?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -109,7 +114,9 @@ export const DEFAULT_SETTINGS: Omit<Settings, 'id' | 'user_id' | 'created_at' | 
     auto_agendar: false,
     tempo_minimo_antecedencia: 24,
     duracao_padrao: 60
-  }
+  },
+  payment_policy: 'sem_pagamento',
+  mercado_pago_enabled: false
 };
 
 // Modality names mapping
@@ -132,6 +139,13 @@ export const THEME_OPTIONS = [
   { value: 'light', label: 'Claro' },
   { value: 'dark', label: 'Escuro' },
   { value: 'custom', label: 'Personalizado' }
+] as const;
+
+// Payment policy options
+export const PAYMENT_POLICY_OPTIONS = [
+  { value: 'sem_pagamento', label: 'Sem Pagamento' },
+  { value: 'opcional', label: 'Pagamento Opcional' },
+  { value: 'obrigatorio', label: 'Pagamento Obrigatório' }
 ] as const;
 
 export const DAY_NAMES: Record<string, string> = {

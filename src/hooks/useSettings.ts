@@ -21,6 +21,15 @@ const getSafeSettings = (settings: Settings | null): Settings => {
     personal_data: settings.personal_data || DEFAULT_SETTINGS.personal_data,
     online_enabled: settings.online_enabled ?? DEFAULT_SETTINGS.online_enabled,
     online_booking: settings.online_booking || DEFAULT_SETTINGS.online_booking,
+    payment_policy: settings.payment_policy ?? DEFAULT_SETTINGS.payment_policy,
+    mercado_pago_access_token: settings.mercado_pago_access_token || '',
+    mercado_pago_public_key: settings.mercado_pago_public_key || '',
+    mercado_pago_webhook_url: settings.mercado_pago_webhook_url || '',
+    mercado_pago_enabled: settings.mercado_pago_enabled ?? DEFAULT_SETTINGS.mercado_pago_enabled,
+    id: settings.id,
+    user_id: settings.user_id,
+    created_at: settings.created_at,
+    updated_at: settings.updated_at
   };
 };
 
@@ -54,6 +63,7 @@ export const useSettings = () => {
         .eq('user_id', userId)
         .single();
 
+
       if (error) {
         if (error.code === 'PGRST116') {
           // Nenhum registro encontrado, criar configurações padrão
@@ -79,7 +89,8 @@ export const useSettings = () => {
               theme: defaultSettings.theme,
               personal_data: defaultSettings.personal_data as any,
               online_enabled: defaultSettings.online_enabled,
-              online_booking: defaultSettings.online_booking as any
+              online_booking: defaultSettings.online_booking as any,
+              payment_policy: defaultSettings.payment_policy
             })
             .select()
             .single();
@@ -115,6 +126,9 @@ export const useSettings = () => {
         throw new Error('Usuário não autenticado');
       }
 
+      console.log('🔄 useSettings - Atualizando configurações:', updates);
+      console.log('🔄 useSettings - User ID:', user.id);
+
       const { data, error } = await supabase
         .from('settings')
         .update(updates as any)
@@ -124,9 +138,22 @@ export const useSettings = () => {
 
       if (error) {
         console.error('❌ Erro ao salvar configurações:', error);
+        console.error('❌ Detalhes do erro Supabase:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        
+        // Se o erro for sobre coluna não existir, dar uma mensagem mais clara
+        if (error.code === '42703' || error.message?.includes('column "payment_policy" does not exist')) {
+          throw new Error('Campo payment_policy não existe no banco de dados. Execute a migração: npx supabase db reset');
+        }
+        
         throw error;
       }
 
+      console.log('✅ useSettings - Configurações salvas com sucesso:', data);
       return data as unknown as Settings;
     },
     onSuccess: (data) => {

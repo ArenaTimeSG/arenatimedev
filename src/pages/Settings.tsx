@@ -20,7 +20,9 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { ToggleAgendamento } from '@/components/booking-settings/ToggleAgendamento';
 import { LinkCompartilhamento } from '@/components/booking-settings/LinkCompartilhamento';
+import { PaymentPolicySettings } from '@/components/booking-settings/PaymentPolicySettings';
 import { ConfiguracoesRegras } from '@/components/booking-settings/ConfiguracoesRegras';
+import { MercadoPagoSettings } from '@/components/booking-settings/MercadoPagoSettings';
 
 
 const Settings = () => {
@@ -333,6 +335,71 @@ const Settings = () => {
       toast({
         title: 'Erro ao atualizar',
         description: 'Não foi possível atualizar o status do agendamento online.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Função para atualizar política de pagamento
+  const handleUpdatePaymentPolicy = async (paymentPolicy: 'sem_pagamento' | 'obrigatorio' | 'opcional') => {
+    try {
+      console.log('🔄 Atualizando política de pagamento:', paymentPolicy);
+      console.log('🔄 Usuário atual:', user?.id);
+      console.log('🔄 Configurações atuais:', settings);
+      
+      await updateSettings({
+        payment_policy: paymentPolicy
+      });
+      
+      console.log('✅ Política de pagamento atualizada com sucesso');
+      
+      toast({
+        title: 'Política de Pagamento Atualizada',
+        description: 'A política de pagamento foi atualizada com sucesso.',
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('❌ Erro ao atualizar política de pagamento:', error);
+      console.error('❌ Detalhes do erro:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      
+      toast({
+        title: 'Erro ao atualizar',
+        description: `Não foi possível atualizar a política de pagamento. Erro: ${error.message || 'Erro desconhecido'}`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Função para atualizar configurações do Mercado Pago
+  const handleUpdateMercadoPago = async (mercadoPagoData: {
+    mercado_pago_enabled?: boolean;
+    mercado_pago_access_token?: string;
+    mercado_pago_public_key?: string;
+    mercado_pago_webhook_url?: string;
+  }) => {
+    try {
+      console.log('🔄 Atualizando configurações do Mercado Pago:', mercadoPagoData);
+      
+      await updateSettings(mercadoPagoData);
+      
+      console.log('✅ Configurações do Mercado Pago atualizadas com sucesso');
+      
+      toast({
+        title: 'Configurações do Mercado Pago Atualizadas',
+        description: 'As configurações do Mercado Pago foram salvas com sucesso.',
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('❌ Erro ao atualizar configurações do Mercado Pago:', error);
+      
+      toast({
+        title: 'Erro ao atualizar',
+        description: `Não foi possível atualizar as configurações do Mercado Pago. Erro: ${error.message || 'Erro desconhecido'}`,
         variant: 'destructive',
       });
     }
@@ -667,6 +734,26 @@ const Settings = () => {
                  />
                  
                  <LinkCompartilhamento />
+                 
+                 <PaymentPolicySettings 
+                   paymentPolicy={settings?.payment_policy || 'sem_pagamento'}
+                   onUpdate={handleUpdatePaymentPolicy}
+                 />
+                 
+                 <MercadoPagoSettings 
+                   mercadoPagoEnabled={settings?.mercado_pago_enabled || false}
+                   accessToken={settings?.mercado_pago_access_token || ''}
+                   publicKey={settings?.mercado_pago_public_key || ''}
+                   webhookUrl={settings?.mercado_pago_webhook_url || ''}
+                   onUpdate={async (mercadoPagoData) => {
+                     await handleUpdateMercadoPago({
+                       mercado_pago_enabled: mercadoPagoData.mercado_pago_enabled,
+                       mercado_pago_access_token: mercadoPagoData.mercado_pago_access_token,
+                       mercado_pago_public_key: mercadoPagoData.mercado_pago_public_key,
+                       mercado_pago_webhook_url: mercadoPagoData.mercado_pago_webhook_url
+                     });
+                   }}
+                 />
                  
                  <ConfiguracoesRegras 
                    tempoMinimo={configuracaoAgendamento.tempoMinimoAntecedencia}

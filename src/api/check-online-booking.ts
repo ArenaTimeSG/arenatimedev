@@ -92,7 +92,7 @@ export async function getAdminDataForBooking(username: string) {
     // 2. Buscar as configurações do usuário
     const { data: settings, error: settingsError } = await supabase
       .from('settings')
-      .select('online_enabled, online_booking, working_hours')
+      .select('online_enabled, online_booking, working_hours, payment_policy, mercado_pago_enabled, mercado_pago_access_token, mercado_pago_public_key, mercado_pago_webhook_url')
       .eq('user_id', userProfile.user_id)
       .single();
 
@@ -148,7 +148,12 @@ export async function getAdminDataForBooking(username: string) {
           friday: { enabled: true, start: '08:00', end: '18:00' },
           saturday: { enabled: true, start: '08:00', end: '18:00' },
           sunday: { enabled: false, start: '08:00', end: '18:00' }
-        }
+        },
+        payment_policy: settings.payment_policy || 'sem_pagamento',
+        mercado_pago_enabled: settings.mercado_pago_enabled || false,
+        mercado_pago_access_token: settings.mercado_pago_access_token || '',
+        mercado_pago_public_key: settings.mercado_pago_public_key || '',
+        mercado_pago_webhook_url: settings.mercado_pago_webhook_url || ''
       },
       modalities: modalities || []
     };

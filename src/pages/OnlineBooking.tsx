@@ -88,6 +88,7 @@ const OnlineBooking = () => {
   console.log('🔍 OnlineBooking - modalities:', modalities);
   console.log('🔍 OnlineBooking - modalitiesLoading:', modalitiesLoading);
   console.log('🔍 OnlineBooking - adminData?.user:', adminData?.user);
+  console.log('🔍 OnlineBooking - adminData?.user?.user_id:', adminData?.user?.user_id);
   console.log('🔍 OnlineBooking - adminData?.modalities:', adminData?.modalities);
 
   // Verificar se o cliente está logado e redirecionar se necessário
@@ -183,11 +184,8 @@ const OnlineBooking = () => {
     setStep(5);
   }, []);
 
-  const handleConfirmarReserva = useCallback(async () => {
-    console.log('🔍 OnlineBooking: Iniciando confirmação de reserva');
-    console.log('🔍 OnlineBooking: adminData:', adminData);
-    console.log('🔍 OnlineBooking: reserva:', reserva);
-    console.log('🔍 OnlineBooking: client:', client);
+  const createAppointment = useCallback(async (paymentStatus: 'not_required' | 'pending' | 'failed' = 'not_required') => {
+    console.log('🔍 OnlineBooking: Criando agendamento com status de pagamento:', paymentStatus);
     
     if (!adminData || !reserva.modalidade || !reserva.data || !reserva.horario || !client) {
       console.error('❌ OnlineBooking: Dados insuficientes para criar agendamento');
@@ -203,27 +201,29 @@ const OnlineBooking = () => {
       const [horas, minutos] = reserva.horario.split(':');
       dataHora.setHours(parseInt(horas), parseInt(minutos), 0, 0);
       
-             console.log('🔍 OnlineBooking: client object:', client);
-       console.log('🔍 OnlineBooking: client.id:', client.id);
-       console.log('🔍 OnlineBooking: client.id type:', typeof client.id);
-       console.log('🔍 OnlineBooking: client.id length:', client.id?.length);
-       console.log('🔍 OnlineBooking: client.id valid UUID:', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(client.id || ''));
-       
-       const bookingData = {
-         user_id: adminData.user.user_id,
-         client_id: client.id,
-         date: dataHora.toISOString(),
-         modality: reserva.modalidade.name,
-         valor_total: reserva.modalidade.valor,
-         autoConfirmada: autoConfirmada
-       };
+      console.log('🔍 OnlineBooking: client object:', client);
+      console.log('🔍 OnlineBooking: client.id:', client.id);
+      console.log('🔍 OnlineBooking: client.id type:', typeof client.id);
+      console.log('🔍 OnlineBooking: client.id length:', client.id?.length);
+      console.log('🔍 OnlineBooking: client.id valid UUID:', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(client.id || ''));
+      
+      const bookingData = {
+        user_id: adminData.user.user_id,
+        client_id: client.id,
+        date: dataHora.toISOString(),
+        modality: reserva.modalidade.name,
+        valor_total: reserva.modalidade.valor,
+        payment_policy: (adminData.settings as any)?.payment_policy || 'sem_pagamento',
+        payment_status: paymentStatus,
+        autoConfirmada: autoConfirmada
+      };
       
       console.log('🔍 OnlineBooking: Dados do agendamento:', bookingData);
       
       // Criar agendamento na tabela appointments
       createBooking(bookingData, {
-        onSuccess: () => {
-          console.log('✅ OnlineBooking: Agendamento criado com sucesso!');
+        onSuccess: (newBooking) => {
+          console.log('✅ OnlineBooking: Agendamento criado com sucesso!', newBooking);
           
           // Invalidar cache de horários disponíveis para a data específica
           const dateKey = format(reserva.data!, 'yyyy-MM-dd');
@@ -244,6 +244,11 @@ const OnlineBooking = () => {
           // Se chegou até aqui, a reserva foi criada com sucesso
           setReservationStatus(autoConfirmada ? 'success' : 'pending');
           setReservaConfirmada(true);
+          
+          // Armazenar ID do agendamento para uso no pagamento
+          if (newBooking?.id) {
+            sessionStorage.setItem('lastAppointmentId', newBooking.id);
+          }
           
           // Reset após 5 segundos
           setTimeout(() => {
@@ -288,6 +293,18 @@ const OnlineBooking = () => {
       console.error('❌ OnlineBooking: Erro ao confirmar reserva:', error);
     }
   }, [adminData, reserva, client, createBooking]);
+
+  // Função para confirmar reserva sem pagamento (política sem_pagamento ou opcional sem pagamento)
+  const handleConfirmarReserva = useCallback(async () => {
+    console.log('🔍 OnlineBooking: Confirmando reserva sem pagamento');
+    await createAppointment('not_required');
+  }, [createAppointment]);
+
+  // Função para confirmar reserva com pagamento (política obrigatório ou opcional com pagamento)
+  const handleConfirmarComPagamento = useCallback(async () => {
+    console.log('🔍 OnlineBooking: Confirmando reserva com pagamento');
+    await createAppointment('pending');
+  }, [createAppointment]);
 
   const handleVoltar = useCallback(() => {
     if (step > 1) {
@@ -685,8 +702,12 @@ const OnlineBooking = () => {
                 <ResumoReserva
                   reserva={reserva}
                   onConfirmar={handleConfirmarReserva}
+                  onConfirmarComPagamento={handleConfirmarComPagamento}
                   isCreating={isCreating}
                   autoConfirmada={adminData?.settings?.online_booking?.auto_agendar || false}
+                  paymentPolicy={(adminData?.settings as any)?.payment_policy || 'sem_pagamento'}
+                  appointmentId={sessionStorage.getItem('lastAppointmentId') || undefined}
+                  userId={adminData?.user?.user_id}
                 />
               </div>
             </div>

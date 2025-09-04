@@ -10,6 +10,7 @@ export interface ClientBooking {
   status: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
   modality: string;
   valor_total: number;
+  payment_status?: 'not_required' | 'pending' | 'failed';
   created_at: string;
   booking_clients?: {
     id: string;
@@ -25,6 +26,7 @@ export interface CreateClientBookingData {
   date: string;
   modality: string;
   valor_total: number;
+  payment_policy?: 'sem_pagamento' | 'obrigatorio' | 'opcional';
 }
 
 export interface UpdateClientBookingData {
@@ -41,27 +43,40 @@ export const useClientBookings = (adminUserId?: string) => {
     queryFn: async () => {
       if (!adminUserId) return [];
 
-      // Buscar agendamentos com dados dos clientes em uma única consulta usando join
-      const { data, error } = await supabase
+      // Buscar agendamentos primeiro
+      const { data: appointments, error: appointmentsError } = await supabase
         .from('appointments')
-        .select(`
-          *,
-          booking_clients (
-            id,
-            name,
-            email,
-            phone
-          )
-        `)
+        .select('*')
         .eq('user_id', adminUserId)
         .not('client_id', 'is', null)
         .order('date', { ascending: true });
 
-      if (error) {
-        console.error('Erro ao buscar agendamentos de clientes:', error);
+      if (appointmentsError) {
+        console.error('Erro ao buscar agendamentos:', appointmentsError);
         return [];
       }
-      
+
+      if (!appointments || appointments.length === 0) {
+        return [];
+      }
+
+      // Buscar dados dos clientes separadamente
+      const clientIds = appointments.map(apt => apt.client_id).filter(Boolean);
+      const { data: clients, error: clientsError } = await supabase
+        .from('booking_clients')
+        .select('id, name, email, phone')
+        .in('id', clientIds);
+
+      if (clientsError) {
+        console.error('Erro ao buscar clientes:', clientsError);
+        return [];
+      }
+
+      // Combinar dados
+      const data = appointments.map(appointment => ({
+        ...appointment,
+        booking_clients: clients?.find(client => client.id === appointment.client_id) || null
+      }));
 
       return data || [];
     },
@@ -123,6 +138,14 @@ export const useClientBookings = (adminUserId?: string) => {
         throw error;
       }
       
+      // Determinar payment_status baseado na política
+      let paymentStatus: 'not_required' | 'pending' | 'failed' = 'not_required';
+      if (bookingData.payment_policy === 'obrigatorio') {
+        paymentStatus = 'pending';
+      } else if (bookingData.payment_policy === 'opcional') {
+        paymentStatus = 'not_required'; // Cliente pode escolher pagar depois
+      }
+
       const { data: newBooking, error } = await supabase
         .from('appointments')
         .insert({
@@ -132,6 +155,7 @@ export const useClientBookings = (adminUserId?: string) => {
           status: autoConfirmada ? 'agendado' : 'a_cobrar', // Status baseado no auto-agendamento
           modality: bookingData.modality,
           valor_total: bookingData.valor_total,
+          payment_status: paymentStatus,
           booking_source: 'online' // Agendamentos online sempre têm source 'online'
         })
         .select()

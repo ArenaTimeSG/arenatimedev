@@ -30,6 +30,7 @@ interface AdminSettings {
     tempo_minimo_antecedencia: number;
     duracao_padrao: number;
   };
+  payment_policy?: 'sem_pagamento' | 'obrigatorio' | 'opcional';
 }
 
 interface AdminData {

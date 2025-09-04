@@ -130,6 +130,24 @@ const Appointments = () => {
     }
   };
 
+  const getPaymentStatusColor = (paymentStatus: string) => {
+    switch (paymentStatus) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'failed': return 'bg-red-100 text-red-800 border-red-200';
+      case 'not_required': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getPaymentStatusLabel = (paymentStatus: string) => {
+    switch (paymentStatus) {
+      case 'pending': return 'Pagamento Pendente';
+      case 'failed': return 'Pagamento Falhou';
+      case 'not_required': return 'Sem Pagamento';
+      default: return 'N/A';
+    }
+  };
+
   const handleAppointmentClick = (appointment: AppointmentWithModality) => {
     setSelectedAppointment(appointment);
     setIsDetailsModalOpen(true);
@@ -516,9 +534,16 @@ const Appointments = () => {
                                     {format(new Date(appointment.date), 'HH:mm', { locale: ptBR })}
                                   </p>
                                 </div>
-                                <Badge className={getStatusColor(appointment.status)}>
-                                  {getStatusLabel(appointment.status)}
-                                </Badge>
+                                <div className="flex flex-col gap-1">
+                                  <Badge className={getStatusColor(appointment.status)}>
+                                    {getStatusLabel(appointment.status)}
+                                  </Badge>
+                                  {appointment.payment_status && appointment.payment_status !== 'not_required' && appointment.status !== 'pago' && (
+                                    <Badge className={getPaymentStatusColor(appointment.payment_status)}>
+                                      {getPaymentStatusLabel(appointment.payment_status)}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </motion.div>
@@ -619,9 +644,16 @@ const Appointments = () => {
                                     {format(new Date(appointment.date), 'HH:mm', { locale: ptBR })}
                                   </p>
                                 </div>
-                                <Badge className={getStatusColor(appointment.status)}>
-                                  {getStatusLabel(appointment.status)}
-                                </Badge>
+                                <div className="flex flex-col gap-1">
+                                  <Badge className={getStatusColor(appointment.status)}>
+                                    {getStatusLabel(appointment.status)}
+                                  </Badge>
+                                  {appointment.payment_status && appointment.payment_status !== 'not_required' && appointment.status !== 'pago' && (
+                                    <Badge className={getPaymentStatusColor(appointment.payment_status)}>
+                                      {getPaymentStatusLabel(appointment.payment_status)}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </motion.div>

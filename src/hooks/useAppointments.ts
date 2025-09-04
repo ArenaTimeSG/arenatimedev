@@ -15,6 +15,7 @@ export interface AppointmentWithModality {
   recurrence_id: string | null;
   user_id: string;
   booking_source: 'manual' | 'online';
+  payment_status?: 'not_required' | 'pending' | 'failed';
   created_at: string;
   client?: {
     name: string;
