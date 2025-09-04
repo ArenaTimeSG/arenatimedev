@@ -23,8 +23,11 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🚀 Função iniciada - Método:', req.method)
+    
     // Verificar se é POST
     if (req.method !== 'POST') {
+      console.log('❌ Método não permitido:', req.method)
       return new Response(
         JSON.stringify({ error: 'Method not allowed' }),
         { 
@@ -35,6 +38,7 @@ serve(async (req) => {
     }
 
     // Obter dados da requisição
+    console.log('📥 Lendo dados da requisição...')
     const requestBody = await req.json()
     console.log('📥 Dados recebidos:', requestBody)
     
@@ -69,11 +73,20 @@ serve(async (req) => {
     }
 
     // Obter variáveis de ambiente
+    console.log('🔍 Verificando variáveis de ambiente...')
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
+    console.log('🔍 Variáveis de ambiente:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseServiceKey: !!supabaseServiceKey
+    })
+
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('❌ Variáveis de ambiente não configuradas')
+      console.error('❌ Variáveis de ambiente não configuradas:', {
+        supabaseUrl: !!supabaseUrl,
+        supabaseServiceKey: !!supabaseServiceKey
+      })
       return new Response(
         JSON.stringify({ error: 'Configuração do servidor incompleta' }),
         { 
@@ -144,16 +157,26 @@ serve(async (req) => {
 
     console.log('🔍 Verificando configuração do Mercado Pago:', {
       mercado_pago_enabled: settingsData.mercado_pago_enabled,
-      has_access_token: !!settingsData.mercado_pago_access_token
+      has_access_token: !!settingsData.mercado_pago_access_token,
+      access_token_preview: settingsData.mercado_pago_access_token ? 
+        `${settingsData.mercado_pago_access_token.substring(0, 10)}...` : 'undefined'
     })
 
-    if (!settingsData.mercado_pago_enabled || !settingsData.mercado_pago_access_token) {
-      console.error('❌ Mercado Pago não configurado para este usuário:', {
-        mercado_pago_enabled: settingsData.mercado_pago_enabled,
-        has_access_token: !!settingsData.mercado_pago_access_token
-      })
+    if (!settingsData.mercado_pago_enabled) {
+      console.error('❌ Mercado Pago não está habilitado para este usuário')
       return new Response(
-        JSON.stringify({ error: 'Mercado Pago não está configurado para esta quadra' }),
+        JSON.stringify({ error: 'Mercado Pago não está habilitado para esta quadra' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    if (!settingsData.mercado_pago_access_token) {
+      console.error('❌ Access Token do Mercado Pago não configurado')
+      return new Response(
+        JSON.stringify({ error: 'Access Token do Mercado Pago não está configurado' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -162,8 +185,10 @@ serve(async (req) => {
     }
 
     const mercadoPagoAccessToken = settingsData.mercado_pago_access_token
+    console.log('🔍 Access Token configurado:', mercadoPagoAccessToken ? 'SIM' : 'NÃO')
 
     // Criar preferência no Mercado Pago
+    console.log('🔍 Criando dados da preferência...')
     const preferenceData = {
       items: [
         {
@@ -179,9 +204,9 @@ serve(async (req) => {
         email: client_email
       },
       back_urls: {
-        success: `${Deno.env.get('SITE_URL') || 'http://localhost:8080'}/payment/success`,
-        failure: `${Deno.env.get('SITE_URL') || 'http://localhost:8080'}/payment/failure`,
-        pending: `${Deno.env.get('SITE_URL') || 'http://localhost:8080'}/payment/pending`
+        success: 'https://arenatime.vercel.app/payment/success',
+        failure: 'https://arenatime.vercel.app/payment/failure',
+        pending: 'https://arenatime.vercel.app/payment/pending'
       },
       auto_return: 'approved',
       external_reference: appointment_id || `temp_${Date.now()}`,
@@ -189,6 +214,7 @@ serve(async (req) => {
     }
 
     console.log('💳 Criando preferência no Mercado Pago:', preferenceData)
+    console.log('🔍 Fazendo requisição para API do Mercado Pago...')
 
     const mercadoPagoResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -199,11 +225,19 @@ serve(async (req) => {
       body: JSON.stringify(preferenceData)
     })
 
+    console.log('🔍 Resposta do Mercado Pago:', {
+      status: mercadoPagoResponse.status,
+      ok: mercadoPagoResponse.ok
+    })
+
     if (!mercadoPagoResponse.ok) {
       const errorText = await mercadoPagoResponse.text()
-      console.error('❌ Erro ao criar preferência no Mercado Pago:', errorText)
+      console.error('❌ Erro ao criar preferência no Mercado Pago:', {
+        status: mercadoPagoResponse.status,
+        error: errorText
+      })
       return new Response(
-        JSON.stringify({ error: 'Erro ao criar preferência de pagamento' }),
+        JSON.stringify({ error: 'Erro ao criar preferência de pagamento', details: errorText }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -270,8 +304,13 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Erro na função:', error)
+    console.error('❌ Stack trace:', error.stack)
     return new Response(
-      JSON.stringify({ error: 'Erro interno do servidor' }),
+      JSON.stringify({ 
+        error: 'Erro interno do servidor',
+        details: error.message,
+        stack: error.stack
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
