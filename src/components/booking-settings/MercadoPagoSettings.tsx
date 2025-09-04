@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Save, AlertCircle, Info, Eye, EyeOff } from 'lucide-react';
+import { CreditCard, Save, AlertCircle, Info, Eye, EyeOff, TestTube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { usePayment } from '@/hooks/usePayment';
+import { useToast } from '@/hooks/use-toast';
 
 interface MercadoPagoSettingsProps {
   mercadoPagoEnabled: boolean;
@@ -35,6 +37,10 @@ const MercadoPagoSettings = ({
   const [showKey, setShowKey] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
+  const [testando, setTestando] = useState(false);
+  
+  const { createPaymentPreference } = usePayment();
+  const { toast } = useToast();
 
   // Sincronizar estado local com props quando elas mudarem
   useEffect(() => {
@@ -61,6 +67,79 @@ const MercadoPagoSettings = ({
       console.error('❌ Erro ao salvar configurações do Mercado Pago:', error);
     } finally {
       setSalvando(false);
+    }
+  };
+
+  const handleTestarConfiguracao = async () => {
+    if (!isEnabled || !token) {
+      toast({
+        title: 'Configuração Incompleta',
+        description: 'Habilite o Mercado Pago e configure o Access Token antes de testar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setTestando(true);
+    
+    try {
+      // Primeiro salvar as configurações atuais
+      await onUpdate({
+        mercado_pago_enabled: isEnabled,
+        mercado_pago_access_token: token,
+        mercado_pago_public_key: key,
+        mercado_pago_webhook_url: webhook
+      });
+
+      // Aguardar um pouco para as configurações serem salvas
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Testar criando uma preferência de pagamento de teste
+      const testData = {
+        user_id: 'test-user-id', // Será substituído pela função Edge
+        amount: 10.00,
+        description: 'Teste de Configuração',
+        client_name: 'Cliente Teste',
+        client_email: 'teste@exemplo.com',
+      };
+
+      console.log('🧪 Testando configuração do Mercado Pago...');
+      const result = await createPaymentPreference(testData);
+      
+      if (result && (result.sandbox_init_point || result.init_point)) {
+        toast({
+          title: '✅ Configuração Funcionando!',
+          description: 'Sua configuração do Mercado Pago está correta e funcionando.',
+          duration: 5000,
+        });
+      } else {
+        throw new Error('URL de pagamento não foi retornada');
+      }
+    } catch (error) {
+      console.error('❌ Erro no teste de configuração:', error);
+      
+      let errorMessage = 'Erro ao testar configuração.';
+      
+      if (error.message) {
+        if (error.message.includes('Mercado Pago não está habilitado')) {
+          errorMessage = 'Mercado Pago não está habilitado.';
+        } else if (error.message.includes('Access Token')) {
+          errorMessage = 'Access Token inválido ou não configurado.';
+        } else if (error.message.includes('Configuração do servidor')) {
+          errorMessage = 'Problema na configuração do servidor.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast({
+        title: '❌ Erro na Configuração',
+        description: errorMessage,
+        variant: 'destructive',
+        duration: 8000,
+      });
+    } finally {
+      setTestando(false);
     }
   };
 
@@ -228,7 +307,7 @@ const MercadoPagoSettings = ({
           </div>
         </div>
 
-        {/* Botão de Salvar */}
+        {/* Botões de Ação */}
         <div className="pt-6 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
@@ -239,36 +318,66 @@ const MercadoPagoSettings = ({
               )}
             </div>
             
-            <motion.button
-              onClick={handleSalvar}
-              disabled={!hasChanges || salvando}
-              className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                hasChanges && !salvando
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-              whileHover={hasChanges && !salvando ? { scale: 1.02 } : {}}
-              whileTap={hasChanges && !salvando ? { scale: 0.98 } : {}}
-            >
-              {salvando ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Salvando...
-                </>
-              ) : salvo ? (
-                <>
-                  <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                  </div>
-                  Salvo!
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Salvar Configurações
-                </>
+            <div className="flex gap-3">
+              {/* Botão de Teste */}
+              {isEnabled && token && (
+                <motion.button
+                  onClick={handleTestarConfiguracao}
+                  disabled={testando}
+                  className={`px-4 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                    !testando
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                  whileHover={!testando ? { scale: 1.02 } : {}}
+                  whileTap={!testando ? { scale: 0.98 } : {}}
+                >
+                  {testando ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Testando...
+                    </>
+                  ) : (
+                    <>
+                      <TestTube className="w-4 h-4" />
+                      Testar
+                    </>
+                  )}
+                </motion.button>
               )}
-            </motion.button>
+              
+              {/* Botão de Salvar */}
+              <motion.button
+                onClick={handleSalvar}
+                disabled={!hasChanges || salvando}
+                className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                  hasChanges && !salvando
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                whileHover={hasChanges && !salvando ? { scale: 1.02 } : {}}
+                whileTap={hasChanges && !salvando ? { scale: 0.98 } : {}}
+              >
+                {salvando ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Salvando...
+                  </>
+                ) : salvo ? (
+                  <>
+                    <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
+                    Salvo!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Salvar Configurações
+                  </>
+                )}
+              </motion.button>
+            </div>
           </div>
         </div>
       </CardContent>

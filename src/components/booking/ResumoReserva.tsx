@@ -62,13 +62,8 @@ const ResumoReserva = ({
     setShowPayment(false);
     setPaymentChoice(null);
     // Após pagamento bem-sucedido, criar o agendamento
-    if (paymentPolicy === 'obrigatorio') {
-      onConfirmarComPagamento?.();
-    } else if (paymentPolicy === 'opcional' && paymentChoice === 'pay') {
-      onConfirmarComPagamento?.();
-    } else {
-      onConfirmar();
-    }
+    console.log('✅ Payment successful, creating appointment...');
+    onConfirmarComPagamento?.();
   };
 
   const handlePaymentCancel = () => {
@@ -80,6 +75,7 @@ const ResumoReserva = ({
     if (paymentPolicy === 'obrigatorio') {
       // Para política obrigatória, apenas mostrar o modal de pagamento
       // O agendamento será criado APENAS após pagamento bem-sucedido
+      console.log('🔒 Payment required - opening payment modal');
       setShowPayment(true);
     } else if (paymentPolicy === 'opcional') {
       setPaymentChoice('pay');
@@ -319,20 +315,16 @@ const ResumoReserva = ({
 
       {/* Modal de Pagamento */}
       {showPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <PaymentCheckout
-              appointmentId={appointmentId}
-              userId={userId}
-              amount={reserva.modalidade?.valor || 0}
-              modalityName={reserva.modalidade?.name || ''}
-              clientName={reserva.cliente.nome}
-              clientEmail={reserva.cliente.email}
-              onPaymentSuccess={handlePaymentSuccess}
-              onPaymentCancel={handlePaymentCancel}
-            />
-          </div>
-        </div>
+        <PaymentCheckout
+          appointmentId={appointmentId}
+          userId={userId || ''}
+          amount={reserva.modalidade?.valor || 0}
+          modalityName={reserva.modalidade?.name || ''}
+          clientName={reserva.cliente.nome}
+          clientEmail={reserva.cliente.email}
+          onPaymentSuccess={handlePaymentSuccess}
+          onPaymentCancel={handlePaymentCancel}
+        />
       )}
     </div>
   );

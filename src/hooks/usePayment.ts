@@ -15,55 +15,44 @@ export interface PaymentData {
 }
 
 export interface CreatePaymentRequest {
-  appointment_id?: string;
-  user_id?: string;
+  user_id: string;
   amount: number;
   description: string;
-  modality_name: string;
   client_name: string;
   client_email: string;
+  appointment_id?: string;
 }
 
 export const usePayment = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Criar preferência de pagamento no Mercado Pago
   const createPaymentPreference = useCallback(async (data: CreatePaymentRequest) => {
     setIsLoading(true);
     
     try {
-      console.log('💳 Criando preferência de pagamento:', data);
+      console.log('💳 Creating payment preference:', data);
 
-      const requestBody = {
-        appointment_id: data.appointment_id,
-        user_id: data.user_id,
-        amount: data.amount,
-        description: data.description,
-        modality_name: data.modality_name,
-        client_name: data.client_name,
-        client_email: data.client_email,
-      };
-      
-      console.log('📤 Enviando para função Edge:', requestBody);
-
-      // Chamar função do Supabase que criará a preferência no Mercado Pago
       const { data: result, error } = await supabase.functions.invoke('create-payment-preference', {
-        body: requestBody
+        body: data
       });
 
       if (error) {
-        console.error('❌ Erro ao criar preferência de pagamento:', error);
-        throw error;
+        console.error('❌ Payment error:', error);
+        throw new Error(error.message || 'Failed to create payment preference');
       }
 
-      console.log('✅ Preferência criada:', result);
+      if (!result.success) {
+        throw new Error(result.error || 'Payment creation failed');
+      }
+
+      console.log('✅ Payment preference created:', result);
       return result;
     } catch (error) {
-      console.error('❌ Erro no hook usePayment:', error);
+      console.error('❌ Payment hook error:', error);
       toast({
-        title: 'Erro ao processar pagamento',
-        description: 'Não foi possível criar a preferência de pagamento.',
+        title: 'Erro no pagamento',
+        description: error.message || 'Não foi possível processar o pagamento.',
         variant: 'destructive',
       });
       throw error;
@@ -72,7 +61,6 @@ export const usePayment = () => {
     }
   }, [toast]);
 
-  // Verificar status do pagamento
   const checkPaymentStatus = useCallback(async (paymentId: string) => {
     try {
       const { data, error } = await supabase
@@ -82,18 +70,17 @@ export const usePayment = () => {
         .single();
 
       if (error) {
-        console.error('❌ Erro ao verificar status do pagamento:', error);
+        console.error('❌ Error checking payment status:', error);
         throw error;
       }
 
       return data as PaymentData;
     } catch (error) {
-      console.error('❌ Erro ao verificar status:', error);
+      console.error('❌ Error checking payment status:', error);
       throw error;
     }
   }, []);
 
-  // Buscar pagamentos de um agendamento
   const getAppointmentPayments = useCallback(async (appointmentId: string) => {
     try {
       const { data, error } = await supabase
@@ -103,18 +90,17 @@ export const usePayment = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Erro ao buscar pagamentos:', error);
+        console.error('❌ Error fetching payments:', error);
         throw error;
       }
 
       return data as PaymentData[];
     } catch (error) {
-      console.error('❌ Erro ao buscar pagamentos:', error);
+      console.error('❌ Error fetching payments:', error);
       throw error;
     }
   }, []);
 
-  // Atualizar status do pagamento
   const updatePaymentStatus = useCallback(async (paymentId: string, status: PaymentData['status']) => {
     try {
       const { data, error } = await supabase
@@ -128,13 +114,13 @@ export const usePayment = () => {
         .single();
 
       if (error) {
-        console.error('❌ Erro ao atualizar status do pagamento:', error);
+        console.error('❌ Error updating payment status:', error);
         throw error;
       }
 
       return data as PaymentData;
     } catch (error) {
-      console.error('❌ Erro ao atualizar status:', error);
+      console.error('❌ Error updating payment status:', error);
       throw error;
     }
   }, []);

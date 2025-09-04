@@ -6,22 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface PaymentRequest {
-  user_id: string;
-  amount: number;
-  description: string;
-  client_name: string;
-  client_email: string;
-  appointment_id?: string;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    console.log('🚀 Payment function started')
+    console.log('🚀 PRODUCTION Payment function started')
 
     const body = await req.json()
     console.log('📥 Request body:', body)
@@ -74,6 +65,8 @@ serve(async (req) => {
       )
     }
 
+    console.log('🔑 Using Mercado Pago token:', settings.mercado_pago_access_token.substring(0, 10) + '...')
+
     // Create Mercado Pago preference
     const preferenceData = {
       items: [{
@@ -96,7 +89,7 @@ serve(async (req) => {
       external_reference: appointment_id || `temp_${Date.now()}`
     }
 
-    console.log('💳 Creating Mercado Pago preference...')
+    console.log('💳 Creating REAL Mercado Pago preference...')
 
     const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -117,7 +110,9 @@ serve(async (req) => {
     }
 
     const preference = await mpResponse.json()
-    console.log('✅ Preference created:', preference.id)
+    console.log('✅ REAL Preference created:', preference.id)
+    console.log('🔗 Production URL:', preference.init_point)
+    console.log('🔗 Sandbox URL:', preference.sandbox_init_point)
 
     // Save payment record if appointment_id exists
     if (appointment_id) {
@@ -139,14 +134,18 @@ serve(async (req) => {
         .eq('id', appointment_id)
     }
 
-    // Return success response
+    // Return success response - FORCE PRODUCTION URL
+    const response = {
+      success: true,
+      preference_id: preference.id,
+      init_point: preference.init_point,  // PRODUCTION URL
+      sandbox_init_point: preference.sandbox_init_point
+    }
+
+    console.log('📤 Returning response:', response)
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        preference_id: preference.id,
-        init_point: preference.init_point,
-        sandbox_init_point: preference.sandbox_init_point
-      }),
+      JSON.stringify(response),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

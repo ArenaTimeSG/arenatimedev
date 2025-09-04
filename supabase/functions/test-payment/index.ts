@@ -6,31 +6,23 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    console.log('🧪 Função de teste iniciada')
+    console.log('🧪 Test function started')
     
-    const requestBody = await req.json()
-    console.log('📥 Dados recebidos:', requestBody)
-    
-    // Retornar dados mockados do Mercado Pago
-    const mockResponse = {
-      success: true,
-      payment_id: 'test-payment-123',
-      preference_id: 'test-preference-456',
-      init_point: 'https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=test-preference-456',
-      sandbox_init_point: 'https://sandbox.mercadopago.com.br/checkout/v1/redirect?pref_id=test-preference-456',
-      external_reference: requestBody.appointment_id || `temp_${Date.now()}`
-    }
-    
-    console.log('✅ Retornando resposta mockada:', mockResponse)
-    
+    const body = await req.json()
+    console.log('📥 Test request body:', body)
+
     return new Response(
-      JSON.stringify(mockResponse),
+      JSON.stringify({
+        success: true,
+        message: 'Test function working',
+        received_data: body,
+        timestamp: new Date().toISOString()
+      }),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -38,11 +30,11 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('❌ Erro na função de teste:', error)
+    console.error('❌ Test function error:', error)
     return new Response(
       JSON.stringify({ 
-        error: 'Erro na função de teste',
-        details: error.message
+        error: 'Test function failed',
+        details: error.message 
       }),
       { 
         status: 500, 
