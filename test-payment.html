@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste de Pagamento</title>
+</head>
+<body>
+    <h1>Teste de Sistema de Pagamento</h1>
+    <button onclick="testCreatePayment()">Criar Pagamento</button>
+    <button onclick="testCheckPayment()">Verificar Pagamento</button>
+    <div id="result"></div>
+
+    <script>
+        async function testCreatePayment() {
+            try {
+                const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/create-payment-preference', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dWZiZnZyZ3B6cWJ2ZGZtdGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3ODUzMDYsImV4cCI6MjA3MTM2MTMwNn0.kckI90iRHcw2hY_J5-tNveAzB1oD8xRT7MyM_tLDZ4M'
+                    },
+                    body: JSON.stringify({
+                        user_id: '49014464-6ed9-4fee-af45-06105f31698b',
+                        amount: 1,
+                        description: 'Teste de Pagamento',
+                        client_name: 'Cliente Teste',
+                        client_email: 'teste@teste.com'
+                    })
+                });
+
+                const result = await response.json();
+                console.log('Resultado:', result);
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+                
+                if (result.preference_id) {
+                    sessionStorage.setItem('lastPaymentPreferenceId', result.preference_id);
+                    console.log('Preference ID salvo:', result.preference_id);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('result').innerHTML = 'Erro: ' + error.message;
+            }
+        }
+
+        async function testCheckPayment() {
+            try {
+                const preferenceId = sessionStorage.getItem('lastPaymentPreferenceId');
+                if (!preferenceId) {
+                    document.getElementById('result').innerHTML = 'Nenhum preference_id encontrado';
+                    return;
+                }
+
+                const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-payment-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dWZiZnZyZ3B6cWJ2ZGZtdGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3ODUzMDYsImV4cCI6MjA3MTM2MTMwNn0.kckI90iRHcw2hY_J5-tNveAzB1oD8xRT7MyM_tLDZ4M'
+                    },
+                    body: JSON.stringify({
+                        preference_id: preferenceId,
+                        user_id: '49014464-6ed9-4fee-af45-06105f31698b'
+                    })
+                });
+
+                const result = await response.json();
+                console.log('Status do pagamento:', result);
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('result').innerHTML = 'Erro: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

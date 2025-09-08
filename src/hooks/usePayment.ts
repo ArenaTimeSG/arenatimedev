@@ -21,6 +21,13 @@ export interface CreatePaymentRequest {
   client_name: string;
   client_email: string;
   appointment_id?: string;
+  appointment_data?: {
+    client_id: string;
+    date: string;
+    modality: string;
+    valor_total: number;
+    payment_policy: string;
+  };
 }
 
 export const usePayment = () => {
@@ -33,20 +40,31 @@ export const usePayment = () => {
     try {
       console.log('💳 Creating payment preference:', data);
 
-      const { data: result, error } = await supabase.functions.invoke('create-payment-preference', {
-        body: data
+      // Usar fetch direto para garantir que funciona
+      const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/create-payment-preference', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dWZiZnZyZ3B6cWJ2ZGZtdGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3ODUzMDYsImV4cCI6MjA3MTM2MTMwNn0.kckI90iRHcw2hY_J5-tNveAzB1oD8xRT7MyM_tLDZ4M'
+        },
+        body: JSON.stringify(data)
       });
 
-      if (error) {
-        console.error('❌ Payment error:', error);
-        throw new Error(error.message || 'Failed to create payment preference');
+      console.log('🔍 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ HTTP Error:', response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
+
+      const result = await response.json();
+      console.log('✅ Payment preference created:', result);
 
       if (!result.success) {
         throw new Error(result.error || 'Payment creation failed');
       }
 
-      console.log('✅ Payment preference created:', result);
       return result;
     } catch (error) {
       console.error('❌ Payment hook error:', error);

@@ -61,9 +61,10 @@ const ResumoReserva = ({
   const handlePaymentSuccess = () => {
     setShowPayment(false);
     setPaymentChoice(null);
-    // Após pagamento bem-sucedido, criar o agendamento
-    console.log('✅ Payment successful, creating appointment...');
-    onConfirmarComPagamento?.();
+    // Após pagamento bem-sucedido, apenas mostrar mensagem de processamento
+    // O agendamento será criado pelo webhook quando o pagamento for aprovado
+    console.log('✅ Payment successful - agendamento será criado pelo webhook');
+    // Não chamar onConfirmarComPagamento - o webhook criará o agendamento
   };
 
   const handlePaymentCancel = () => {
@@ -71,12 +72,20 @@ const ResumoReserva = ({
     setPaymentChoice(null);
   };
 
-  const handleConfirmWithPayment = () => {
+  const handleConfirmWithPayment = async () => {
     if (paymentPolicy === 'obrigatorio') {
-      // Para política obrigatória, apenas mostrar o modal de pagamento
-      // O agendamento será criado APENAS após pagamento bem-sucedido
-      console.log('🔒 Payment required - opening payment modal');
-      setShowPayment(true);
+      // Para política obrigatória, primeiro processar pagamento (salvar dados)
+      // Depois abrir o modal de pagamento
+      console.log('🔒 Payment required - processing payment first');
+      try {
+        await onConfirmarComPagamento?.();
+        console.log('✅ Payment data processed, opening modal');
+        setShowPayment(true);
+      } catch (error) {
+        console.error('❌ Error processing payment:', error);
+        // Ainda assim abrir o modal para mostrar o erro
+        setShowPayment(true);
+      }
     } else if (paymentPolicy === 'opcional') {
       setPaymentChoice('pay');
       setShowPayment(true);

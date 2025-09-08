@@ -160,7 +160,18 @@ const AgendamentosMenu = ({ clientId, adminUserId, isOpen, onClose }: Agendament
     return isBefore(aptDate, now) || apt.status === 'cancelado';
   });
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, paymentStatus?: string) => {
+    // Se o agendamento tem payment_status 'pending', mostrar como aguardando pagamento
+    if (paymentStatus === 'pending') {
+      return 'text-yellow-600 bg-yellow-100';
+    }
+    
+    // Se o agendamento tem payment_status 'failed', mostrar como pagamento falhou
+    if (paymentStatus === 'failed') {
+      return 'text-red-600 bg-red-100';
+    }
+    
+    // Status normal baseado no status principal
     switch (status) {
       case 'agendado':
       case 'pago':
@@ -174,7 +185,18 @@ const AgendamentosMenu = ({ clientId, adminUserId, isOpen, onClose }: Agendament
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, paymentStatus?: string) => {
+    // Se o agendamento tem payment_status 'pending', mostrar como aguardando pagamento
+    if (paymentStatus === 'pending') {
+      return 'Aguardando Pagamento';
+    }
+    
+    // Se o agendamento tem payment_status 'failed', mostrar como pagamento falhou
+    if (paymentStatus === 'failed') {
+      return 'Pagamento Falhou';
+    }
+    
+    // Status normal baseado no status principal
     switch (status) {
       case 'agendado':
       case 'pago':
@@ -298,9 +320,9 @@ const AgendamentosMenu = ({ clientId, adminUserId, isOpen, onClose }: Agendament
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(agendamento.status)}`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(agendamento.status, agendamento.payment_status)}`}>
                             {getStatusIcon(agendamento.status)}
-                            {getStatusText(agendamento.status)}
+                            {getStatusText(agendamento.status, agendamento.payment_status)}
                           </span>
                                                      {agendamento.status !== 'cancelado' && (
                              <button
@@ -349,9 +371,9 @@ const AgendamentosMenu = ({ clientId, adminUserId, isOpen, onClose }: Agendament
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(agendamento.status)}`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(agendamento.status, agendamento.payment_status)}`}>
                             {getStatusIcon(agendamento.status)}
-                            {getStatusText(agendamento.status)}
+                            {getStatusText(agendamento.status, agendamento.payment_status)}
                           </span>
                         </div>
                       </div>

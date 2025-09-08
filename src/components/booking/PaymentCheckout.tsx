@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CreditCard, Loader2, AlertCircle, ExternalLink, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePayment } from '@/hooks/usePayment';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 
 interface PaymentCheckoutProps {
   appointmentId?: string;
@@ -33,6 +34,20 @@ const PaymentCheckout = ({
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
   const [paymentCreated, setPaymentCreated] = useState(false);
 
+  // Cleanup do Realtime e polling quando componente for desmontado
+  useEffect(() => {
+    return () => {
+      if ((window as any).realtimeCleanup) {
+        (window as any).realtimeCleanup();
+        delete (window as any).realtimeCleanup;
+      }
+      if ((window as any).pollInterval) {
+        clearInterval((window as any).pollInterval);
+        delete (window as any).pollInterval;
+      }
+    };
+  }, []);
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -40,24 +55,210 @@ const PaymentCheckout = ({
     }).format(value);
   };
 
+  // Função para verificar pagamento diretamente no Mercado Pago
+  const checkPaymentStatusDirectly = async () => {
+    try {
+      console.log('🔍 Verificando status do pagamento diretamente no Mercado Pago...');
+      
+      // Buscar dados do pagamento do sessionStorage
+      const storedPaymentData = sessionStorage.getItem('paymentData');
+      if (!storedPaymentData) {
+        console.log('⚠️ Dados do pagamento não encontrados no sessionStorage');
+        return false;
+      }
+
+      const paymentData = JSON.parse(storedPaymentData);
+      console.log('🔍 Dados do pagamento para verificação:', paymentData);
+
+      // Chamar função Edge para verificar status do pagamento
+      const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-payment-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: paymentData.user_id,
+          amount: paymentData.amount,
+          description: paymentData.description
+        })
+      });
+
+      if (!response.ok) {
+        console.error('❌ Erro ao verificar status do pagamento:', response.status);
+        return false;
+      }
+
+      const result = await response.json();
+      console.log('🔍 Resultado da verificação:', result);
+
+      if (result.payment_approved) {
+        console.log('✅ Pagamento aprovado encontrado!');
+        toast({
+          title: 'Pagamento Aprovado!',
+          description: 'Seu agendamento foi confirmado com sucesso.',
+          variant: 'default',
+        });
+        onPaymentSuccess();
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('❌ Erro ao verificar status do pagamento:', error);
+      return false;
+    }
+  };
+
+  // Função para verificar agendamentos criados recentemente
+  const checkForNewAppointments = async () => {
+    try {
+      console.log('🔍 Verificando agendamentos recentes...');
+      
+      // Buscar agendamentos dos últimos 5 minutos
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      
+      const { data: appointments, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'agendado')
+        .gte('created_at', fiveMinutesAgo)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error('❌ Erro ao buscar agendamentos:', error);
+        return false;
+      }
+
+      if (appointments && appointments.length > 0) {
+        console.log('✅ Agendamento confirmado encontrado!', appointments[0]);
+        toast({
+          title: 'Pagamento Aprovado!',
+          description: 'Seu agendamento foi confirmado com sucesso.',
+          variant: 'default',
+        });
+        onPaymentSuccess();
+        return true; // Indica que encontrou um agendamento
+      }
+
+      return false; // Não encontrou agendamento
+    } catch (error) {
+      console.error('❌ Erro ao verificar agendamentos:', error);
+      return false;
+    }
+  };
+
+  // Função para escutar mudanças na tabela agendamentos via Realtime (com fallback)
+  const setupRealtimeListener = () => {
+    console.log('🔍 Configurando listener do Realtime para agendamentos...');
+    
+    // Tentar configurar Realtime
+    const channel = supabase
+      .channel('realtime:appointments')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'appointments' 
+        },
+        (payload) => {
+          console.log('🔔 Novo agendamento inserido via Realtime:', payload.new);
+          
+          // Verificar se é um agendamento recente (últimos 5 minutos)
+          const createdAt = new Date(payload.new.created_at);
+          const now = new Date();
+          const diffMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60);
+          
+          if (diffMinutes <= 5 && payload.new.status === 'agendado') {
+            console.log('✅ Agendamento confirmado via Realtime!', payload.new);
+            toast({
+              title: 'Pagamento Aprovado!',
+              description: 'Seu agendamento foi confirmado com sucesso.',
+              variant: 'default',
+            });
+            onPaymentSuccess();
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔍 Status da conexão Realtime:', status);
+        
+        // Se Realtime falhar, usar polling como fallback
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.log('⚠️ Realtime falhou, iniciando polling como fallback...');
+          startPolling();
+        }
+      });
+
+    // Retornar função de cleanup
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  // Função de polling como fallback
+  const startPolling = () => {
+    console.log('🔄 Iniciando polling para verificar pagamento...');
+    
+    const pollInterval = setInterval(async () => {
+      // Tentar verificar agendamentos primeiro
+      let found = await checkForNewAppointments();
+      
+      // Se não encontrou e há erro de conexão, tentar verificação direta do Mercado Pago
+      if (!found) {
+        console.log('🔄 Tentando verificação direta do Mercado Pago...');
+        found = await checkPaymentStatusDirectly();
+      }
+      
+      if (found) {
+        clearInterval(pollInterval);
+        console.log('✅ Polling finalizado - pagamento confirmado');
+      }
+    }, 3000); // Verificar a cada 3 segundos
+
+    // Parar polling após 5 minutos
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      console.log('⏰ Polling finalizado por timeout');
+    }, 5 * 60 * 1000);
+
+    return pollInterval;
+  };
+
   const handleCreatePayment = async () => {
     setIsCreatingPayment(true);
     
     try {
       console.log('💳 Starting payment process...');
+      console.log('💳 SessionStorage keys:', Object.keys(sessionStorage));
+      console.log('💳 Payment data in sessionStorage:', sessionStorage.getItem('paymentData'));
 
-      const paymentData = {
-        user_id: userId,
-        amount: amount,
-        description: `Agendamento - ${modalityName}`,
-        client_name: clientName,
-        client_email: clientEmail,
-        appointment_id: appointmentId
+      // Buscar dados do pagamento do sessionStorage
+      const storedPaymentData = sessionStorage.getItem('paymentData');
+      if (!storedPaymentData) {
+        console.error('❌ Payment data not found in sessionStorage');
+        throw new Error('Dados do pagamento não encontrados');
+      }
+
+      const paymentData = JSON.parse(storedPaymentData);
+      console.log('💳 Payment data from storage:', paymentData);
+
+      // Criar preferência de pagamento sem appointment_id
+      const paymentPreferenceData = {
+        user_id: paymentData.user_id,
+        amount: paymentData.amount,
+        description: paymentData.description,
+        client_name: paymentData.client_name,
+        client_email: paymentData.client_email,
+        // Não passar appointment_id - o agendamento será criado pelo webhook
+        appointment_data: paymentData.appointment_data
       };
 
-      console.log('💳 Payment data:', paymentData);
+      console.log('💳 Payment preference data:', paymentPreferenceData);
 
-      const result = await createPaymentPreference(paymentData);
+      const result = await createPaymentPreference(paymentPreferenceData);
 
       console.log('💳 Payment result:', result);
 
@@ -71,6 +272,12 @@ const PaymentCheckout = ({
       setPaymentCreated(true);
 
       console.log('🔗 Payment URL:', url);
+      
+      // Salvar o preference_id no sessionStorage para verificação posterior
+      if (result.preference_id) {
+        sessionStorage.setItem('lastPaymentPreferenceId', result.preference_id);
+        console.log('💾 Preference ID salvo:', result.preference_id);
+      }
 
       // Log the URL type for debugging
       if (url.includes('sandbox')) {
@@ -85,23 +292,29 @@ const PaymentCheckout = ({
         console.log('✅ Using production URL');
       }
 
+      // Configurar listener do Realtime ANTES de abrir a janela
+      const cleanup = setupRealtimeListener();
+      
+      // Armazenar função de cleanup para usar quando necessário
+      (window as any).realtimeCleanup = cleanup;
+
+      // Iniciar polling como backup (caso Realtime falhe)
+      const pollInterval = startPolling();
+      (window as any).pollInterval = pollInterval;
+
       // Try to open payment window
       const paymentWindow = window.open(url, 'MercadoPago', 'width=800,height=600,scrollbars=yes,resizable=yes');
       
       if (paymentWindow) {
         console.log('✅ Payment window opened successfully');
+        console.log('🔍 Aguardando confirmação via webhook...');
         
-        // Check if window was closed
-        const checkClosed = setInterval(() => {
-          if (paymentWindow.closed) {
-            clearInterval(checkClosed);
-            console.log('🔒 Payment window was closed');
-            // Simulate payment success after window closes
-            setTimeout(() => {
-              onPaymentSuccess();
-            }, 2000);
-          }
-        }, 1000);
+        // Mostrar mensagem de aguardando pagamento
+        toast({
+          title: 'Aguardando Pagamento',
+          description: 'Estamos processando seu pagamento. Seu agendamento será confirmado automaticamente assim que o pagamento for aprovado.',
+          variant: 'default',
+        });
       } else {
         console.warn('⚠️ Could not open payment window - popup blocker detected');
         toast({

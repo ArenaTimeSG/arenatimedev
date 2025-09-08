@@ -14,6 +14,7 @@ interface Appointment {
   id: string;
   date: string;
   status: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
+  payment_status?: 'not_required' | 'pending' | 'failed';
   modality: string;
   modality_id?: string | null;
   modality_info?: {

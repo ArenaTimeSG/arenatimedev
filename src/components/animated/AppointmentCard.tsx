@@ -14,6 +14,7 @@ interface AppointmentCardProps {
       valor: number;
     };
     status: 'a_cobrar' | 'pago' | 'cancelado' | 'agendado';
+    payment_status?: 'not_required' | 'pending' | 'failed';
     client_id?: string;
     recurrence_id?: string;
     booking_source?: 'manual' | 'online';
@@ -56,8 +57,19 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     }
   };
 
-  // Determinar a cor do badge baseada no status
+  // Determinar a cor do badge baseada no status e payment_status
   const getBadgeColor = () => {
+    // Se o agendamento tem payment_status 'pending', mostrar como aguardando pagamento
+    if (appointment.payment_status === 'pending') {
+      return 'bg-yellow-500 text-white border-yellow-600';
+    }
+    
+    // Se o agendamento tem payment_status 'failed', mostrar como pagamento falhou
+    if (appointment.payment_status === 'failed') {
+      return 'bg-red-500 text-white border-red-600';
+    }
+    
+    // Status normal baseado no status principal
     switch (appointment.status) {
       case 'pago': return 'bg-green-500 text-white border-green-600';
       case 'a_cobrar': return 'bg-orange-500 text-white border-orange-600';

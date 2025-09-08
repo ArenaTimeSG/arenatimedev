@@ -1,195 +1,141 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+export const config = { auth: false };
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-signature',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
+};
 
 serve(async (req) => {
+  console.log('🚀 WEBHOOK CHAMADO - Method:', req.method);
+  console.log('🚀 WEBHOOK CHAMADO - URL:', req.url);
+  console.log('🚀 WEBHOOK CHAMADO - Headers:', Object.fromEntries(req.headers.entries()));
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    console.log('✅ CORS preflight request handled');
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Verificar se é POST
+    // Se não for POST, retornar 200 OK
     if (req.method !== 'POST') {
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        { 
-          status: 405, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+      console.log('⚠️ Non-POST request, returning 200');
+      return new Response('ok', { status: 200, headers: corsHeaders });
     }
 
-    // Obter dados da notificação
-    const notification = await req.json()
-    console.log('🔔 Webhook recebido:', notification)
+    // Obter o corpo da requisição
+    const body = await req.json();
+    console.log('🔔 Webhook recebido:', JSON.stringify(body, null, 2));
+
+    // Pega o ID do pagamento enviado pelo Mercado Pago
+    const paymentId = body?.data?.id;
+    if (!paymentId) {
+      console.error('❌ ID do pagamento não encontrado');
+      return new Response("ID do pagamento não encontrado", { status: 400, headers: corsHeaders });
+    }
+
+    console.log('💳 Processando pagamento ID:', paymentId);
 
     // Obter variáveis de ambiente
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('❌ Variáveis de ambiente não configuradas')
-      return new Response(
-        JSON.stringify({ error: 'Configuração do servidor incompleta' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+      console.error('❌ Variáveis de ambiente não configuradas');
+      return new Response("Configuração inválida", { status: 500, headers: corsHeaders });
     }
 
     // Criar cliente Supabase
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verificar se é uma notificação de pagamento
-    if (notification.type === 'payment') {
-      const paymentId = notification.data.id
-      
-      // Buscar informações do pagamento no Mercado Pago
-      const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-        headers: {
-          'Authorization': `Bearer ${mercadoPagoAccessToken}`
-        }
-      })
+    // Buscar dados do administrador (precisamos do access_token)
+    const { data: allSettings, error: settingsError } = await supabase
+      .from('settings')
+      .select('user_id, mercado_pago_access_token')
+      .not('mercado_pago_access_token', 'is', null);
 
-      if (!paymentResponse.ok) {
-        console.error('❌ Erro ao buscar pagamento no Mercado Pago')
-        return new Response(
-          JSON.stringify({ error: 'Erro ao buscar pagamento' }),
-          { 
-            status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-
-      const payment = await paymentResponse.json()
-      console.log('💳 Pagamento encontrado:', payment.id, payment.status)
-
-      // Buscar o pagamento no banco usando external_reference
-      const { data: paymentData, error: paymentError } = await supabase
-        .from('payments')
-        .select(`
-          *,
-          appointments!inner(
-            user_id,
-            settings!inner(
-              mercado_pago_access_token
-            )
-          )
-        `)
-        .eq('mercado_pago_id', payment.external_reference)
-        .single()
-
-      if (paymentError) {
-        console.error('❌ Erro ao buscar pagamento no banco:', paymentError)
-        return new Response(
-          JSON.stringify({ error: 'Pagamento não encontrado' }),
-          { 
-            status: 404, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-
-      const mercadoPagoAccessToken = paymentData.appointments.settings.mercado_pago_access_token
-
-      // Determinar status do pagamento
-      let paymentStatus: 'pending' | 'approved' | 'rejected' | 'cancelled' = 'pending'
-      let appointmentStatus: 'a_cobrar' | 'pago' | 'agendado' = 'a_cobrar'
-      let appointmentPaymentStatus: 'pending' | 'failed' = 'pending'
-
-      switch (payment.status) {
-        case 'approved':
-          paymentStatus = 'approved'
-          appointmentStatus = 'pago' // Usar o status "pago" existente
-          appointmentPaymentStatus = 'pending' // Limpar o payment_status quando pago
-          break
-        case 'rejected':
-        case 'cancelled':
-          paymentStatus = payment.status === 'rejected' ? 'rejected' : 'cancelled'
-          appointmentPaymentStatus = 'failed'
-          break
-        case 'pending':
-        case 'in_process':
-          paymentStatus = 'pending'
-          appointmentPaymentStatus = 'pending'
-          break
-        default:
-          console.log('⚠️ Status desconhecido:', payment.status)
-      }
-
-      // Atualizar pagamento no banco
-      const { error: updatePaymentError } = await supabase
-        .from('payments')
-        .update({
-          status: paymentStatus,
-          mercado_pago_status: payment.status,
-          mercado_pago_payment_id: payment.id,
-          payment_method: payment.payment_method_id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', paymentData.id)
-
-      if (updatePaymentError) {
-        console.error('❌ Erro ao atualizar pagamento:', updatePaymentError)
-        return new Response(
-          JSON.stringify({ error: 'Erro ao atualizar pagamento' }),
-          { 
-            status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-
-      // Atualizar status do agendamento
-      const { error: updateAppointmentError } = await supabase
-        .from('appointments')
-        .update({ 
-          status: appointmentStatus,
-          payment_status: appointmentPaymentStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', paymentData.appointment_id)
-
-      if (updateAppointmentError) {
-        console.error('❌ Erro ao atualizar agendamento:', updateAppointmentError)
-      }
-
-      console.log('✅ Status atualizado:', {
-        payment_id: paymentData.id,
-        payment_status: paymentStatus,
-        appointment_status: appointmentStatus,
-        appointment_payment_status: appointmentPaymentStatus
-      })
-
-      // Se o pagamento foi aprovado, o agendamento já foi marcado como "pago" acima
-      if (paymentStatus === 'approved') {
-        console.log('✅ Agendamento marcado como pago automaticamente')
-      }
+    if (settingsError || !allSettings || allSettings.length === 0) {
+      console.error('❌ Nenhum access token do Mercado Pago encontrado');
+      return new Response("Mercado Pago not configured", { status: 400, headers: corsHeaders });
     }
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    // Usar o primeiro token encontrado
+    const mpAccessToken = allSettings[0].mercado_pago_access_token;
+    const adminUserId = allSettings[0].user_id;
+
+    console.log('🔍 Usando access token do admin:', adminUserId);
+
+    // Consulta detalhes do pagamento no Mercado Pago
+    console.log('🔍 Consultando detalhes do pagamento no Mercado Pago...');
+    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: {
+        Authorization: `Bearer ${mpAccessToken}`,
+        'Content-Type': 'application/json'
       }
-    )
+    });
+
+    if (!mpRes.ok) {
+      console.error('❌ Erro ao consultar pagamento no Mercado Pago:', mpRes.status);
+      return new Response("Erro ao consultar pagamento", { status: 500, headers: corsHeaders });
+    }
+
+    const payment = await mpRes.json();
+    console.log('💳 Detalhes do pagamento:', payment);
+    console.log('💳 Status do pagamento:', payment.status);
+
+    // Verificar se o pagamento foi aprovado
+    if (payment.status === "approved") {
+      console.log('✅ Pagamento aprovado - Criando agendamento');
+      
+      // Extrair dados do pagamento para criar o agendamento
+      const appointmentData = {
+        modalidade: payment.description || 'Agendamento',
+        cliente: payment.payer?.first_name || 'Cliente',
+        email: payment.payer?.email || '',
+        valor: payment.transaction_amount || 0,
+        pagamento_id: payment.id,
+        status_pagamento: payment.status,
+        criado_em: new Date().toISOString()
+      };
+
+      console.log('🔍 Dados do agendamento:', appointmentData);
+
+      // Inserir agendamento no Supabase
+      const { data: newAppointment, error: insertError } = await supabase
+        .from('appointments')
+        .insert({
+          user_id: adminUserId,
+          client_id: payment.payer?.email || '',
+          date: new Date().toISOString(),
+          status: 'agendado',
+          modality: appointmentData.modalidade,
+          valor_total: appointmentData.valor,
+          payment_status: 'approved',
+          booking_source: 'online',
+          created_at: appointmentData.criado_em,
+          updated_at: appointmentData.criado_em
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('❌ Erro ao inserir agendamento:', insertError);
+        return new Response("Erro ao salvar agendamento", { status: 500, headers: corsHeaders });
+      }
+
+      console.log('✅ Agendamento criado com sucesso:', newAppointment.id);
+      return new Response("Agendamento confirmado", { status: 200, headers: corsHeaders });
+    } else {
+      console.log('⚠️ Pagamento não aprovado, ignorado. Status:', payment.status);
+      return new Response("Pagamento não aprovado, ignorado", { status: 200, headers: corsHeaders });
+    }
 
   } catch (error) {
-    console.error('❌ Erro no webhook:', error)
-    return new Response(
-      JSON.stringify({ error: 'Erro interno do servidor' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    )
+    console.error('❌ Erro webhook:', error);
+    return new Response("Erro interno", { status: 500, headers: corsHeaders });
   }
-})
+});

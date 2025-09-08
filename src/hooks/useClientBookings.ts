@@ -138,12 +138,22 @@ export const useClientBookings = (adminUserId?: string) => {
         throw error;
       }
       
-      // Determinar payment_status baseado na política
+      // Determinar payment_status e status baseado na política de pagamento
       let paymentStatus: 'not_required' | 'pending' | 'failed' = 'not_required';
+      let appointmentStatus: 'a_cobrar' | 'agendado' = 'a_cobrar';
+      
       if (bookingData.payment_policy === 'obrigatorio') {
         paymentStatus = 'pending';
+        // Para pagamento obrigatório, SEMPRE criar como 'a_cobrar' (pendente)
+        // O status só muda para 'agendado' quando o pagamento for aprovado via webhook
+        appointmentStatus = 'a_cobrar';
       } else if (bookingData.payment_policy === 'opcional') {
         paymentStatus = 'not_required'; // Cliente pode escolher pagar depois
+        // Para pagamento opcional, usar auto_confirmada para determinar o status
+        appointmentStatus = autoConfirmada ? 'agendado' : 'a_cobrar';
+      } else {
+        // Para 'sem_pagamento', usar auto_confirmada para determinar o status
+        appointmentStatus = autoConfirmada ? 'agendado' : 'a_cobrar';
       }
 
       const { data: newBooking, error } = await supabase
@@ -152,7 +162,7 @@ export const useClientBookings = (adminUserId?: string) => {
           user_id: bookingData.user_id,
           client_id: bookingData.client_id,
           date: bookingData.date,
-          status: autoConfirmada ? 'agendado' : 'a_cobrar', // Status baseado no auto-agendamento
+          status: appointmentStatus,
           modality: bookingData.modality,
           valor_total: bookingData.valor_total,
           payment_status: paymentStatus,

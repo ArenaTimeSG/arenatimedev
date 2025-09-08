@@ -13,24 +13,31 @@ interface PaymentRequest {
   client_name: string;
   client_email: string;
   appointment_id?: string;
+  appointment_data?: {
+    client_id: string;
+    date: string;
+    modality: string;
+    valor_total: number;
+    payment_policy: string;
+  };
 }
 
 serve(async (req) => {
+  console.log('🚀 Payment function started');
+  
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    console.log('🚀 Payment function started')
-
     const body = await req.json()
-    console.log('📥 Request body:', body)
+    console.log('📥 Request body:', JSON.stringify(body, null, 2));
 
-    const { user_id, amount, description, client_name, client_email, appointment_id } = body
+    const { user_id, amount, description, client_name, client_email, appointment_id, appointment_data } = body
 
     // Validate required fields
     if (!user_id || !amount || !description || !client_name || !client_email) {
-      console.error('❌ Missing required fields')
+      console.error('❌ Missing required fields:', { user_id: !!user_id, amount: !!amount, description: !!description, client_name: !!client_name, client_email: !!client_email });
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -42,32 +49,45 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
     if (!supabaseUrl || !supabaseKey) {
-      console.error('❌ Missing Supabase environment variables')
+      console.error('❌ Missing Supabase environment variables');
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    console.log('✅ Supabase client configured');
+
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Get user's Mercado Pago settings
+    console.log('🔍 Fetching user settings for user_id:', user_id);
     const { data: settings, error: settingsError } = await supabase
       .from('settings')
       .select('mercado_pago_access_token, mercado_pago_enabled')
       .eq('user_id', user_id)
       .single()
 
-    if (settingsError || !settings) {
-      console.error('❌ Settings not found:', settingsError)
+    if (settingsError) {
+      console.error('❌ Settings error:', settingsError);
+      return new Response(
+        JSON.stringify({ error: 'Settings not found', details: settingsError.message }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!settings) {
+      console.error('❌ No settings found for user');
       return new Response(
         JSON.stringify({ error: 'Mercado Pago not configured' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    console.log('✅ Settings found:', { enabled: settings.mercado_pago_enabled, hasToken: !!settings.mercado_pago_access_token });
+
     if (!settings.mercado_pago_enabled || !settings.mercado_pago_access_token) {
-      console.error('❌ Mercado Pago not enabled or token missing')
+      console.error('❌ Mercado Pago not enabled or token missing');
       return new Response(
         JSON.stringify({ error: 'Mercado Pago not enabled' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -75,6 +95,7 @@ serve(async (req) => {
     }
 
     // Create Mercado Pago preference
+    const externalRef = `payment_${user_id}_${Date.now()}`;
     const preferenceData = {
       items: [{
         title: description,
@@ -93,10 +114,10 @@ serve(async (req) => {
         pending: 'https://arenatime.vercel.app/payment/pending'
       },
       auto_return: 'approved',
-      external_reference: appointment_id || `temp_${Date.now()}`
+      external_reference: externalRef
     }
 
-    console.log('💳 Creating Mercado Pago preference...')
+    console.log('💳 Creating Mercado Pago preference...', JSON.stringify(preferenceData, null, 2));
 
     const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -119,34 +140,31 @@ serve(async (req) => {
     const preference = await mpResponse.json()
     console.log('✅ Preference created:', preference.id)
 
-    // Save payment record if appointment_id exists
-    if (appointment_id) {
-      await supabase
-        .from('payments')
-        .insert({
-          appointment_id,
-          amount,
-          currency: 'BRL',
-          status: 'pending',
-          mercado_pago_id: preference.id,
-          payment_method: 'mercado_pago'
-        })
-
-      // Update appointment status
-      await supabase
-        .from('appointments')
-        .update({ payment_status: 'pending' })
-        .eq('id', appointment_id)
-    }
+    // Log payment info for webhook processing
+    console.log('💾 Payment info for webhook:');
+    console.log('  - Preference ID:', preference.id);
+    console.log('  - External Reference:', externalRef);
+    console.log('  - User ID:', user_id);
+    console.log('  - Amount:', amount);
+    console.log('  - Description:', description);
+    console.log('  - Client Name:', client_name);
+    console.log('  - Client Email:', client_email);
+    
+    // O webhook vai processar o pagamento e criar o agendamento quando receber a notificação do Mercado Pago
+    // NÃO criamos agendamento aqui - apenas a preferência de pagamento
 
     // Return success response
+    const response = {
+      success: true,
+      preference_id: preference.id,
+      init_point: preference.init_point,
+      sandbox_init_point: preference.sandbox_init_point
+    };
+
+    console.log('✅ Returning success response:', response);
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        preference_id: preference.id,
-        init_point: preference.init_point,
-        sandbox_init_point: preference.sandbox_init_point
-      }),
+      JSON.stringify(response),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -158,7 +176,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Payment function failed',
-        details: error.message 
+        details: error.message,
+        stack: error.stack
       }),
       { 
         status: 500, 

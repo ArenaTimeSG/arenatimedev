@@ -96,7 +96,7 @@ const MercadoPagoSettings = ({
 
       // Testar criando uma preferência de pagamento de teste
       const testData = {
-        user_id: 'test-user-id', // Será substituído pela função Edge
+        user_id: '49014464-6ed9-4fee-af45-06105f31698b', // UUID válido para teste
         amount: 10.00,
         description: 'Teste de Configuração',
         client_name: 'Cliente Teste',

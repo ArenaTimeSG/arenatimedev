@@ -69,7 +69,18 @@ const AppointmentDetailsModal = ({
   }, [isOpen]);
 
   // Funções auxiliares
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, paymentStatus?: string) => {
+    // Se o agendamento tem payment_status 'pending', mostrar como aguardando pagamento
+    if (paymentStatus === 'pending') {
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    }
+    
+    // Se o agendamento tem payment_status 'failed', mostrar como pagamento falhou
+    if (paymentStatus === 'failed') {
+      return 'bg-red-100 text-red-800 border-red-200';
+    }
+    
+    // Status normal baseado no status principal
     switch (status) {
       case 'pago': return 'bg-green-100 text-green-800 border-green-200';
       case 'a_cobrar': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -79,7 +90,18 @@ const AppointmentDetailsModal = ({
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string, paymentStatus?: string) => {
+    // Se o agendamento tem payment_status 'pending', mostrar como aguardando pagamento
+    if (paymentStatus === 'pending') {
+      return 'Aguardando Pagamento';
+    }
+    
+    // Se o agendamento tem payment_status 'failed', mostrar como pagamento falhou
+    if (paymentStatus === 'failed') {
+      return 'Pagamento Falhou';
+    }
+    
+    // Status normal baseado no status principal
     switch (status) {
       case 'pago': return 'Pago';
       case 'a_cobrar': return 'A Cobrar';
@@ -383,8 +405,8 @@ const AppointmentDetailsModal = ({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Badge className={getStatusColor(appointment.status)}>
-                    {getStatusLabel(appointment.status)}
+                  <Badge className={getStatusColor(appointment.status, appointment.payment_status)}>
+                    {getStatusLabel(appointment.status, appointment.payment_status)}
                   </Badge>
                   <p className="text-sm text-muted-foreground">Status atual</p>
                 </div>
