@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Webhook Mercado Pago</title>
+</head>
+<body>
+    <h1>Teste Webhook Mercado Pago</h1>
+    
+    <div>
+        <h2>1. Testar Webhook Diretamente</h2>
+        <button onclick="testWebhook()">Testar Webhook</button>
+        <div id="webhook-result"></div>
+    </div>
+
+    <div>
+        <h2>2. Testar Criação de Preferência</h2>
+        <button onclick="testCreatePreference()">Criar Preferência</button>
+        <div id="preference-result"></div>
+    </div>
+
+    <div>
+        <h2>3. Verificar Status de Pagamento</h2>
+        <button onclick="testCheckPayment()">Verificar Pagamento</button>
+        <div id="payment-result"></div>
+    </div>
+
+    <script>
+        async function testWebhook() {
+            try {
+                console.log('🧪 Testando webhook...');
+                
+                const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/mercado-pago-webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'payment',
+                        data: {
+                            id: 'test123456'
+                        }
+                    })
+                });
+
+                const result = await response.text();
+                console.log('Resultado do webhook:', result);
+                document.getElementById('webhook-result').innerHTML = `
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Resposta:</strong> ${result}</p>
+                `;
+            } catch (error) {
+                console.error('Erro no webhook:', error);
+                document.getElementById('webhook-result').innerHTML = `<p style="color: red;">Erro: ${error.message}</p>`;
+            }
+        }
+
+        async function testCreatePreference() {
+            try {
+                console.log('🧪 Testando criação de preferência...');
+                
+                const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/create-payment-preference', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: '49014464-6ed9-4fee-af45-06105f31698b',
+                        amount: 1.00,
+                        description: 'Teste Webhook',
+                        client_name: 'Teste',
+                        client_email: 'teste@email.com',
+                        booking_id: 'test-booking-123'
+                    })
+                });
+
+                const result = await response.json();
+                console.log('Resultado da preferência:', result);
+                document.getElementById('preference-result').innerHTML = `
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Preference ID:</strong> ${result.preference_id}</p>
+                    <p><strong>Init Point:</strong> ${result.init_point}</p>
+                `;
+                
+                // Salvar para teste posterior
+                sessionStorage.setItem('testPreferenceId', result.preference_id);
+            } catch (error) {
+                console.error('Erro na preferência:', error);
+                document.getElementById('preference-result').innerHTML = `<p style="color: red;">Erro: ${error.message}</p>`;
+            }
+        }
+
+        async function testCheckPayment() {
+            try {
+                console.log('🧪 Testando verificação de pagamento...');
+                
+                const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-payment-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: '49014464-6ed9-4fee-af45-06105f31698b',
+                        amount: 1.00,
+                        description: 'Teste Webhook'
+                    })
+                });
+
+                const result = await response.json();
+                console.log('Resultado da verificação:', result);
+                document.getElementById('payment-result').innerHTML = `
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Pagamento Aprovado:</strong> ${result.payment_approved}</p>
+                    <p><strong>Agendamento Existe:</strong> ${result.appointment_exists || false}</p>
+                `;
+            } catch (error) {
+                console.error('Erro na verificação:', error);
+                document.getElementById('payment-result').innerHTML = `<p style="color: red;">Erro: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
