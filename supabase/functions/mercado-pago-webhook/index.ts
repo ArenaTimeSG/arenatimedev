@@ -9,6 +9,128 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
 };
 
+// Função auxiliar para processar status do pagamento
+async function processPaymentStatus(payment: any, appointment: any, supabase: any, corsHeaders: any) {
+  console.log('🔍 Processando status do pagamento:', payment.status);
+  
+  if (payment.status === "approved") {
+    console.log('✅ Pagamento aprovado - Atualizando agendamento');
+    
+    // Atualizar o agendamento para status "pago"
+    const { data: updatedAppointment, error: updateError } = await supabase
+      .from('appointments')
+      .update({
+        status: 'pago',
+        payment_status: 'approved',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', appointment.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar agendamento:', updateError);
+      return new Response("Erro ao atualizar agendamento", { status: 500, headers: corsHeaders });
+    }
+
+    console.log('✅ Agendamento atualizado com sucesso:', updatedAppointment.id);
+
+    // Criar/atualizar registro na tabela payments
+    const { data: existingPayment } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('appointment_id', appointment.id)
+      .single();
+
+    if (!existingPayment) {
+      console.log('💳 Criando registro de pagamento...');
+      const { data: newPayment, error: paymentInsertError } = await supabase
+        .from('payments')
+        .insert({
+          appointment_id: appointment.id,
+          amount: payment.transaction_amount,
+          currency: 'BRL',
+          status: 'approved',
+          payment_method: payment.payment_method_id,
+          mercado_pago_id: payment.preference_id,
+          mercado_pago_status: payment.status,
+          mercado_pago_payment_id: payment.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (paymentInsertError) {
+        console.error('❌ Erro ao criar registro de pagamento:', paymentInsertError);
+      } else {
+        console.log('✅ Registro de pagamento criado:', newPayment.id);
+      }
+    } else {
+      console.log('💳 Atualizando registro de pagamento existente...');
+      const { error: paymentUpdateError } = await supabase
+        .from('payments')
+        .update({
+          status: 'approved',
+          mercado_pago_status: payment.status,
+          mercado_pago_payment_id: payment.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('appointment_id', appointment.id);
+
+      if (paymentUpdateError) {
+        console.error('❌ Erro ao atualizar registro de pagamento:', paymentUpdateError);
+      } else {
+        console.log('✅ Registro de pagamento atualizado');
+      }
+    }
+
+    return new Response("Pagamento aprovado e agendamento confirmado", { status: 200, headers: corsHeaders });
+
+  } else if (payment.status === "pending" || payment.status === "in_process") {
+    console.log('⏳ Pagamento pendente - Atualizando status');
+    
+    const { error: updateError } = await supabase
+      .from('appointments')
+      .update({
+        payment_status: 'pending',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', appointment.id);
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar status do agendamento:', updateError);
+    } else {
+      console.log('✅ Status do agendamento atualizado para pendente');
+    }
+
+    return new Response("Pagamento pendente", { status: 200, headers: corsHeaders });
+
+  } else if (payment.status === "rejected" || payment.status === "cancelled") {
+    console.log('❌ Pagamento rejeitado/cancelado - Atualizando status');
+    
+    const { error: updateError } = await supabase
+      .from('appointments')
+      .update({
+        payment_status: 'failed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', appointment.id);
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar status do agendamento:', updateError);
+    } else {
+      console.log('✅ Status do agendamento atualizado para falhou');
+    }
+
+    return new Response("Pagamento rejeitado", { status: 200, headers: corsHeaders });
+
+  } else {
+    console.log('⚠️ Status de pagamento não reconhecido:', payment.status);
+    return new Response("Status não reconhecido", { status: 200, headers: corsHeaders });
+  }
+}
+
 serve(async (req) => {
   console.log('🚀 WEBHOOK PAYMENT - Method:', req.method);
   console.log('🚀 WEBHOOK PAYMENT - URL:', req.url);
@@ -106,130 +228,37 @@ serve(async (req) => {
 
     if (appointmentError || !appointment) {
       console.error('❌ Agendamento não encontrado:', appointmentError);
+      // Se não encontrar pelo ID, tentar buscar por external_reference na tabela payments
+      console.log('🔍 Tentando buscar por external_reference na tabela payments...');
+      
+      const { data: paymentRecord } = await supabase
+        .from('payments')
+        .select('appointment_id')
+        .eq('mercado_pago_payment_id', paymentId)
+        .single();
+      
+      if (paymentRecord) {
+        console.log('✅ Encontrado registro de pagamento, buscando agendamento...');
+        const { data: foundAppointment } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('id', paymentRecord.appointment_id)
+          .single();
+        
+        if (foundAppointment) {
+          console.log('✅ Agendamento encontrado via tabela payments:', foundAppointment.id);
+          // Continuar com o processamento usando foundAppointment
+          return await processPaymentStatus(payment, foundAppointment, supabase, corsHeaders);
+        }
+      }
+      
       return new Response("Agendamento não encontrado", { status: 404, headers: corsHeaders });
     }
 
     console.log('✅ Agendamento encontrado:', appointment.id);
 
-    // Processar baseado no status do pagamento
-    if (payment.status === "approved") {
-      console.log('✅ Pagamento aprovado - Atualizando agendamento');
-      
-      // Atualizar o agendamento para status "pago"
-      const { data: updatedAppointment, error: updateError } = await supabase
-        .from('appointments')
-        .update({
-          status: 'pago',
-          payment_status: 'approved',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('❌ Erro ao atualizar agendamento:', updateError);
-        return new Response("Erro ao atualizar agendamento", { status: 500, headers: corsHeaders });
-      }
-
-      console.log('✅ Agendamento atualizado com sucesso:', updatedAppointment.id);
-
-      // Criar registro na tabela payments se não existir
-      const { data: existingPayment } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('appointment_id', bookingId)
-        .single();
-
-      if (!existingPayment) {
-        console.log('💳 Criando registro de pagamento...');
-        const { data: newPayment, error: paymentInsertError } = await supabase
-          .from('payments')
-          .insert({
-            appointment_id: bookingId,
-            amount: payment.transaction_amount,
-            currency: 'BRL',
-            status: 'approved',
-            payment_method: payment.payment_method_id,
-            mercado_pago_id: payment.preference_id,
-            mercado_pago_status: payment.status,
-            mercado_pago_payment_id: payment.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (paymentInsertError) {
-          console.error('❌ Erro ao criar registro de pagamento:', paymentInsertError);
-        } else {
-          console.log('✅ Registro de pagamento criado:', newPayment.id);
-        }
-      } else {
-        console.log('💳 Atualizando registro de pagamento existente...');
-        const { error: paymentUpdateError } = await supabase
-          .from('payments')
-          .update({
-            status: 'approved',
-            mercado_pago_status: payment.status,
-            mercado_pago_payment_id: payment.id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('appointment_id', bookingId);
-
-        if (paymentUpdateError) {
-          console.error('❌ Erro ao atualizar registro de pagamento:', paymentUpdateError);
-        } else {
-          console.log('✅ Registro de pagamento atualizado');
-        }
-      }
-
-      return new Response("Pagamento aprovado e agendamento confirmado", { status: 200, headers: corsHeaders });
-
-    } else if (payment.status === "pending" || payment.status === "in_process") {
-      console.log('⏳ Pagamento pendente - Atualizando status');
-      
-      // Atualizar apenas o status do pagamento
-      const { error: updateError } = await supabase
-        .from('appointments')
-        .update({
-          payment_status: 'pending',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId);
-
-      if (updateError) {
-        console.error('❌ Erro ao atualizar status do agendamento:', updateError);
-      } else {
-        console.log('✅ Status do agendamento atualizado para pendente');
-      }
-
-      return new Response("Pagamento pendente", { status: 200, headers: corsHeaders });
-
-    } else if (payment.status === "rejected" || payment.status === "cancelled") {
-      console.log('❌ Pagamento rejeitado/cancelado - Atualizando status');
-      
-      // Atualizar status para rejeitado
-      const { error: updateError } = await supabase
-        .from('appointments')
-        .update({
-          payment_status: 'failed',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId);
-
-      if (updateError) {
-        console.error('❌ Erro ao atualizar status do agendamento:', updateError);
-      } else {
-        console.log('✅ Status do agendamento atualizado para falhou');
-      }
-
-      return new Response("Pagamento rejeitado", { status: 200, headers: corsHeaders });
-
-    } else {
-      console.log('⚠️ Status de pagamento não reconhecido:', payment.status);
-      return new Response("Status não reconhecido", { status: 200, headers: corsHeaders });
-    }
+    // Processar status do pagamento usando função auxiliar
+    return await processPaymentStatus(payment, appointment, supabase, corsHeaders);
 
   } catch (error) {
     console.error('❌ Erro webhook:', error);

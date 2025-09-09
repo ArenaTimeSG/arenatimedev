@@ -65,13 +65,14 @@ serve(async (req) => {
     // Buscar pagamentos recentes no Mercado Pago
     console.log('🔍 Buscando pagamentos recentes no Mercado Pago...');
     
-    // Buscar pagamentos dos últimos 30 minutos (mais amplo)
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    // Buscar pagamentos dos últimos 2 horas (mais amplo)
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
     
-    console.log('🔍 Buscando pagamentos entre:', thirtyMinutesAgo, 'e', now);
+    console.log('🔍 Buscando pagamentos entre:', twoHoursAgo, 'e', now);
     
-    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/search?sort=date_created&criteria=desc&range=date_created&begin_date=${thirtyMinutesAgo}&end_date=${now}`, {
+    // Primeiro, tentar buscar por descrição específica
+    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/search?sort=date_created&criteria=desc&range=date_created&begin_date=${twoHoursAgo}&end_date=${now}&external_reference=${description}`, {
       headers: {
         Authorization: `Bearer ${mpAccessToken}`,
         'Content-Type': 'application/json'
@@ -94,12 +95,15 @@ serve(async (req) => {
         status: payment.status,
         amount: payment.transaction_amount,
         description: payment.description,
+        external_reference: payment.external_reference,
         date: payment.date_created
       });
       
-      if (payment.status === "approved" && 
-          payment.transaction_amount === amount && 
-          payment.description === description) {
+      // Verificar se o pagamento corresponde aos critérios
+      const amountMatches = Math.abs(payment.transaction_amount - amount) < 0.01; // Tolerância para valores decimais
+      const descriptionMatches = payment.description && payment.description.includes(description.split(' - ')[1] || description);
+      
+      if (payment.status === "approved" && amountMatches && descriptionMatches) {
         
         console.log('✅ Pagamento aprovado encontrado!', payment.id);
         
@@ -158,6 +162,84 @@ serve(async (req) => {
           status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         });
+      }
+    }
+
+    // Se não encontrou nada, tentar busca mais ampla
+    console.log('⚠️ Nenhum pagamento encontrado na busca específica, tentando busca mais ampla...');
+    
+    const broadSearch = await fetch(`https://api.mercadopago.com/v1/payments/search?sort=date_created&criteria=desc&range=date_created&begin_date=${twoHoursAgo}&end_date=${now}`, {
+      headers: {
+        Authorization: `Bearer ${mpAccessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (broadSearch.ok) {
+      const broadResult = await broadSearch.json();
+      console.log('🔍 Busca ampla - Total de pagamentos:', broadResult.results?.length || 0);
+      
+      for (const payment of broadResult.results || []) {
+        const amountMatches = Math.abs(payment.transaction_amount - amount) < 0.01;
+        const descriptionMatches = payment.description && payment.description.includes(description.split(' - ')[1] || description);
+        
+        if (payment.status === "approved" && amountMatches && descriptionMatches) {
+          console.log('✅ Pagamento aprovado encontrado na busca ampla!', payment.id);
+          
+          // Verificar se já existe agendamento
+          const { data: existingAppointment } = await supabase
+            .from('appointments')
+            .select('*')
+            .eq('payment_status', 'approved')
+            .eq('valor_total', amount)
+            .gte('created_at', twoHoursAgo)
+            .limit(1);
+
+          if (existingAppointment && existingAppointment.length > 0) {
+            console.log('✅ Agendamento já existe:', existingAppointment[0].id);
+            return new Response(JSON.stringify({ 
+              payment_approved: true, 
+              appointment_exists: true,
+              appointment_id: existingAppointment[0].id 
+            }), { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            });
+          }
+
+          // Criar agendamento
+          const { data: newAppointment, error: insertError } = await supabase
+            .from('appointments')
+            .insert({
+              user_id: user_id,
+              client_id: payment.payer?.email || '',
+              date: new Date().toISOString(),
+              status: 'pago',
+              modality: description.split(' - ')[1] || description,
+              valor_total: amount,
+              payment_status: 'approved',
+              booking_source: 'online',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('❌ Erro ao criar agendamento:', insertError);
+          } else {
+            console.log('✅ Agendamento criado:', newAppointment.id);
+          }
+
+          return new Response(JSON.stringify({ 
+            payment_approved: true, 
+            appointment_exists: false,
+            appointment_id: newAppointment?.id 
+          }), { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          });
+        }
       }
     }
 
