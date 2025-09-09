@@ -12,6 +12,7 @@ interface PaymentRequest {
   description: string;
   client_name: string;
   client_email: string;
+  booking_id: string; // ID do agendamento que será pago
   appointment_id?: string;
   appointment_data?: {
     client_id: string;
@@ -33,11 +34,11 @@ serve(async (req) => {
     const body = await req.json()
     console.log('📥 Request body:', JSON.stringify(body, null, 2));
 
-    const { user_id, amount, description, client_name, client_email, appointment_id, appointment_data } = body
+    const { user_id, amount, description, client_name, client_email, booking_id, appointment_id, appointment_data } = body
 
     // Validate required fields
-    if (!user_id || !amount || !description || !client_name || !client_email) {
-      console.error('❌ Missing required fields:', { user_id: !!user_id, amount: !!amount, description: !!description, client_name: !!client_name, client_email: !!client_email });
+    if (!user_id || !amount || !description || !client_name || !client_email || !booking_id) {
+      console.error('❌ Missing required fields:', { user_id: !!user_id, amount: !!amount, description: !!description, client_name: !!client_name, client_email: !!client_email, booking_id: !!booking_id });
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -95,7 +96,7 @@ serve(async (req) => {
     }
 
     // Create Mercado Pago preference
-    const externalRef = `payment_${user_id}_${Date.now()}`;
+    const externalRef = booking_id; // Usar o booking_id como external_reference
     const preferenceData = {
       items: [{
         title: description,
@@ -114,7 +115,8 @@ serve(async (req) => {
         pending: 'https://arenatime.vercel.app/payment/pending'
       },
       auto_return: 'approved',
-      external_reference: externalRef
+      external_reference: externalRef,
+      notification_url: 'https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/mercado-pago-webhook' // URL do webhook
     }
 
     console.log('💳 Creating Mercado Pago preference...', JSON.stringify(preferenceData, null, 2));
@@ -143,12 +145,13 @@ serve(async (req) => {
     // Log payment info for webhook processing
     console.log('💾 Payment info for webhook:');
     console.log('  - Preference ID:', preference.id);
-    console.log('  - External Reference:', externalRef);
+    console.log('  - External Reference (Booking ID):', externalRef);
     console.log('  - User ID:', user_id);
     console.log('  - Amount:', amount);
     console.log('  - Description:', description);
     console.log('  - Client Name:', client_name);
     console.log('  - Client Email:', client_email);
+    console.log('  - Notification URL:', preferenceData.notification_url);
     
     // O webhook vai processar o pagamento e criar o agendamento quando receber a notificação do Mercado Pago
     // NÃO criamos agendamento aqui - apenas a preferência de pagamento
