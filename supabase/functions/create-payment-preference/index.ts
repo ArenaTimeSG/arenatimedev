@@ -38,14 +38,45 @@ serve(async (req) => {
 
     const { user_id, amount, description, client_name, client_email, booking_id, appointment_id, appointment_data } = body
 
-    // Validate required fields
-    if (!user_id || !amount || !description || !client_name || !client_email || !booking_id) {
-      console.error('❌ Missing required fields:', { user_id: !!user_id, amount: !!amount, description: !!description, client_name: !!client_name, client_email: !!client_email, booking_id: !!booking_id });
+    // Validate required fields - mais flexível
+    console.log('🔍 Validating fields:', { 
+      user_id: !!user_id, 
+      amount: !!amount, 
+      description: !!description, 
+      client_name: !!client_name, 
+      client_email: !!client_email, 
+      booking_id: !!booking_id,
+      appointment_id: !!appointment_id
+    });
+
+    // Aceitar booking_id OU appointment_id
+    if (!user_id || !amount || !description || !client_name || !client_email || (!booking_id && !appointment_id)) {
+      console.error('❌ Missing required fields:', { 
+        user_id: !!user_id, 
+        amount: !!amount, 
+        description: !!description, 
+        client_name: !!client_name, 
+        client_email: !!client_email, 
+        booking_id: !!booking_id,
+        appointment_id: !!appointment_id
+      });
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Missing required fields', details: { 
+          user_id: !!user_id, 
+          amount: !!amount, 
+          description: !!description, 
+          client_name: !!client_name, 
+          client_email: !!client_email, 
+          booking_id: !!booking_id,
+          appointment_id: !!appointment_id
+        }}),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // Usar booking_id ou appointment_id
+    const referenceId = booking_id || appointment_id;
+    console.log('✅ Using reference ID:', referenceId);
 
     // Get Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -98,7 +129,7 @@ serve(async (req) => {
     }
 
     // Create Mercado Pago preference
-    const externalRef = booking_id; // Usar o booking_id como external_reference
+    const externalRef = referenceId; // Usar o referenceId (booking_id ou appointment_id) como external_reference
     const preferenceData = {
       items: [{
         title: description,

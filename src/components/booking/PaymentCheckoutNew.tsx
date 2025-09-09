@@ -40,20 +40,25 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
       setIsLoading(true);
       console.log('🚀 [FRONTEND] Criando preferência de pagamento...');
 
+      const requestData = {
+        description: `Agendamento - ${modalityName}`,
+        amount: amount,
+        user_id: userId,
+        client_name: clientName,
+        client_email: clientEmail,
+        booking_id: appointmentId
+      };
+
+      console.log('📤 [FRONTEND] Dados sendo enviados:', requestData);
+      console.log('🔑 [FRONTEND] Chave anon:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Presente' : 'Ausente');
+
       const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/create-payment-preference', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
         },
-        body: JSON.stringify({
-          description: `Agendamento - ${modalityName}`,
-          amount: amount,
-          user_id: userId,
-          client_name: clientName,
-          client_email: clientEmail,
-          booking_id: appointmentId
-        })
+        body: JSON.stringify(requestData)
       });
 
       if (!response.ok) {
@@ -98,34 +103,51 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
 
     try {
       console.log('💳 [FRONTEND] Abrindo checkout do Mercado Pago...');
+      console.log('🔑 [FRONTEND] Preference ID:', preferenceId);
+      console.log('🔑 [FRONTEND] Chave pública:', process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+      console.log('🔍 [FRONTEND] window.MercadoPago:', window.MercadoPago);
       
       // Verificar se o SDK do Mercado Pago está disponível
-      if (typeof window !== 'undefined' && (window as any).MercadoPago) {
-        const mp = new (window as any).MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+      if (typeof window !== 'undefined' && window.MercadoPago) {
+        console.log('✅ [FRONTEND] SDK do Mercado Pago disponível');
         
-        const checkout = mp.checkout({
-          preference: {
-            id: preferenceId
-          }
-        });
-        
-        console.log('✅ [FRONTEND] Checkout aberto com sucesso');
-        
-        // Simular sucesso após um tempo (em produção, o webhook vai processar)
-        setTimeout(() => {
-          toast({
-            title: 'Pagamento processado!',
-            description: 'Aguarde a confirmação automática do agendamento.',
-            variant: 'default',
+        try {
+          const mp = new window.MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || '');
+          console.log('✅ [FRONTEND] Instância do Mercado Pago criada');
+          
+          const checkout = mp.checkout({
+            preference: {
+              id: preferenceId
+            }
           });
-          onPaymentSuccess();
-        }, 3000);
+          
+          console.log('✅ [FRONTEND] Checkout aberto com sucesso');
+          
+          // Simular sucesso após um tempo (em produção, o webhook vai processar)
+          setTimeout(() => {
+            toast({
+              title: 'Pagamento processado!',
+              description: 'Aguarde a confirmação automática do agendamento.',
+              variant: 'default',
+            });
+            onPaymentSuccess();
+          }, 3000);
+          
+        } catch (mpError) {
+          console.error('❌ [FRONTEND] Erro ao criar instância do Mercado Pago:', mpError);
+          toast({
+            title: 'Erro',
+            description: 'Erro ao inicializar Mercado Pago',
+            variant: 'destructive',
+          });
+        }
         
       } else {
         console.error('❌ [FRONTEND] SDK do Mercado Pago não encontrado');
+        console.error('❌ [FRONTEND] window.MercadoPago:', window.MercadoPago);
         toast({
           title: 'Erro',
-          description: 'SDK do Mercado Pago não carregado',
+          description: 'SDK do Mercado Pago não carregado. Aguarde um momento e tente novamente.',
           variant: 'destructive',
         });
       }
