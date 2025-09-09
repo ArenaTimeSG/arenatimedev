@@ -257,8 +257,33 @@ serve(async (req) => {
 
     console.log('✅ Agendamento encontrado:', appointment.id);
 
-    // Processar status do pagamento usando função auxiliar
-    return await processPaymentStatus(payment, appointment, supabase, corsHeaders);
+    // Processar status do pagamento diretamente
+    if (payment.status === "approved") {
+      console.log('✅ Pagamento aprovado - Atualizando agendamento');
+      
+      // Atualizar o agendamento para status "pago"
+      const { data: updatedAppointment, error: updateError } = await supabase
+        .from('appointments')
+        .update({
+          status: 'pago',
+          payment_status: 'approved',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', appointment.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('❌ Erro ao atualizar agendamento:', updateError);
+        return new Response("Erro ao atualizar agendamento", { status: 500, headers: corsHeaders });
+      }
+
+      console.log('✅ Agendamento atualizado com sucesso:', updatedAppointment.id);
+      return new Response("Pagamento aprovado e agendamento confirmado", { status: 200, headers: corsHeaders });
+    } else {
+      console.log('⚠️ Status do pagamento:', payment.status);
+      return new Response(`Status: ${payment.status}`, { status: 200, headers: corsHeaders });
+    }
 
   } catch (error) {
     console.error('❌ Erro webhook:', error);
