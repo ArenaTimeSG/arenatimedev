@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, User, Mail, Phone, DollarSign, CheckCircle, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { PaymentCheckout } from './PaymentCheckout';
+import PaymentCheckoutNew from './PaymentCheckoutNew';
+import MercadoPagoScript from './MercadoPagoScript';
 
 interface Modalidade {
   id: string;
@@ -324,16 +325,18 @@ const ResumoReserva = ({
 
       {/* Modal de Pagamento */}
       {showPayment && (
-        <PaymentCheckout
-          appointmentId={appointmentId}
-          userId={userId || ''}
-          amount={reserva.modalidade?.valor || 0}
-          modalityName={reserva.modalidade?.name || ''}
-          clientName={reserva.cliente.nome}
-          clientEmail={reserva.cliente.email}
-          onPaymentSuccess={handlePaymentSuccess}
-          onPaymentCancel={handlePaymentCancel}
-        />
+        <>
+          <MercadoPagoScript publicKey={process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || ''} />
+          <PaymentCheckoutNew
+            appointmentId={appointmentId || ''}
+            userId={userId || ''}
+            amount={reserva.modalidade?.valor || 0}
+            modalityName={reserva.modalidade?.name || ''}
+            clientName={reserva.cliente.nome}
+            clientEmail={reserva.cliente.email}
+            onPaymentSuccess={handlePaymentSuccess}
+          />
+        </>
       )}
     </div>
   );

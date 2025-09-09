@@ -40,10 +40,11 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
       setIsLoading(true);
       console.log('🚀 [FRONTEND] Criando preferência de pagamento...');
 
-      const response = await fetch('/api/create-preference', {
+      const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/create-payment-preference', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
           description: `Agendamento - ${modalityName}`,
@@ -143,7 +144,11 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
     try {
       console.log('🔍 [FRONTEND] Verificando status do agendamento...');
       
-      const response = await fetch(`/api/booking/${appointmentId}/status`);
+      const response = await fetch(`https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-booking-status?id=${appointmentId}`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+        }
+      });
       
       if (!response.ok) {
         throw new Error('Erro ao verificar status');
