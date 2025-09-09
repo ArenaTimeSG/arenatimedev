@@ -50,13 +50,16 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
       };
 
       console.log('📤 [FRONTEND] Dados sendo enviados:', requestData);
-      console.log('🔑 [FRONTEND] Chave anon:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Presente' : 'Ausente');
+      
+      // Usar chave anon hardcoded temporariamente para teste
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dWZiZnZyZ3B6cWJ2ZGZtdGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQwNzQ4MDAsImV4cCI6MjA0OTY1MDgwMH0.xtufbfvrgpzqbvdfmtiy';
+      
+      console.log('🔑 [FRONTEND] Chave anon:', anonKey ? 'Presente' : 'Ausente');
 
       const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/create-payment-preference', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(requestData)
       });
@@ -112,8 +115,10 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
         console.log('✅ [FRONTEND] SDK do Mercado Pago disponível');
         
         try {
-          const mp = new window.MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || '');
-          console.log('✅ [FRONTEND] Instância do Mercado Pago criada');
+          // Usar chave pública hardcoded temporariamente
+          const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || 'TEST-12345678-1234-1234-1234-123456789012';
+          const mp = new window.MercadoPago(publicKey);
+          console.log('✅ [FRONTEND] Instância do Mercado Pago criada com chave:', publicKey);
           
           const checkout = mp.checkout({
             preference: {

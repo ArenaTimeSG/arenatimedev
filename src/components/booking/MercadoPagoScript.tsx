@@ -44,15 +44,17 @@ const MercadoPagoScript: React.FC<MercadoPagoScriptProps> = ({ publicKey }) => {
         console.log('🔍 [FRONTEND] window.MercadoPago:', window.MercadoPago);
         console.log('🔍 [FRONTEND] typeof setPublishableKey:', typeof window.MercadoPago?.setPublishableKey);
         
-        if (window.MercadoPago && typeof window.MercadoPago.setPublishableKey === 'function') {
+        if (window.MercadoPago) {
           try {
-            window.MercadoPago.setPublishableKey(publicKey);
-            console.log('✅ [FRONTEND] Mercado Pago configurado com chave pública');
+            // A nova API do Mercado Pago não usa setPublishableKey
+            // A chave é passada diretamente no construtor
+            console.log('✅ [FRONTEND] SDK do Mercado Pago disponível');
+            console.log('✅ [FRONTEND] Mercado Pago pronto para uso com chave:', publicKey);
           } catch (error) {
-            console.error('❌ [FRONTEND] Erro ao configurar chave pública:', error);
+            console.error('❌ [FRONTEND] Erro ao verificar SDK:', error);
           }
         } else {
-          console.error('❌ [FRONTEND] SDK do Mercado Pago não está disponível ou setPublishableKey não é uma função');
+          console.error('❌ [FRONTEND] SDK do Mercado Pago não está disponível');
           console.error('❌ [FRONTEND] window.MercadoPago:', window.MercadoPago);
         }
       }, 500); // Aumentar timeout para 500ms
