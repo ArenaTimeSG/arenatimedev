@@ -53,10 +53,12 @@ const AppointmentDetailsModal = ({
         } : null,
         recurrence_id: appointment?.recurrence_id,
         hasRecurrence: !!appointment?.recurrence_id,
-        appointmentId: appointment?.id
+        appointmentId: appointment?.id,
+        showSingleDeleteDialog,
+        showRecurrenceDeleteDialog
       });
     }
-  }, [isOpen, appointment, isDevelopment]);
+  }, [isOpen, appointment, isDevelopment, showSingleDeleteDialog, showRecurrenceDeleteDialog]);
 
   // Limpar estados quando o modal fecha
   useEffect(() => {
@@ -138,6 +140,9 @@ const AppointmentDetailsModal = ({
         description: `Agendamento marcado como ${getStatusLabel(newStatus)}.`,
       });
 
+      // Aguardar um pouco para garantir que a atualização foi processada
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       onAppointmentUpdated();
       onClose();
     } catch (error: any) {
@@ -154,7 +159,11 @@ const AppointmentDetailsModal = ({
   }, [appointment?.id, onAppointmentUpdated, onClose, toast]);
 
   const handleDeleteSingle = useCallback(async () => {
+    console.log('🚀 handleDeleteSingle chamada!');
+    console.log('📋 Appointment ID:', appointment?.id);
+    
     if (!appointment?.id) {
+      console.log('❌ Appointment ID não encontrado');
       toast({
         title: 'Erro',
         description: 'ID do agendamento não encontrado.',
@@ -169,6 +178,9 @@ const AppointmentDetailsModal = ({
     try {
       await deleteAppointment(appointment.id);
 
+      // Aguardar um pouco para garantir que a exclusão foi processada
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       onAppointmentUpdated();
       onClose();
       setShowSingleDeleteDialog(false);
@@ -340,7 +352,21 @@ const AppointmentDetailsModal = ({
           )}
 
           {/* Fallback para dados incompletos */}
-          {!isFetching && !error && appointment && appointment.id && (!appointment.client?.name || !appointment.date) && (
+          {(() => {
+            const shouldShowIncomplete = !isFetching && !error && appointment && appointment.id && (!appointment.client?.name || !appointment.date);
+            if (isDevelopment) {
+              console.log('🔍 Condição dados incompletos:', {
+                isFetching,
+                error,
+                hasAppointment: !!appointment,
+                hasAppointmentId: !!appointment?.id,
+                hasClientName: !!appointment?.client?.name,
+                hasDate: !!appointment?.date,
+                shouldShowIncomplete
+              });
+            }
+            return shouldShowIncomplete;
+          })() && (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <AlertCircle className="h-12 w-12 text-muted-foreground" />
               <div className="text-center">
@@ -350,10 +376,36 @@ const AppointmentDetailsModal = ({
                 <p className="text-sm text-muted-foreground mt-1">
                   Algumas informações do agendamento estão faltando.
                 </p>
+                {!appointment.client?.name && (
+                  <p className="text-xs text-red-500 mt-2">
+                    ⚠️ Cliente não identificado
+                  </p>
+                )}
               </div>
-              <Button variant="outline" onClick={onClose}>
-                Fechar
-              </Button>
+              <div className="flex gap-3">
+                <Button 
+                  variant="destructive" 
+                  onClick={() => {
+                    console.log('🗑️ Botão Excluir clicado!');
+                    console.log('📋 Appointment ID:', appointment?.id);
+                    console.log('🔍 Estado atual showSingleDeleteDialog:', showSingleDeleteDialog);
+                    setShowSingleDeleteDialog(true);
+                    console.log('🔍 Estado após setShowSingleDeleteDialog(true)');
+                    
+                    // Teste: forçar re-render
+                    setTimeout(() => {
+                      console.log('🔍 Estado após 100ms:', showSingleDeleteDialog);
+                    }, 100);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir Agendamento
+                </Button>
+                <Button variant="outline" onClick={onClose}>
+                  Fechar
+                </Button>
+              </div>
             </div>
           )}
 
@@ -509,94 +561,7 @@ const AppointmentDetailsModal = ({
                   )}
                 </div>
 
-                {/* Diálogo de Confirmação - Exclusão Individual */}
-                <AlertDialog open={showSingleDeleteDialog} onOpenChange={setShowSingleDeleteDialog}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2">
-                        <Trash2 className="h-5 w-5 text-red-600" />
-                        Confirmar exclusão
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Tem certeza que deseja excluir este agendamento?
-                        {appointment.recurrence_id && (
-                          <span className="block mt-2 text-sm text-amber-600">
-                            ⚠️ Este agendamento faz parte de uma recorrência. Apenas este agendamento será excluído.
-                          </span>
-                        )}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDeleteSingle}
-                        className="bg-red-600 hover:bg-red-700"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? 'Excluindo...' : 'Excluir Agendamento'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
 
-                {/* Diálogo de Confirmação - Exclusão de Recorrência */}
-                <AlertDialog open={showRecurrenceDeleteDialog} onOpenChange={setShowRecurrenceDeleteDialog}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2">
-                        <Trash2 className="h-5 w-5 text-red-600" />
-                        Confirmar exclusão de recorrência
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        <div className="space-y-2">
-                          <p>Tem certeza que deseja excluir <strong>TODA A RECORRÊNCIA</strong>?</p>
-                          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                            <p className="text-sm text-red-800 font-medium">⚠️ Atenção!</p>
-                            <p className="text-sm text-red-700 mt-1">
-                              Esta ação irá excluir <strong>permanentemente</strong> todos os agendamentos 
-                              desta recorrência, incluindo agendamentos futuros e indeterminados. 
-                              Esta operação não pode ser desfeita.
-                            </p>
-                            <p className="text-sm text-red-700 mt-2">
-                              <strong>Impacto:</strong> Todos os agendamentos com o mesmo recurrence_id 
-                              serão removidos do sistema, independentemente da data ou tipo de recorrência.
-                            </p>
-                            {/* Debug apenas em desenvolvimento */}
-                            {isDevelopment && (
-                              <p className="text-xs text-red-600 mt-2">
-                                Recurrence ID: {appointment.recurrence_id}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel 
-                        disabled={isLoading}
-                        onClick={() => {
-                          if (isDevelopment) {
-                            console.log('🔘 Botão "Cancelar" clicado no diálogo de recorrência');
-                          }
-                        }}
-                      >
-                        Cancelar
-                      </AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => {
-                          if (isDevelopment) {
-                            console.log('🔘 Botão "Excluir Toda Recorrência" clicado no diálogo');
-                          }
-                          handleDeleteRecurrence();
-                        }}
-                        className="bg-red-700 hover:bg-red-800"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? 'Excluindo...' : 'Excluir Toda Recorrência'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
             </div>
           )}
@@ -608,6 +573,78 @@ const AppointmentDetailsModal = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Diálogos de Confirmação - Fora do Dialog principal */}
+      <AlertDialog 
+        open={showSingleDeleteDialog} 
+        onOpenChange={(open) => {
+          console.log('🔔 Dialog state changed:', open);
+          setShowSingleDeleteDialog(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-600" />
+              Confirmar exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este agendamento?
+              {appointment?.recurrence_id && (
+                <span className="block mt-2 text-sm text-amber-600">
+                  ⚠️ Este agendamento faz parte de uma recorrência. Apenas este agendamento será excluído.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSingle}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Excluindo...' : 'Excluir Agendamento'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog 
+        open={showRecurrenceDeleteDialog} 
+        onOpenChange={setShowRecurrenceDeleteDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-600" />
+              Confirmar exclusão de recorrência
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir TODA a recorrência? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              disabled={isLoading}
+              onClick={() => {
+                if (isDevelopment) {
+                  console.log('🔘 Botão "Cancelar" clicado no diálogo de recorrência');
+                }
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteRecurrence}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Excluindo...' : 'Excluir Toda Recorrência'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

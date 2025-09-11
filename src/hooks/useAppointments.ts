@@ -239,6 +239,11 @@ export const useAppointments = () => {
         if (!oldData) return [newAppointment];
         return [newAppointment, ...oldData];
       });
+      
+      // Invalidar queries relacionadas para garantir sincronização
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['clientBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['availableHours'] });
     },
     onError: (error: any) => {
       toast({
@@ -307,6 +312,11 @@ export const useAppointments = () => {
         if (!oldData) return [updatedAppointment];
         return oldData.map(apt => apt.id === updatedAppointment.id ? updatedAppointment : apt);
       });
+      
+      // Invalidar queries relacionadas para garantir sincronização
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['clientBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['availableHours'] });
     },
     onError: (error: any) => {
       toast({
@@ -346,6 +356,11 @@ export const useAppointments = () => {
         if (!oldData) return [];
         return oldData.filter(apt => apt.id !== variables);
       });
+      
+      // Invalidar queries relacionadas para garantir sincronização
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['clientBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['availableHours'] });
     },
     onError: (error: any) => {
       toast({

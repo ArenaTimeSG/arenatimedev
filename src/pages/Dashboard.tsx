@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +58,8 @@ interface Appointment {
 const Dashboard = () => {
   const { user, loading, signOut } = useAuth();
   const { toast } = useToast();
-  const { appointments, getFinancialSummary, isLoading: appointmentsLoading } = useAppointments();
+  const queryClient = useQueryClient();
+  const { appointments, getFinancialSummary, isLoading: appointmentsLoading, refetch } = useAppointments();
   
   const navigate = useNavigate();
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -266,12 +268,36 @@ const Dashboard = () => {
     }
   };
 
-  const handleAppointmentCreated = () => {
-    // Os agendamentos são atualizados automaticamente pelo hook useAppointments
+  const handleAppointmentCreated = async () => {
+    console.log('🔄 Dashboard - Agendamento criado, invalidando cache...');
+    
+    // Invalidar cache de agendamentos
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['clientBookings'] });
+    
+    // Invalidar cache de horários disponíveis
+    queryClient.invalidateQueries({ queryKey: ['availableHours'] });
+    queryClient.invalidateQueries({ queryKey: ['workingHours'] });
+    
+    // Recarregar dados
+    await refetch();
   };
 
-  const handleAppointmentUpdated = () => {
-    // Os agendamentos são atualizados automaticamente pelo hook useAppointments
+  const handleAppointmentUpdated = async () => {
+    console.log('🔄 Dashboard - Agendamento atualizado, invalidando cache...');
+    
+    // Invalidar cache de agendamentos
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['clientBookings'] });
+    
+    // Invalidar cache de horários disponíveis
+    queryClient.invalidateQueries({ queryKey: ['availableHours'] });
+    queryClient.invalidateQueries({ queryKey: ['workingHours'] });
+    
+    // Recarregar dados
+    await refetch();
   };
 
   const handleConfirmBlockedTimeSlot = () => {
