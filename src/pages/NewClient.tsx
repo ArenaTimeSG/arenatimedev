@@ -77,6 +77,7 @@ const NewClient = () => {
           email: emailToInsert,
           phone: formData.phone.trim() || null,
           password_hash: 'temp_hash', // Hash temporário para clientes criados pelo admin
+          user_id: user?.id
         });
 
       if (error) throw error;

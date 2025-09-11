@@ -60,6 +60,7 @@ const ClientDetail = () => {
         .from('booking_clients')
         .select('*')
         .eq('id', id)
+        .eq('user_id', user?.id)
         .single();
 
       if (error) throw error;
@@ -102,7 +103,8 @@ const ClientDetail = () => {
           email: formData.email.trim() || null,
           phone: formData.phone.trim() || null,
         })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user?.id);
 
       if (error) throw error;
 

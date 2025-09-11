@@ -131,6 +131,7 @@ const NewAppointmentModal = ({
       const { data, error } = await supabase
         .from('booking_clients')
         .select('id, name, email, phone')
+        .eq('user_id', user?.id)
         .order('name');
 
       if (error) throw error;

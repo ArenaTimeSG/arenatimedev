@@ -11,6 +11,7 @@ import { formatCurrency } from '@/utils/currency';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { X, CheckCircle, DollarSign, Calendar, User } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Appointment {
   id: string;
@@ -41,6 +42,7 @@ const BulkPaymentModal = ({
   onPaymentCompleted
 }: BulkPaymentModalProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAppointments, setSelectedAppointments] = useState<string[]>([]);
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
@@ -118,18 +120,37 @@ const BulkPaymentModal = ({
     setIsLoading(true);
 
     try {
+      console.log('🔍 BulkPayment - Iniciando pagamento:', {
+        paymentType,
+        selectedAppointments,
+        paymentAmount
+      });
+
       if (paymentType === 'total') {
         // Marcar todos os agendamentos selecionados como pagos
-        const { error } = await supabase
+        console.log('🔍 BulkPayment - Atualizando agendamentos para pago:', selectedAppointments);
+        
+        console.log('🔍 BulkPayment - IDs dos agendamentos a atualizar:', selectedAppointments);
+        
+        const { data, error } = await supabase
           .from('appointments')
           .update({ status: 'pago' })
-          .in('id', selectedAppointments);
+          .in('id', selectedAppointments)
+          .select('id, status');
 
-        if (error) throw error;
+        if (error) {
+          console.error('🔍 BulkPayment - Erro ao atualizar:', error);
+          throw error;
+        }
 
+        console.log('🔍 BulkPayment - Dados atualizados:', data);
+
+        console.log('🔍 BulkPayment - Agendamentos atualizados com sucesso');
+        
         toast({
           title: 'Pagamento realizado!',
-          description: `${selectedAppointments.length} agendamentos foram marcados como pagos.`,
+          description: `${selectedAppointments.length} agendamentos foram marcados como pagos. Recarregue a página para ver as alterações.`,
+          duration: 5000,
         });
       } else {
         // Pagamento parcial - marcar como pago apenas os agendamentos que cabem no valor
@@ -172,6 +193,7 @@ const BulkPaymentModal = ({
         }
       }
 
+      console.log('🔍 BulkPayment - Chamando onPaymentCompleted');
       onPaymentCompleted();
       onClose();
     } catch (error: any) {

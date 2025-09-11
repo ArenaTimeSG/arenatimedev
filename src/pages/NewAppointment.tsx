@@ -48,6 +48,7 @@ const NewAppointment = () => {
       const { data, error } = await supabase
         .from('booking_clients')
         .select('id, name')
+        .eq('user_id', user?.id)
         .order('name');
 
       if (error) throw error;

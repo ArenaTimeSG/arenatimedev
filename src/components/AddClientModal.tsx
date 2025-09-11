@@ -64,7 +64,8 @@ export const AddClientModal = ({ isOpen, onClose, onClientAdded }: AddClientModa
           name: formData.name.trim(),
           email: emailToInsert,
           phone: formData.phone.trim() || null,
-          password_hash: 'temp_hash' // Hash temporário para clientes criados pelo admin
+          password_hash: 'temp_hash', // Hash temporário para clientes criados pelo admin
+          user_id: user?.id
         })
         .select()
         .single();

@@ -434,6 +434,20 @@ const AppointmentDetailsModal = ({
                   <Button
                     variant="outline"
                     className="flex items-center gap-2"
+                    onClick={() => handleStatusChange('a_cobrar')}
+                    disabled={isLoading || appointment.status === 'a_cobrar'}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
+                    Marcar como A Cobrar
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
                     onClick={() => handleStatusChange('cancelado')}
                     disabled={isLoading || appointment.status === 'cancelado'}
                   >

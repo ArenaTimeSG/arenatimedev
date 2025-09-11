@@ -65,7 +65,8 @@ export const useClientBookings = (adminUserId?: string) => {
       const { data: clients, error: clientsError } = await supabase
         .from('booking_clients')
         .select('id, name, email, phone')
-        .in('id', clientIds);
+        .in('id', clientIds)
+        .eq('user_id', adminUserId);
 
       if (clientsError) {
         console.error('Erro ao buscar clientes:', clientsError);

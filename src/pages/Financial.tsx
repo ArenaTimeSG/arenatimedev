@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointments } from '@/hooks/useAppointments';
+import { useQueryClient } from '@tanstack/react-query';
 import { useModalities } from '@/hooks/useModalities';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { DollarSign, TrendingUp, TrendingDown, Calendar, ArrowLeft, Users, ChevronLeft, ChevronRight, FileText, CheckCircle, AlertCircle, Clock, XCircle, CreditCard } from 'lucide-react';
-import BulkPaymentModal from '@/components/BulkPaymentModal';
+import SimpleStatusModal from '@/components/SimpleStatusModal';
 import { isBefore, isEqual, startOfMonth, endOfMonth, addMonths, subMonths, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -52,7 +53,8 @@ interface AppointmentData {
 const Financial = () => {
   const { user, loading } = useAuth();
   const { toast } = useToast();
-  const { appointments, getFinancialSummary } = useAppointments();
+  const { appointments, getFinancialSummary, refetch } = useAppointments();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [financialData, setFinancialData] = useState<FinancialData>({
     total_recebido: 0,
@@ -73,13 +75,14 @@ const Financial = () => {
   // Navegação por mês
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   
-  // Estado para modal de pagamento em lote
-  const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
-  const [selectedClientForPayment, setSelectedClientForPayment] = useState<{
+  // Estado para modal de alteração de status
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [selectedClientForStatus, setSelectedClientForStatus] = useState<{
     id: string;
     name: string;
     appointments: AppointmentData[];
   } | null>(null);
+  
 
   useEffect(() => {
     if (!loading && !user) {
@@ -134,6 +137,8 @@ const Financial = () => {
       console.log('🔍 Financial - Resumo financeiro calculado:', summary);
       console.log('🔍 Financial - Agendamentos cancelados no resumo:', summary.agendamentos_cancelados);
       console.log('🔍 Financial - Total cancelado no resumo:', summary.total_cancelado);
+      console.log('🔍 Financial - Agendamentos pagos encontrados:', monthAppointments.filter(apt => apt.status === 'pago').length);
+      console.log('🔍 Financial - Agendamentos a_cobrar encontrados:', monthAppointments.filter(apt => apt.status === 'a_cobrar').length);
       
       const agendamentosRealizados = monthAppointments.filter(a => {
         const aptDate = new Date(a.date);
@@ -207,82 +212,23 @@ const Financial = () => {
     setSelectedMonth(new Date());
   };
 
-  // Função para abrir modal de pagamento em lote
-  const handleOpenBulkPayment = (client: ClientFinancial) => {
+  // Função para abrir modal de alteração de status
+  const handleOpenStatusModal = (client: ClientFinancial) => {
     const clientAppointments = appointmentsData.filter(apt => apt.id === client.id);
-    setSelectedClientForPayment({
+    setSelectedClientForStatus({
       id: client.id,
       name: client.name,
       appointments: clientAppointments
     });
-    setIsBulkPaymentModalOpen(true);
+    setIsStatusModalOpen(true);
   };
 
-  // Função para fechar modal e recarregar dados
-  const handleBulkPaymentCompleted = () => {
-    setIsBulkPaymentModalOpen(false);
-    setSelectedClientForPayment(null);
-    fetchFinancialData(); // Recarregar dados financeiros
+  // Função para fechar modal e recarregar dados (igual ao dashboard)
+  const handleStatusUpdated = () => {
+    refetch();
   };
 
-  // Função para marcar todos os agendamentos pendentes como pagos
-  const handleMarkAllAsPaid = async (client: ClientFinancial) => {
-    try {
-      setIsLoading(true);
-      
-      // Buscar todos os agendamentos pendentes do cliente no mês selecionado
-      const startOfSelectedMonth = startOfMonth(selectedMonth);
-      const endOfSelectedMonth = endOfMonth(selectedMonth);
-      
-      const { data: pendingAppointments, error: fetchError } = await supabase
-        .from('appointments')
-        .select('id')
-        .eq('user_id', user?.id)
-        .eq('client_id', client.id)
-        .eq('status', 'a_cobrar')
-        .gte('date', startOfSelectedMonth.toISOString())
-        .lte('date', endOfSelectedMonth.toISOString());
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      if (!pendingAppointments || pendingAppointments.length === 0) {
-        toast({
-          title: 'Nenhum agendamento pendente',
-          description: 'Este cliente não possui agendamentos pendentes no mês selecionado.',
-        });
-        return;
-      }
-
-      // Marcar todos como pagos
-      const { error: updateError } = await supabase
-        .from('appointments')
-        .update({ status: 'pago' })
-        .in('id', pendingAppointments.map(apt => apt.id));
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      toast({
-        title: 'Pagamentos processados!',
-        description: `${pendingAppointments.length} agendamentos foram marcados como pagos.`,
-      });
-
-      // Recarregar dados
-      fetchFinancialData();
-    } catch (error: any) {
-      console.error('Erro ao marcar agendamentos como pagos:', error);
-      toast({
-        title: 'Erro ao processar pagamentos',
-        description: error.message || 'Ocorreu um erro inesperado',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Função para corrigir valores dos agendamentos recorrentes existentes
   const corrigirValoresRecorrentes = async () => {
@@ -719,26 +665,14 @@ const Financial = () => {
                               {formatCurrency(client.total_pago + client.total_pendente)}
                             </p>
                           </div>
-                          {client.total_pendente > 0 && (
-                            <div className="flex flex-col gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenBulkPayment(client)}
-                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 h-8"
-                              >
-                                <CreditCard className="h-3 w-3 mr-1" />
-                                Pagar
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleMarkAllAsPaid(client)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 h-8"
-                              >
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Marcar Todos
-                              </Button>
-                            </div>
-                          )}
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenStatusModal(client)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 h-8"
+                          >
+                            <DollarSign className="h-3 w-3 mr-1" />
+                            Alterar Status
+                          </Button>
                         </div>
                       </div>
                     </motion.div>
@@ -797,17 +731,18 @@ const Financial = () => {
         </motion.div>
       </div>
 
-      {/* Modal de Pagamento em Lote */}
-      {selectedClientForPayment && (
-        <BulkPaymentModal
-          isOpen={isBulkPaymentModalOpen}
-          onClose={() => setIsBulkPaymentModalOpen(false)}
-          clientId={selectedClientForPayment.id}
-          clientName={selectedClientForPayment.name}
-          appointments={selectedClientForPayment.appointments}
-          onPaymentCompleted={handleBulkPaymentCompleted}
+      {/* Modal de Alteração de Status */}
+      {selectedClientForStatus && (
+        <SimpleStatusModal
+          isOpen={isStatusModalOpen}
+          onClose={() => setIsStatusModalOpen(false)}
+          clientId={selectedClientForStatus.id}
+          clientName={selectedClientForStatus.name}
+          appointments={selectedClientForStatus.appointments}
+          onStatusUpdated={handleStatusUpdated}
         />
       )}
+
     </div>
   );
 };
