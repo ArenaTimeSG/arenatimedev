@@ -6,10 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Users, Search, ArrowLeft, Mail, Phone, Calendar, Eye, Edit } from 'lucide-react';
+import { Plus, Users, Search, ArrowLeft, Mail, Phone, Calendar, Eye, Edit, Trash2 } from 'lucide-react';
 import ResponsiveFilters from '@/components/ui/responsive-filters';
 
 interface Client {
@@ -27,6 +37,8 @@ const Clients = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -67,6 +79,59 @@ const Clients = () => {
     client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.phone?.includes(searchTerm)
   );
+
+  const handleDeleteClient = async () => {
+    if (!clientToDelete) return;
+
+    try {
+      setIsDeleting(true);
+
+      // Verificar se o cliente tem agendamentos
+      const { data: appointments, error: appointmentsError } = await supabase
+        .from('agendamentos')
+        .select('id')
+        .eq('client_id', clientToDelete.id)
+        .limit(1);
+
+      if (appointmentsError) throw appointmentsError;
+
+      if (appointments && appointments.length > 0) {
+        toast({
+          title: 'Não é possível excluir',
+          description: 'Este cliente possui agendamentos. Exclua os agendamentos primeiro.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Excluir o cliente
+      const { error } = await supabase
+        .from('booking_clients')
+        .delete()
+        .eq('id', clientToDelete.id)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      // Atualizar a lista de clientes
+      setClients(clients.filter(client => client.id !== clientToDelete.id));
+
+      toast({
+        title: 'Cliente excluído',
+        description: `${clientToDelete.name} foi excluído com sucesso.`,
+      });
+
+      setClientToDelete(null);
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao excluir cliente',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (loading || isLoading) {
     return (
@@ -291,6 +356,17 @@ const Clients = () => {
                               Editar
                             </Button>
                           </motion.div>
+                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setClientToDelete(client)}
+                              className="border-red-200 hover:bg-red-50 hover:border-red-300 text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir
+                            </Button>
+                          </motion.div>
                         </div>
                       </div>
                     </motion.div>
@@ -301,6 +377,37 @@ const Clients = () => {
           </Card>
         </motion.div>
       </div>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <AlertDialog open={!!clientToDelete} onOpenChange={() => setClientToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-600" />
+              Confirmar exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o cliente <strong>{clientToDelete?.name}</strong>?
+              <br />
+              <span className="text-red-600 text-sm mt-2 block">
+                ⚠️ Esta ação não pode ser desfeita. Se o cliente possuir agendamentos, a exclusão será cancelada.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteClient}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Excluindo...' : 'Excluir Cliente'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
