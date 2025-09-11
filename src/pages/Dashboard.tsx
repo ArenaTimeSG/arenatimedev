@@ -19,6 +19,7 @@ import NewAppointmentModal from '@/components/NewAppointmentModal';
 import AppointmentDetailsModal from '@/components/AppointmentDetailsModal';
 import BlockTimeModal from '@/components/BlockTimeModal';
 import UnblockConfirmModal from '@/components/UnblockConfirmModal';
+import { BlockedTimeSlotModal } from '@/components/BlockedTimeSlotModal';
 import { StatCard } from '@/components/animated/StatCard';
 import { AppointmentCard } from '@/components/animated/AppointmentCard';
 import ResponsiveCalendar from '@/components/ResponsiveCalendar';
@@ -66,10 +67,11 @@ const Dashboard = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [blockedTimeSlot, setBlockedTimeSlot] = useState<{day: Date, timeSlot: string} | null>(null);
+  const [blockedTimeSlot, setBlockedTimeSlot] = useState<{ day: Date; timeSlot: string } | null>(null);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [isUnblockModalOpen, setIsUnblockModalOpen] = useState(false);
   const [isRecurringForUnblock, setIsRecurringForUnblock] = useState(false);
+  const [isBlockedTimeSlotModalOpen, setIsBlockedTimeSlotModalOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     email: string;
@@ -245,9 +247,9 @@ const Dashboard = () => {
       const isBlocked = isTimeSlotBlocked(day, timeSlot);
       
       if (isBlocked) {
-        // Se está bloqueado, mostrar confirmação
+        // Se está bloqueado, mostrar modal de confirmação com motivo
         setBlockedTimeSlot({ day, timeSlot });
-        setIsConfirmationModalOpen(true);
+        setIsBlockedTimeSlotModalOpen(true);
       } else {
         // Se Ctrl está pressionado, abrir modal de bloqueio
         if (event && event.ctrlKey) {
@@ -272,6 +274,21 @@ const Dashboard = () => {
     // Os agendamentos são atualizados automaticamente pelo hook useAppointments
   };
 
+  const handleConfirmBlockedTimeSlot = () => {
+    if (blockedTimeSlot) {
+      setSelectedDate(blockedTimeSlot.day);
+      setSelectedTime(blockedTimeSlot.timeSlot);
+      setIsBlockedTimeSlotModalOpen(false);
+      setBlockedTimeSlot(null);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleCancelBlockedTimeSlot = () => {
+    setIsBlockedTimeSlotModalOpen(false);
+    setBlockedTimeSlot(null);
+  };
+
   // Calcular valores financeiros para a semana atual
   const getFinancialSummaryForCurrentWeek = () => {
     const weekAppointments = getAppointmentsForCurrentWeek();
@@ -282,20 +299,6 @@ const Dashboard = () => {
     navigate('/settings');
   };
 
-  const handleConfirmBlockedTimeSlot = () => {
-    if (blockedTimeSlot) {
-      setSelectedDate(blockedTimeSlot.day);
-      setSelectedTime(blockedTimeSlot.timeSlot);
-      setIsConfirmationModalOpen(false);
-      setBlockedTimeSlot(null);
-      setIsModalOpen(true);
-    }
-  };
-
-  const handleCancelBlockedTimeSlot = () => {
-    setIsConfirmationModalOpen(false);
-    setBlockedTimeSlot(null);
-  };
 
   const handleBlocked = (blockData: {
     reason: string;
@@ -880,6 +883,16 @@ const Dashboard = () => {
           </motion.div>
         </div>
       )}
+
+      {/* Modal de horário bloqueado */}
+      <BlockedTimeSlotModal
+        isOpen={isBlockedTimeSlotModalOpen}
+        onClose={handleCancelBlockedTimeSlot}
+        onConfirm={handleConfirmBlockedTimeSlot}
+        blockedDate={blockedTimeSlot?.day || null}
+        blockedTimeSlot={blockedTimeSlot?.timeSlot || null}
+        blockadeReason={blockedTimeSlot ? getBlockadeReason(blockedTimeSlot.day, blockedTimeSlot.timeSlot) : undefined}
+      />
     </div>
   );
 };

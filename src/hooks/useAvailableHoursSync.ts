@@ -116,6 +116,19 @@ export const useAvailableHoursSync = ({
 
       // Filtrar horários disponíveis
       let availableHours = allHours.filter(hour => !occupiedTimes.includes(hour));
+
+      // Verificar bloqueios do horário de funcionamento
+      // Se end_time = 00:00, não incluir horários após 23:00
+      const originalEndHour = parseInt(daySchedule.end.split(':')[0]);
+      const originalEndMinutes = parseInt(daySchedule.end.split(':')[1] || '0');
+      
+      if (originalEndHour === 0 && originalEndMinutes === 0) {
+        // Se termina às 00:00, remover horários das 23h se estiverem na lista
+        availableHours = availableHours.filter(hour => {
+          const hourNum = parseInt(hour.split(':')[0]);
+          return hourNum < 23; // Remover 23:00 se estiver presente
+        });
+      }
       
       // Verificar bloqueios manuais do localStorage (seguindo o mesmo padrão do bloqueio do meio-dia)
       try {

@@ -445,6 +445,34 @@ export const useWorkingHours = () => {
     return false;
   }, [isDayEnabled, isTimeSlotAvailable, manualBlockades]);
 
+  // Obter o motivo do bloqueio de um horário
+  const getBlockadeReason = useCallback((date: Date, timeSlot: string): string => {
+    // Se o dia não está habilitado
+    if (!isDayEnabled(date)) {
+      return 'Dia não habilitado no horário de funcionamento';
+    }
+
+    // Se o horário não está disponível
+    if (!isTimeSlotAvailable(date, timeSlot)) {
+      return 'Fora do horário de funcionamento';
+    }
+
+    // Horário das 12h - bloqueado todos os dias (almoço)
+    const slotHour = parseInt(timeSlot.split(':')[0]);
+    if (slotHour === 12) {
+      return 'Horário bloqueado para almoço';
+    }
+
+    // Verificar bloqueios manuais
+    const dateString = format(date, 'yyyy-MM-dd');
+    const blockadeKey = `${dateString}-${timeSlot}`;
+    if (manualBlockades[blockadeKey]?.blocked) {
+      return 'Horário bloqueado manualmente';
+    }
+
+    return 'Horário disponível';
+  }, [isDayEnabled, isTimeSlotAvailable, manualBlockades]);
+
   // Obter cor de fundo para uma célula da agenda
   const getCellBackgroundColor = useCallback((date: Date, timeSlot: string, hasAppointment: boolean = false): string => {
     const isBlocked = isTimeSlotBlocked(date, timeSlot);

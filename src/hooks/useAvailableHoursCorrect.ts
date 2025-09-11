@@ -105,7 +105,20 @@ export const useAvailableHoursCorrect = ({
           return !isOccupied;
         });
 
-        // 7.1. Verificar bloqueios manuais do localStorage (seguindo o mesmo padrão do bloqueio do meio-dia)
+        // 7.1. Verificar bloqueios do horário de funcionamento
+        // Se end_time = 00:00, não incluir horários após 23:00
+        const originalEndHour = parseInt(workingHours[dayOfWeek].end.split(':')[0]);
+        const originalEndMinutes = parseInt(workingHours[dayOfWeek].end.split(':')[1] || '0');
+        
+        if (originalEndHour === 0 && originalEndMinutes === 0) {
+          // Se termina às 00:00, remover horários das 23h se estiverem na lista
+          availableHours = availableHours.filter(hour => {
+            const hourNum = parseInt(hour.split(':')[0]);
+            return hourNum < 23; // Remover 23:00 se estiver presente
+          });
+        }
+
+        // 7.2. Verificar bloqueios manuais do localStorage (seguindo o mesmo padrão do bloqueio do meio-dia)
         try {
           const savedBlockades = localStorage.getItem('manualBlockades');
           if (savedBlockades) {
