@@ -1,25 +1,22 @@
 // Utilitários para política de pagamento
 
-export type PaymentPolicy = 'sem_pagamento' | 'obrigatorio' | 'opcional';
+export type PaymentPolicy = 'sem_pagamento' | 'opcional';
 
-export const PAYMENT_POLICY_VALUES: PaymentPolicy[] = ['sem_pagamento', 'obrigatorio', 'opcional'];
+export const PAYMENT_POLICY_VALUES: PaymentPolicy[] = ['sem_pagamento', 'opcional'];
 
 export const PAYMENT_POLICY_OPTIONS = [
   { value: 'sem_pagamento' as PaymentPolicy, label: 'Sem Pagamento' },
-  { value: 'opcional' as PaymentPolicy, label: 'Pagamento Opcional' },
-  { value: 'obrigatorio' as PaymentPolicy, label: 'Pagamento Obrigatório' }
+  { value: 'opcional' as PaymentPolicy, label: 'Pagamento Opcional' }
 ] as const;
 
 export const PAYMENT_POLICY_LABELS: Record<PaymentPolicy, string> = {
   sem_pagamento: 'Sem Pagamento',
-  opcional: 'Pagamento Opcional',
-  obrigatorio: 'Pagamento Obrigatório'
+  opcional: 'Pagamento Opcional'
 };
 
 export const PAYMENT_POLICY_DESCRIPTIONS: Record<PaymentPolicy, string> = {
   sem_pagamento: 'Os clientes não precisam pagar para fazer agendamentos',
-  opcional: 'Os clientes podem escolher se querem pagar ou não',
-  obrigatorio: 'Os clientes devem pagar para confirmar o agendamento'
+  opcional: 'Os clientes podem escolher se querem pagar ou não'
 };
 
 /**
@@ -62,14 +59,6 @@ export function getPaymentPolicyDescription(policy: PaymentPolicy): string {
   return PAYMENT_POLICY_DESCRIPTIONS[policy] || 'Política não definida';
 }
 
-/**
- * Verifica se o pagamento é obrigatório baseado na política
- * @param policy - Política de pagamento
- * @returns true se o pagamento for obrigatório
- */
-export function isPaymentRequired(policy: PaymentPolicy): boolean {
-  return policy === 'obrigatorio';
-}
 
 /**
  * Verifica se o pagamento é opcional baseado na política

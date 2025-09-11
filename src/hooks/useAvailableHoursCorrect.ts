@@ -7,13 +7,15 @@ interface AvailableHoursParams {
   selectedDate: Date;
   workingHours: any;
   tempoMinimoAntecedencia: number;
+  timeFormatInterval?: 30 | 60; // intervalo de horários (30min ou 60min)
 }
 
 export const useAvailableHoursCorrect = ({
   adminUserId,
   selectedDate,
   workingHours,
-  tempoMinimoAntecedencia
+  tempoMinimoAntecedencia,
+  timeFormatInterval = 60
 }: AvailableHoursParams) => {
   return useQuery({
     queryKey: ['availableHours', adminUserId, format(selectedDate, 'yyyy-MM-dd'), workingHours],
@@ -57,13 +59,23 @@ export const useAvailableHoursCorrect = ({
            // Gerar horários de startHour até 23:00
            for (let hour = startHour; hour <= 23; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
-               allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               if ((timeFormatInterval || 60) === 30) {
+                 // Para horários quebrados, gerar apenas horários de :30
+                 allHours.push(`${hour.toString().padStart(2, '0')}:30`);
+               } else {
+                 allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               }
              }
            }
            // Gerar horários de 00:00 até endHour
            for (let hour = 0; hour < endHour; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
-               allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               if ((timeFormatInterval || 60) === 30) {
+                 // Para horários quebrados, gerar apenas horários de :30
+                 allHours.push(`${hour.toString().padStart(2, '0')}:30`);
+               } else {
+                 allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               }
              }
            }
          } else {
@@ -72,7 +84,15 @@ export const useAvailableHoursCorrect = ({
            const maxHour = endHour === 23 ? 22 : endHour;
            for (let hour = startHour; hour <= maxHour; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
-               allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               if ((timeFormatInterval || 60) === 30) {
+                 // Para horários quebrados, gerar apenas horários de :30
+                 // Não adicionar :30 se for o último horário e for 23h
+                 if (hour < maxHour || (hour === maxHour && maxHour < 23)) {
+                   allHours.push(`${hour.toString().padStart(2, '0')}:30`);
+                 }
+               } else {
+                 allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               }
              }
            }
          }

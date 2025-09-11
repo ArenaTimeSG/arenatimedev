@@ -92,7 +92,7 @@ export async function getAdminDataForBooking(username: string) {
     // 2. Buscar as configurações do usuário
     const { data: settings, error: settingsError } = await supabase
       .from('settings')
-      .select('online_enabled, online_booking, working_hours, payment_policy, mercado_pago_enabled, mercado_pago_access_token, mercado_pago_public_key, mercado_pago_webhook_url')
+      .select('online_enabled, online_booking, working_hours, payment_policy, time_format_interval, mercado_pago_enabled, mercado_pago_access_token, mercado_pago_public_key, mercado_pago_webhook_url')
       .eq('user_id', userProfile.user_id)
       .single();
 
@@ -100,6 +100,9 @@ export async function getAdminDataForBooking(username: string) {
       console.log('❌ Erro ao buscar configurações:', settingsError);
       throw new Error('Erro ao verificar configurações');
     }
+
+    console.log('🔍 API - settings encontradas:', settings);
+    console.log('🔍 API - time_format_interval:', settings?.time_format_interval);
 
     // 3. Verificar se o agendamento online está habilitado
     const isEnabled = settings?.online_enabled ?? false;
@@ -124,10 +127,11 @@ export async function getAdminDataForBooking(username: string) {
       username,
       adminName: userProfile.name,
       enabled: isEnabled,
-      modalitiesCount: modalities?.length || 0
+      modalitiesCount: modalities?.length || 0,
+      timeFormatInterval: settings?.time_format_interval
     });
 
-    return {
+    const result = {
       user: {
         user_id: userProfile.user_id,
         name: userProfile.name,
@@ -150,6 +154,7 @@ export async function getAdminDataForBooking(username: string) {
           sunday: { enabled: false, start: '08:00', end: '18:00' }
         },
         payment_policy: settings.payment_policy || 'sem_pagamento',
+        time_format_interval: settings.time_format_interval || 60,
         mercado_pago_enabled: settings.mercado_pago_enabled || false,
         mercado_pago_access_token: settings.mercado_pago_access_token || '',
         mercado_pago_public_key: settings.mercado_pago_public_key || '',
@@ -157,6 +162,11 @@ export async function getAdminDataForBooking(username: string) {
       },
       modalities: modalities || []
     };
+
+    console.log('🔍 API - Resultado final:', result);
+    console.log('🔍 API - time_format_interval no resultado:', result.settings.time_format_interval);
+
+    return result;
 
   } catch (error) {
     console.error('❌ Erro ao buscar dados do admin:', error);

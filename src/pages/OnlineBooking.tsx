@@ -141,8 +141,14 @@ const OnlineBooking = () => {
     },
     tempoMinimoAntecedencia: adminData?.settings?.online_booking?.tempo_minimo_antecedencia || 24,
     modalityDuration: reserva.modalidade?.duracao || 60,
-    timeFormatInterval: adminData?.settings?.time_format_interval || 60
+    timeFormatInterval: (adminData?.settings as any)?.time_format_interval || 60
   });
+
+  // Debug: Log do time_format_interval
+  console.log('🔍 OnlineBooking - adminData completo:', adminData);
+  console.log('🔍 OnlineBooking - adminData?.settings:', adminData?.settings);
+  console.log('🔍 OnlineBooking - adminData?.settings?.time_format_interval:', (adminData?.settings as any)?.time_format_interval);
+  console.log('🔍 OnlineBooking - availableHours:', availableHours);
 
 
 
@@ -285,7 +291,11 @@ const OnlineBooking = () => {
       
       const bookingData = {
         user_id: adminData.user.user_id,
-        client_id: client.id,
+        client_data: {
+          name: reserva.cliente.nome,
+          email: reserva.cliente.email,
+          phone: reserva.cliente.telefone
+        },
         date: dataHora.toISOString(),
         modality: reserva.modalidade.name,
         valor_total: reserva.modalidade.valor,
@@ -341,10 +351,10 @@ const OnlineBooking = () => {
     await createAppointment('not_required');
   }, [createAppointment]);
 
-  // Função para confirmar reserva com pagamento (política obrigatório ou opcional com pagamento)
+  // Função para confirmar reserva com pagamento (política opcional com pagamento)
   const handleConfirmarComPagamento = useCallback(async () => {
-    console.log('🔍 OnlineBooking: Processando pagamento obrigatório');
-    // Para pagamento obrigatório, apenas processar pagamento (não criar agendamento)
+    console.log('🔍 OnlineBooking: Processando pagamento opcional');
+    // Para pagamento opcional, apenas processar pagamento (não criar agendamento)
     await handleProcessPayment();
   }, [handleProcessPayment]);
 

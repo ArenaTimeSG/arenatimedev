@@ -101,9 +101,9 @@ const PaymentPolicyDisplay = ({
           animate={{ opacity: 1 }}
           className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg"
         >
-          <p className="text-sm text-red-700">
+          <p className="text-sm text-blue-700">
             <AlertCircle className="h-4 w-4 inline mr-1" />
-            O pagamento é obrigatório para confirmar este agendamento.
+            O pagamento é opcional para este agendamento.
           </p>
         </motion.div>
       )}

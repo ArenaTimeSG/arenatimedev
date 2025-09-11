@@ -30,7 +30,8 @@ interface AdminSettings {
     tempo_minimo_antecedencia: number;
     duracao_padrao: number;
   };
-  payment_policy?: 'sem_pagamento' | 'obrigatorio' | 'opcional';
+  payment_policy?: 'sem_pagamento' | 'opcional';
+  time_format_interval: 30 | 60;
 }
 
 interface AdminData {
@@ -66,6 +67,7 @@ export const useAdminByUsername = (username: string) => {
     },
     enabled: !!username,
     retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 0, // Sempre buscar dados frescos
+    gcTime: 0, // Não manter cache
   });
 };

@@ -17,6 +17,7 @@ interface UseAvailableHoursSyncProps {
   tempoMinimoAntecedencia?: number; // em horas
   existingAppointments?: Array<{ date: string; modality: string }>;
   modalityDuration?: number; // duração da modalidade em minutos
+  timeFormatInterval?: 30 | 60; // intervalo de horários (30min ou 60min)
 }
 
 export const useAvailableHoursSync = ({
@@ -24,7 +25,8 @@ export const useAvailableHoursSync = ({
   selectedDate,
   tempoMinimoAntecedencia = 24,
   existingAppointments = [],
-  modalityDuration = 60
+  modalityDuration = 60,
+  timeFormatInterval = 60
 }: UseAvailableHoursSyncProps) => {
   return useMemo(() => {
     try {
@@ -83,7 +85,15 @@ export const useAvailableHoursSync = ({
           const maxHour = endHour === 23 ? 22 : endHour;
           for (let hour = startHour; hour <= maxHour; hour++) {
             if (hour !== 12) { // Excluir horário do almoço
-              allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+              if ((timeFormatInterval || 60) === 30) {
+                // Para horários quebrados, gerar apenas horários de :30
+                // Não adicionar :30 se for o último horário e for 23h
+                if (hour < maxHour || (hour === maxHour && maxHour < 23)) {
+                  allHours.push(`${hour.toString().padStart(2, '0')}:30`);
+                }
+              } else {
+                allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+              }
             }
           }
         }

@@ -22,11 +22,16 @@ export interface ClientBooking {
 
 export interface CreateClientBookingData {
   user_id: string; // agenda_id do admin
-  client_id: string;
+  client_id?: string; // Opcional - será criado automaticamente se não fornecido
+  client_data?: { // Dados do cliente para criação automática
+    name: string;
+    email: string;
+    phone?: string;
+  };
   date: string;
   modality: string;
   valor_total: number;
-  payment_policy?: 'sem_pagamento' | 'obrigatorio' | 'opcional';
+  payment_policy?: 'sem_pagamento' | 'opcional';
 }
 
 export interface UpdateClientBookingData {
@@ -43,12 +48,11 @@ export const useClientBookings = (adminUserId?: string) => {
     queryFn: async () => {
       if (!adminUserId) return [];
 
-      // Buscar agendamentos primeiro
+      // Buscar agendamentos primeiro (incluindo os sem cliente)
       const { data: appointments, error: appointmentsError } = await supabase
         .from('appointments')
         .select('*')
         .eq('user_id', adminUserId)
-        .not('client_id', 'is', null)
         .order('date', { ascending: true });
 
       if (appointmentsError) {
@@ -60,24 +64,46 @@ export const useClientBookings = (adminUserId?: string) => {
         return [];
       }
 
-      // Buscar dados dos clientes separadamente
+      // Buscar dados dos clientes separadamente (apenas para agendamentos com client_id)
       const clientIds = appointments.map(apt => apt.client_id).filter(Boolean);
-      const { data: clients, error: clientsError } = await supabase
-        .from('booking_clients')
-        .select('id, name, email, phone')
-        .in('id', clientIds)
-        .eq('user_id', adminUserId);
+      let clients = [];
+      if (clientIds.length > 0) {
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('booking_clients')
+          .select('id, name, email, phone')
+          .in('id', clientIds)
+          .eq('user_id', adminUserId);
 
-      if (clientsError) {
-        console.error('Erro ao buscar clientes:', clientsError);
-        return [];
+        if (clientsError) {
+          console.error('Erro ao buscar clientes:', clientsError);
+          return [];
+        }
+        clients = clientsData || [];
       }
 
       // Combinar dados
-      const data = appointments.map(appointment => ({
-        ...appointment,
-        booking_clients: clients?.find(client => client.id === appointment.client_id) || null
-      }));
+      const data = appointments.map(appointment => {
+        let clientData = null;
+        
+        if (appointment.client_id) {
+          clientData = clients.find(client => client.id === appointment.client_id) || null;
+        }
+        
+        // Se não há cliente ou dados do cliente, criar um objeto padrão
+        if (!clientData) {
+          clientData = {
+            id: null,
+            name: 'Cliente não identificado',
+            email: 'N/A',
+            phone: 'N/A'
+          };
+        }
+        
+        return {
+          ...appointment,
+          booking_clients: clientData
+        };
+      });
 
       return data || [];
     },
@@ -91,37 +117,64 @@ export const useClientBookings = (adminUserId?: string) => {
     mutationFn: async (data: CreateClientBookingData & { autoConfirmada?: boolean }) => {
       const { autoConfirmada, ...bookingData } = data;
       
-      // Verificar se o horário está bloqueado antes de criar o agendamento
+      // Criar/encontrar cliente para agendamentos online
+      let clientId = bookingData.client_id;
+      
+      if (!clientId && bookingData.client_data) {
+        console.log('🔍 Processando cliente para agendamento online:', bookingData.client_data.email);
+        
+        // Buscar cliente existente primeiro
+        const { data: existingClient } = await supabase
+          .from('booking_clients')
+          .select('id')
+          .eq('email', bookingData.client_data.email)
+          .eq('user_id', bookingData.user_id)
+          .maybeSingle();
+
+        if (existingClient) {
+          clientId = existingClient.id;
+          console.log('✅ Cliente existente encontrado:', clientId);
+         } else {
+           // Cliente não existe nesta conta, criar novo
+           console.log('🔍 Criando novo cliente para esta conta...');
+           
+           const { data: newClient, error: clientError } = await supabase
+             .from('booking_clients')
+             .insert({
+               name: bookingData.client_data.name,
+               email: bookingData.client_data.email,
+               phone: bookingData.client_data.phone || null,
+               password_hash: 'temp_hash',
+               user_id: bookingData.user_id
+             })
+             .select('id')
+             .single();
+
+           if (clientError) {
+             console.error('❌ Erro ao criar cliente:', clientError);
+             throw new Error('Erro ao criar cliente: ' + clientError.message);
+           } else {
+             clientId = newClient.id;
+             console.log('✅ Cliente criado com sucesso:', clientId);
+           }
+         }
+      }
+      
+      if (!clientId) {
+        throw new Error('ID do cliente é obrigatório');
+      }
+      
+      // Verificar se já existe um agendamento neste horário (validação básica)
       try {
         const appointmentDate = new Date(bookingData.date);
         const dateKey = appointmentDate.toISOString().split('T')[0];
-        const timeSlot = appointmentDate.toTimeString().substring(0, 5);
         
-        // Verificar bloqueios na tabela time_blockades
-        const { data: timeBlockades, error: blockadesError } = await supabase
-          .from('time_blockades')
-          .select('id')
-          .eq('user_id', bookingData.user_id)
-          .eq('date', dateKey)
-          .eq('time_slot', timeSlot);
-
-        if (blockadesError) {
-          console.error('❌ Erro ao verificar bloqueios:', blockadesError);
-          throw new Error('Erro ao verificar disponibilidade do horário');
-        }
-
-        if (timeBlockades && timeBlockades.length > 0) {
-          console.error('❌ Horário bloqueado:', { date: dateKey, time: timeSlot });
-          throw new Error('Este horário não está disponível para agendamento');
-        }
-
         // Verificar se já existe um agendamento neste horário
         const { data: existingAppointments, error: existingError } = await supabase
           .from('appointments')
           .select('id')
           .eq('user_id', bookingData.user_id)
           .eq('date', dateKey)
-          .eq('status', 'agendado')
           .not('status', 'eq', 'cancelado');
 
         if (existingError) {
@@ -130,7 +183,7 @@ export const useClientBookings = (adminUserId?: string) => {
         }
 
         if (existingAppointments && existingAppointments.length > 0) {
-          console.error('❌ Horário já ocupado:', { date: dateKey, time: timeSlot });
+          console.error('❌ Horário já ocupado:', { date: dateKey });
           throw new Error('Este horário já está ocupado');
         }
 
@@ -143,12 +196,7 @@ export const useClientBookings = (adminUserId?: string) => {
       let paymentStatus: 'not_required' | 'pending' | 'failed' = 'not_required';
       let appointmentStatus: 'a_cobrar' | 'agendado' = 'a_cobrar';
       
-      if (bookingData.payment_policy === 'obrigatorio') {
-        paymentStatus = 'pending';
-        // Para pagamento obrigatório, SEMPRE criar como 'a_cobrar' (pendente)
-        // O status só muda para 'agendado' quando o pagamento for aprovado via webhook
-        appointmentStatus = 'a_cobrar';
-      } else if (bookingData.payment_policy === 'opcional') {
+      if (bookingData.payment_policy === 'opcional') {
         paymentStatus = 'not_required'; // Cliente pode escolher pagar depois
         // Para pagamento opcional, usar auto_confirmada para determinar o status
         appointmentStatus = autoConfirmada ? 'agendado' : 'a_cobrar';
@@ -157,18 +205,23 @@ export const useClientBookings = (adminUserId?: string) => {
         appointmentStatus = autoConfirmada ? 'agendado' : 'a_cobrar';
       }
 
+
+      const appointmentData = {
+        user_id: bookingData.user_id,
+        date: bookingData.date,
+        status: appointmentStatus,
+        modality: bookingData.modality,
+        valor_total: bookingData.valor_total,
+        payment_status: paymentStatus,
+        booking_source: 'online' // Agendamentos online sempre têm source 'online'
+      };
+
+      // Adicionar client_id ao agendamento
+      appointmentData.client_id = clientId;
+
       const { data: newBooking, error } = await supabase
         .from('appointments')
-        .insert({
-          user_id: bookingData.user_id,
-          client_id: bookingData.client_id,
-          date: bookingData.date,
-          status: appointmentStatus,
-          modality: bookingData.modality,
-          valor_total: bookingData.valor_total,
-          payment_status: paymentStatus,
-          booking_source: 'online' // Agendamentos online sempre têm source 'online'
-        })
+        .insert(appointmentData)
         .select()
         .single();
 
@@ -176,6 +229,7 @@ export const useClientBookings = (adminUserId?: string) => {
         console.error('❌ useClientBookings: Erro ao criar agendamento:', error);
         throw error;
       }
+
       
 
       return newBooking;
@@ -306,3 +360,4 @@ export const useClientBookings = (adminUserId?: string) => {
     markCompletedError: markCompletedMutation.error
   };
 };
+

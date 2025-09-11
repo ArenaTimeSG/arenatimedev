@@ -76,32 +76,7 @@ const ResumoReserva = ({
   };
 
   const handleConfirmWithPayment = async () => {
-    if (paymentPolicy === 'obrigatorio') {
-      // Para política obrigatória, primeiro processar pagamento (salvar dados)
-      // Depois abrir o modal de pagamento
-      console.log('🔒 Payment required - processing payment first');
-      try {
-        await onConfirmarComPagamento?.();
-        console.log('✅ Payment data processed, opening modal');
-        
-        // Aguardar um pouco para garantir que os dados foram salvos
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Verificar se os dados foram salvos
-        const storedData = sessionStorage.getItem('paymentData');
-        if (!storedData) {
-          console.error('❌ Payment data not found after processing');
-          throw new Error('Dados do pagamento não foram salvos');
-        }
-        
-        console.log('✅ Payment data verified, opening modal');
-        setShowPayment(true);
-      } catch (error) {
-        console.error('❌ Error processing payment:', error);
-        // Ainda assim abrir o modal para mostrar o erro
-        setShowPayment(true);
-      }
-    } else if (paymentPolicy === 'opcional') {
+    if (paymentPolicy === 'opcional') {
       setPaymentChoice('pay');
       setShowPayment(true);
     } else {
@@ -159,7 +134,6 @@ const ResumoReserva = ({
               <p className="font-bold text-gray-800 text-2xl">R$ {reserva.modalidade?.valor}</p>
               <p className="text-sm text-gray-600">
                 {paymentPolicy === 'sem_pagamento' && 'Pagamento no local'}
-                {paymentPolicy === 'obrigatorio' && 'Pagamento obrigatório online'}
                 {paymentPolicy === 'opcional' && 'Pagamento opcional online'}
               </p>
             </div>
@@ -271,7 +245,7 @@ const ResumoReserva = ({
             </motion.button>
             
             <p className="text-center text-sm text-gray-500 mt-4">
-              Pagamento obrigatório para confirmar o agendamento
+              {paymentPolicy === 'opcional' ? 'Pagamento opcional para confirmar o agendamento' : 'Pagamento no local'}
             </p>
           </>
         )}

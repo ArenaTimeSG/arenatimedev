@@ -27,41 +27,7 @@ const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHou
   
 
 
-  // Gerar todos os horários possíveis baseados no working_hours
-  const generateAllPossibleHours = () => {
-    if (!workingHours) {
-      return [];
-    }
-    
-    const dayOfWeek = data.getDay();
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayName = dayNames[dayOfWeek];
-    const daySchedule = workingHours[dayName];
-    
-    if (!daySchedule || !daySchedule.enabled) {
-      return [];
-    }
-    
-    const startHour = parseInt(daySchedule.start.split(':')[0]);
-    let endHour = parseInt(daySchedule.end.split(':')[0]);
-    
-    // Se end_time = 00:00, tratar como 23:59
-    if (endHour === 0) {
-      endHour = 23;
-    }
-    
-    const allHours: string[] = [];
-    for (let hour = startHour; hour <= endHour; hour++) {
-      if (hour !== 12) { // Excluir horário do almoço
-        const timeString = `${hour.toString().padStart(2, '0')}:00`;
-        allHours.push(timeString);
-      }
-    }
-    
-    return allHours;
-  };
-
-  const allPossibleHours = generateAllPossibleHours();
+  // Agora usamos diretamente os horários do hook useAvailableHours
   
 
 
@@ -81,10 +47,13 @@ const ListaHorarios = ({ horarios, onHorarioSelect, modalidade, data, workingHou
     return selectedHorario === horario;
   };
 
-  // Agrupar horários por período (usar todos os horários possíveis)
-  const horariosManha = allPossibleHours.filter(h => parseInt(h) < 12);
-  const horariosTarde = allPossibleHours.filter(h => parseInt(h) >= 12 && parseInt(h) < 18);
-  const horariosNoite = allPossibleHours.filter(h => parseInt(h) >= 18);
+  // Agrupar horários por período (usar horários disponíveis do hook)
+  const horariosManha = horarios.filter(h => parseInt(h.split(':')[0]) < 12);
+  const horariosTarde = horarios.filter(h => {
+    const hour = parseInt(h.split(':')[0]);
+    return hour >= 12 && hour < 18;
+  });
+  const horariosNoite = horarios.filter(h => parseInt(h.split(':')[0]) >= 18);
 
   return (
     <div className="max-w-2xl mx-auto">

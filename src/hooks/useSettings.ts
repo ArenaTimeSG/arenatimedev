@@ -86,6 +86,7 @@ export const useSettings = () => {
               modalities_colors: defaultSettings.modalities_colors as any,
               working_hours: defaultSettings.working_hours as any,
               default_interval: defaultSettings.default_interval,
+              time_format_interval: defaultSettings.time_format_interval,
               notifications_enabled: defaultSettings.notifications_enabled as any,
               theme: defaultSettings.theme,
               personal_data: defaultSettings.personal_data as any,

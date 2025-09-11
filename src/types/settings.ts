@@ -62,7 +62,7 @@ export interface Settings {
   personal_data: UserProfile;
   online_enabled: boolean;
   online_booking: OnlineBookingConfig;
-  payment_policy: 'sem_pagamento' | 'obrigatorio' | 'opcional';
+  payment_policy: 'sem_pagamento' | 'opcional';
   mercado_pago_access_token?: string;
   mercado_pago_public_key?: string;
   mercado_pago_webhook_url?: string;

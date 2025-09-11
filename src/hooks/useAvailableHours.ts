@@ -70,6 +70,12 @@ export const useAvailableHours = ({
         let endHour = parseInt(daySchedule.end.split(':')[0]);
         const endMinutes = parseInt(daySchedule.end.split(':')[1] || '0');
         
+        console.log('🔍 useAvailableHours - timeFormatInterval:', timeFormatInterval);
+        
+        // Fallback: se timeFormatInterval for undefined/null, usar 60
+        const safeTimeFormatInterval = timeFormatInterval || 60;
+        console.log('🔍 useAvailableHours - safeTimeFormatInterval:', safeTimeFormatInterval);
+        
                  // Se end_time = 00:00, tratar como 23:59
          if (endHour === 0 && endMinutes === 0) {
            endHour = 23;
@@ -94,7 +100,7 @@ export const useAvailableHours = ({
            // Gerar horários de startHour até 23:00
            for (let hour = startHour; hour <= 23; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
-               if (timeFormatInterval === 30) {
+               if (safeTimeFormatInterval === 30) {
                  // Para horários quebrados, gerar apenas horários de :30
                  allHours.push(`${hour.toString().padStart(2, '0')}:30`);
                } else {
@@ -105,7 +111,7 @@ export const useAvailableHours = ({
            // Gerar horários de 00:00 até endHour
            for (let hour = 0; hour < endHour; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
-               if (timeFormatInterval === 30) {
+               if (safeTimeFormatInterval === 30) {
                  // Para horários quebrados, gerar apenas horários de :30
                  allHours.push(`${hour.toString().padStart(2, '0')}:30`);
                } else {
@@ -119,10 +125,10 @@ export const useAvailableHours = ({
            const maxHour = endHour === 23 ? 22 : endHour;
            for (let hour = startHour; hour <= maxHour; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
-               if (timeFormatInterval === 30) {
+               if (safeTimeFormatInterval === 30) {
                  // Para horários quebrados, gerar apenas horários de :30
-                 // Não adicionar :30 se for o último horário
-                 if (hour < maxHour) {
+                 // Não adicionar :30 se for o último horário e for 23h
+                 if (hour < maxHour || (hour === maxHour && maxHour < 23)) {
                    allHours.push(`${hour.toString().padStart(2, '0')}:30`);
                  }
                } else {
