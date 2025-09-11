@@ -731,42 +731,18 @@ export const useWorkingHours = () => {
           };
         });
 
-        // Inserir um por vez para evitar problemas de validação
-        let insertedCount = 0;
-        let skippedCount = 0;
-        
-        for (const blockade of blockadeData) {
-          // Verificar se o bloqueio já existe antes de inserir
-          const { data: existingBlockade, error: checkError } = await (supabase as any)
-            .from('time_blockades')
-            .select('id')
-            .eq('user_id', blockade.user_id)
-            .eq('date', blockade.date)
-            .eq('time_slot', blockade.time_slot)
-            .single();
-          
-          if (checkError && checkError.code !== 'PGRST116') {
-            console.error('❌ Erro ao verificar bloqueio existente:', checkError);
-            throw checkError;
-          }
-          
-          if (existingBlockade) {
-            console.log('⚠️ Bloqueio já existe, pulando inserção:', blockade);
-            skippedCount++;
-            continue;
-          }
-          
-          const { error } = await (supabase as any)
-            .from('time_blockades')
-            .insert(blockade);
+        // Inserir todos os bloqueios de uma vez
+        const { error } = await (supabase as any)
+          .from('time_blockades')
+          .insert(blockadeData);
 
-          if (error) {
-            console.error('❌ Erro ao salvar bloqueio individual:', error);
-            throw error;
-          } else {
-            insertedCount++;
-          }
+        if (error) {
+          console.error('❌ Erro ao salvar bloqueios recorrentes:', error);
+          throw error;
         }
+
+        const insertedCount = blockadeData.length;
+        const skippedCount = 0;
 
         let message = `${insertedCount} horários foram bloqueados recorrentemente!`;
         if (skippedCount > 0) {
