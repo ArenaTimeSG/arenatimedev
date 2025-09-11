@@ -12,7 +12,7 @@ import { useModalities } from '@/hooks/useModalities';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { DollarSign, TrendingUp, TrendingDown, Calendar, ArrowLeft, Users, ChevronLeft, ChevronRight, FileText, CheckCircle, AlertCircle, Clock, XCircle, CreditCard } from 'lucide-react';
-import SimpleStatusModal from '@/components/SimpleStatusModal';
+import BulkPaymentModal from '@/components/BulkPaymentModal';
 import { isBefore, isEqual, startOfMonth, endOfMonth, addMonths, subMonths, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -75,9 +75,9 @@ const Financial = () => {
   // Navegação por mês
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   
-  // Estado para modal de alteração de status
-  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-  const [selectedClientForStatus, setSelectedClientForStatus] = useState<{
+  // Estado para modal de pagamento em massa
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedClientForPayment, setSelectedClientForPayment] = useState<{
     id: string;
     name: string;
     appointments: AppointmentData[];
@@ -139,6 +139,7 @@ const Financial = () => {
       console.log('🔍 Financial - Total cancelado no resumo:', summary.total_cancelado);
       console.log('🔍 Financial - Agendamentos pagos encontrados:', monthAppointments.filter(apt => apt.status === 'pago').length);
       console.log('🔍 Financial - Agendamentos a_cobrar encontrados:', monthAppointments.filter(apt => apt.status === 'a_cobrar').length);
+      console.log('🔍 Financial - Status dos agendamentos após atualização:', monthAppointments.map(apt => ({ id: apt.id, status: apt.status, valor: apt.valor_total })));
       
       const agendamentosRealizados = monthAppointments.filter(a => {
         const aptDate = new Date(a.date);
@@ -212,20 +213,54 @@ const Financial = () => {
     setSelectedMonth(new Date());
   };
 
-  // Função para abrir modal de alteração de status
-  const handleOpenStatusModal = (client: ClientFinancial) => {
-    const clientAppointments = appointmentsData.filter(apt => apt.id === client.id);
-    setSelectedClientForStatus({
+  // Função para abrir modal de pagamento em massa
+  const handleOpenPaymentModal = (client: ClientFinancial) => {
+    // Buscar agendamentos reais do hook useAppointments, não do appointmentsData
+    const clientAppointments = appointments.filter(apt => apt.client_id === client.id);
+    console.log('🔄 Financial - Abrindo modal de pagamento para cliente:', client);
+    console.log('🔄 Financial - Agendamentos do cliente (do hook):', clientAppointments);
+    console.log('🔄 Financial - Agendamentos a cobrar:', clientAppointments.filter(apt => apt.status === 'a_cobrar'));
+    
+    setSelectedClientForPayment({
       id: client.id,
       name: client.name,
-      appointments: clientAppointments
+      appointments: clientAppointments.map(apt => ({
+        id: apt.id,
+        date: apt.date,
+        status: apt.status,
+        modality: apt.modality_info?.name || apt.modality || 'Modalidade não definida',
+        valor_total: apt.valor_total || 0,
+        client: apt.client
+      }))
     });
-    setIsStatusModalOpen(true);
+    setIsPaymentModalOpen(true);
   };
 
-  // Função para fechar modal e recarregar dados (igual ao dashboard)
-  const handleStatusUpdated = () => {
-    refetch();
+  // Função para fechar modal e recarregar dados
+  const handlePaymentUpdated = async () => {
+    console.log('🔄 Financial - Recarregando dados após pagamento');
+    
+    // Invalidar TODOS os caches relacionados a appointments
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['clientBookings'] });
+    
+    // Limpar cache completamente
+    queryClient.removeQueries({ queryKey: ['appointments', user?.id] });
+    
+    // Aguardar um pouco para o cache ser limpo
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Recarregar dados
+    await refetch();
+    
+    // Aguardar mais um pouco
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Forçar recarregamento dos dados financeiros
+    await fetchFinancialData();
+    
+    console.log('✅ Financial - Recarregamento concluído');
   };
 
 
@@ -667,11 +702,11 @@ const Financial = () => {
                           </div>
                           <Button
                             size="sm"
-                            onClick={() => handleOpenStatusModal(client)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 h-8"
+                            onClick={() => handleOpenPaymentModal(client)}
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 h-8"
                           >
-                            <DollarSign className="h-3 w-3 mr-1" />
-                            Alterar Status
+                            <CreditCard className="h-3 w-3 mr-1" />
+                            Pagamento
                           </Button>
                         </div>
                       </div>
@@ -731,15 +766,15 @@ const Financial = () => {
         </motion.div>
       </div>
 
-      {/* Modal de Alteração de Status */}
-      {selectedClientForStatus && (
-        <SimpleStatusModal
-          isOpen={isStatusModalOpen}
-          onClose={() => setIsStatusModalOpen(false)}
-          clientId={selectedClientForStatus.id}
-          clientName={selectedClientForStatus.name}
-          appointments={selectedClientForStatus.appointments}
-          onStatusUpdated={handleStatusUpdated}
+      {/* Modal de Pagamento em Massa */}
+      {selectedClientForPayment && (
+        <BulkPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          clientId={selectedClientForPayment.id}
+          clientName={selectedClientForPayment.name}
+          appointments={selectedClientForPayment.appointments}
+          onStatusUpdated={handlePaymentUpdated}
         />
       )}
 
