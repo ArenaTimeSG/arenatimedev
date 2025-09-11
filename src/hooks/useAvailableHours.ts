@@ -18,6 +18,7 @@ interface UseAvailableHoursProps {
   tempoMinimoAntecedencia?: number; // em horas
   adminUserId?: string; // ID do admin para filtrar agendamentos
   modalityDuration?: number; // duração da modalidade em minutos
+  timeFormatInterval?: 30 | 60; // intervalo de horários (30min ou 60min)
 }
 
 export const useAvailableHours = ({
@@ -25,12 +26,13 @@ export const useAvailableHours = ({
   selectedDate,
   tempoMinimoAntecedencia = 24,
   adminUserId,
-  modalityDuration = 60
+  modalityDuration = 60,
+  timeFormatInterval = 60
 }: UseAvailableHoursProps) => {
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
   
   return useQuery({
-    queryKey: ['availableHours', adminUserId, dateKey, modalityDuration],
+    queryKey: ['availableHours', adminUserId, dateKey, modalityDuration, timeFormatInterval],
     queryFn: async (): Promise<string[]> => {
       try {
         const dayOfWeek = format(selectedDate, 'EEEE').toLowerCase() as keyof WorkingHours;
@@ -92,13 +94,23 @@ export const useAvailableHours = ({
            // Gerar horários de startHour até 23:00
            for (let hour = startHour; hour <= 23; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
-               allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               if (timeFormatInterval === 30) {
+                 // Para horários quebrados, gerar apenas horários de :30
+                 allHours.push(`${hour.toString().padStart(2, '0')}:30`);
+               } else {
+                 allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               }
              }
            }
            // Gerar horários de 00:00 até endHour
            for (let hour = 0; hour < endHour; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
-               allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               if (timeFormatInterval === 30) {
+                 // Para horários quebrados, gerar apenas horários de :30
+                 allHours.push(`${hour.toString().padStart(2, '0')}:30`);
+               } else {
+                 allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               }
              }
            }
          } else {
@@ -107,7 +119,15 @@ export const useAvailableHours = ({
            const maxHour = endHour === 23 ? 22 : endHour;
            for (let hour = startHour; hour <= maxHour; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
-               allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               if (timeFormatInterval === 30) {
+                 // Para horários quebrados, gerar apenas horários de :30
+                 // Não adicionar :30 se for o último horário
+                 if (hour < maxHour) {
+                   allHours.push(`${hour.toString().padStart(2, '0')}:30`);
+                 }
+               } else {
+                 allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+               }
              }
            }
          }

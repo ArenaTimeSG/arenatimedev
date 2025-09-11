@@ -56,6 +56,7 @@ export interface Settings {
   modalities_colors: Record<string, string>;
   working_hours: Schedule;
   default_interval: number;
+  time_format_interval: 30 | 60; // 30 for half-hour slots, 60 for full-hour slots
   notifications_enabled: NotificationConfig;
   theme: 'light' | 'dark' | 'custom';
   personal_data: UserProfile;
@@ -94,6 +95,7 @@ export const DEFAULT_SETTINGS: Omit<Settings, 'id' | 'user_id' | 'created_at' | 
     saturday: { start: '08:00', end: '18:00', enabled: true }
   },
   default_interval: 60,
+  time_format_interval: 60, // Default to full-hour slots
   notifications_enabled: {
     email: true,
     push: false,

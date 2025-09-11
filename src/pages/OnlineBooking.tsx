@@ -140,7 +140,8 @@ const OnlineBooking = () => {
       sunday: { enabled: false, start: '08:00', end: '18:00' }
     },
     tempoMinimoAntecedencia: adminData?.settings?.online_booking?.tempo_minimo_antecedencia || 24,
-    modalityDuration: reserva.modalidade?.duracao || 60
+    modalityDuration: reserva.modalidade?.duracao || 60,
+    timeFormatInterval: adminData?.settings?.time_format_interval || 60
   });
 
 

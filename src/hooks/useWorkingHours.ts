@@ -353,6 +353,8 @@ export const useWorkingHours = () => {
 
   // Gerar slots de horário baseados nas configurações
   const generateTimeSlots = useCallback((): string[] => {
+    const interval = settings?.time_format_interval || 60; // Default to 60 minutes
+    
     if (!settings?.working_hours) {
       // Fallback para horários padrão se não houver configurações
       return Array.from({ length: 16 }, (_, i) => {
@@ -380,30 +382,48 @@ export const useWorkingHours = () => {
       }
     });
 
-    // Gerar slots de hora em hora (incluindo horários após meia-noite se necessário)
+    // Gerar slots baseados no intervalo configurado
     const slots: string[] = [];
     
     // Se o horário mais tarde é menor que o mais cedo, significa que atravessa a madrugada
     if (latestHour < earliestHour) {
       // Gerar slots de 00:00 até latestHour
       for (let hour = 0; hour <= latestHour; hour++) {
-        slots.push(`${hour.toString().padStart(2, '0')}:00`);
+        if (interval === 30) {
+          // Para horários quebrados, gerar apenas horários de :30
+          slots.push(`${hour.toString().padStart(2, '0')}:30`);
+        } else {
+          slots.push(`${hour.toString().padStart(2, '0')}:00`);
+        }
       }
       // Gerar slots de earliestHour até 23:00
       for (let hour = earliestHour; hour <= 23; hour++) {
-        slots.push(`${hour.toString().padStart(2, '0')}:00`);
+        if (interval === 30) {
+          // Para horários quebrados, gerar apenas horários de :30
+          slots.push(`${hour.toString().padStart(2, '0')}:30`);
+        } else {
+          slots.push(`${hour.toString().padStart(2, '0')}:00`);
+        }
       }
     } else {
       // Funcionamento normal no mesmo dia
       // Se o horário mais tarde é 23h, incluir até 23:00
       const maxHour = latestHour === 23 ? 23 : latestHour;
       for (let hour = earliestHour; hour <= maxHour; hour++) {
-        slots.push(`${hour.toString().padStart(2, '0')}:00`);
+        if (interval === 30) {
+          // Para horários quebrados, gerar apenas horários de :30
+          // Não adicionar :30 se for o último horário e for 23h
+          if (hour < maxHour || (hour === maxHour && maxHour < 23)) {
+            slots.push(`${hour.toString().padStart(2, '0')}:30`);
+          }
+        } else {
+          slots.push(`${hour.toString().padStart(2, '0')}:00`);
+        }
       }
     }
 
     return slots;
-  }, [settings?.working_hours]);
+  }, [settings?.working_hours, settings?.time_format_interval]);
 
   // Obter horário de funcionamento para um dia específico
   const getDaySchedule = useCallback((date: Date) => {
@@ -508,6 +528,7 @@ export const useWorkingHours = () => {
       return [];
     }
 
+    const interval = settings?.time_format_interval || 60; // Default to 60 minutes
     const startHour = parseInt((daySchedule as any).start.split(':')[0]);
     const startMinutes = parseInt((daySchedule as any).start.split(':')[1] || '0');
     const startTimeInMinutes = startHour * 60 + startMinutes;
@@ -531,13 +552,23 @@ export const useWorkingHours = () => {
       // Gerar horários de startHour até 23:00
       for (let hour = startHour; hour <= 23; hour++) {
         if (hour !== 12) { // Excluir horário do almoço
-          availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+          if (interval === 30) {
+            // Para horários quebrados, gerar apenas horários de :30
+            availableHours.push(`${hour.toString().padStart(2, '0')}:30`);
+          } else {
+            availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+          }
         }
       }
       // Gerar horários de 00:00 até endHour
       for (let hour = 0; hour < endHour; hour++) {
         if (hour !== 12) { // Excluir horário do almoço
-          availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+          if (interval === 30) {
+            // Para horários quebrados, gerar apenas horários de :30
+            availableHours.push(`${hour.toString().padStart(2, '0')}:30`);
+          } else {
+            availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+          }
         }
       }
     } else {
@@ -547,14 +578,30 @@ export const useWorkingHours = () => {
         // Funcionamento termina às 00:00, então incluir até 23:00
         for (let hour = startHour; hour <= 23; hour++) {
           if (hour !== 12) { // Excluir horário do almoço
-            availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+            if (interval === 30) {
+              // Para horários quebrados, gerar apenas horários de :30
+              // Não adicionar :30 se for 23h
+              if (hour < 23) {
+                availableHours.push(`${hour.toString().padStart(2, '0')}:30`);
+              }
+            } else {
+              availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+            }
           }
         }
       } else {
         // Funcionamento termina em outro horário
         for (let hour = startHour; hour < endHour; hour++) {
           if (hour !== 12) { // Excluir horário do almoço
-            availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+            if (interval === 30) {
+              // Para horários quebrados, gerar apenas horários de :30
+              // Não adicionar :30 se for o último horário
+              if (hour < endHour - 1) {
+                availableHours.push(`${hour.toString().padStart(2, '0')}:30`);
+              }
+            } else {
+              availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
+            }
           }
         }
       }
@@ -568,7 +615,7 @@ export const useWorkingHours = () => {
     });
 
     return filteredHours;
-  }, [isDayEnabled, getDaySchedule, dayMapping, manualBlockades]);
+  }, [isDayEnabled, getDaySchedule, dayMapping, manualBlockades, settings?.time_format_interval]);
 
   // Função para gerar bloqueios recorrentes
   const generateRecurringBlockades = useCallback((
