@@ -68,8 +68,8 @@ export const useAvailableHoursCorrect = ({
            }
          } else {
            // Funcionamento normal no mesmo dia
-           // Se endHour é 23 (após conversão de 00:00), incluir até 23:00
-           const maxHour = endHour === 23 ? 23 : endHour;
+           // Se endHour é 23 (após conversão de 00:00), NÃO incluir 23:00
+           const maxHour = endHour === 23 ? 22 : endHour;
            for (let hour = startHour; hour <= maxHour; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
                allHours.push(`${hour.toString().padStart(2, '0')}:00`);

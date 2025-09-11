@@ -103,8 +103,8 @@ export const useAvailableHours = ({
            }
          } else {
            // Funcionamento normal no mesmo dia
-           // Se endHour é 23 (após conversão de 00:00), incluir até 23:00
-           const maxHour = endHour === 23 ? 23 : endHour;
+           // Se endHour é 23 (após conversão de 00:00), NÃO incluir 23:00
+           const maxHour = endHour === 23 ? 22 : endHour;
            for (let hour = startHour; hour <= maxHour; hour++) {
              if (hour !== 12) { // Excluir horário do almoço
                allHours.push(`${hour.toString().padStart(2, '0')}:00`);
@@ -163,9 +163,6 @@ export const useAvailableHours = ({
 
       // Verificar bloqueios do horário de funcionamento
       // Se end_time = 00:00, não incluir horários após 23:00
-      const originalEndHour = parseInt(daySchedule.end.split(':')[0]);
-      const originalEndMinutes = parseInt(daySchedule.end.split(':')[1] || '0');
-      
       if (originalEndHour === 0 && originalEndMinutes === 0) {
         // Se termina às 00:00, remover horários das 23h se estiverem na lista
         availableHours = availableHours.filter(hour => {

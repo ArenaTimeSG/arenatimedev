@@ -447,27 +447,31 @@ export const useWorkingHours = () => {
 
   // Obter o motivo do bloqueio de um horário
   const getBlockadeReason = useCallback((date: Date, timeSlot: string): string => {
+    // Verificar bloqueios manuais primeiro (para mostrar o motivo específico)
+    const dateString = format(date, 'yyyy-MM-dd');
+    const blockadeKey = `${dateString}-${timeSlot}`;
+    if (manualBlockades[blockadeKey]?.blocked) {
+      const blockadeInfo = manualBlockades[blockadeKey];
+      if (blockadeInfo.reason) {
+        return blockadeInfo.reason; // Mostrar apenas o motivo do bloqueio manual
+      }
+    }
+
+    // Para outros tipos de bloqueio, mostrar apenas "BLOQUEADO"
+    // Horário das 12h - bloqueado todos os dias (almoço)
+    const slotHour = parseInt(timeSlot.split(':')[0]);
+    if (slotHour === 12) {
+      return 'BLOQUEADO';
+    }
+
     // Se o dia não está habilitado
     if (!isDayEnabled(date)) {
-      return 'Dia não habilitado no horário de funcionamento';
+      return 'BLOQUEADO';
     }
 
     // Se o horário não está disponível
     if (!isTimeSlotAvailable(date, timeSlot)) {
-      return 'Fora do horário de funcionamento';
-    }
-
-    // Horário das 12h - bloqueado todos os dias (almoço)
-    const slotHour = parseInt(timeSlot.split(':')[0]);
-    if (slotHour === 12) {
-      return 'Horário bloqueado para almoço';
-    }
-
-    // Verificar bloqueios manuais
-    const dateString = format(date, 'yyyy-MM-dd');
-    const blockadeKey = `${dateString}-${timeSlot}`;
-    if (manualBlockades[blockadeKey]?.blocked) {
-      return 'Horário bloqueado manualmente';
+      return 'BLOQUEADO';
     }
 
     return 'Horário disponível';
@@ -1119,8 +1123,8 @@ export const useWorkingHours = () => {
     }
   }, [user?.id, toast, loadBlockadesFromDatabase, manualBlockades]);
 
-  // Função para obter o motivo do bloqueio
-  const getBlockadeReason = useCallback((date: Date, timeSlot: string): string | null => {
+  // Função para obter o motivo específico do bloqueio manual
+  const getManualBlockadeReason = useCallback((date: Date, timeSlot: string): string | null => {
     const dateString = format(date, 'yyyy-MM-dd');
     const blockadeKey = `${dateString}-${timeSlot}`;
     return manualBlockades[blockadeKey]?.reason || null;
