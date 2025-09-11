@@ -31,6 +31,7 @@ interface NewAppointmentModalProps {
   selectedTime?: string;
   onAppointmentCreated: () => void;
   onBlockTime?: () => void;
+  forceAppointment?: boolean; // Para permitir agendamento em horários bloqueados
 }
 
 const NewAppointmentModal = ({ 
@@ -39,7 +40,8 @@ const NewAppointmentModal = ({
   selectedDate, 
   selectedTime, 
   onAppointmentCreated,
-  onBlockTime
+  onBlockTime,
+  forceAppointment = false
 }: NewAppointmentModalProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -214,8 +216,8 @@ const NewAppointmentModal = ({
       //   return;
       // }
 
-      // Verificar se o dia está habilitado
-      if (!isDayEnabled(appointmentDate)) {
+      // Verificar se o dia está habilitado (pular se for agendamento forçado)
+      if (!forceAppointment && !isDayEnabled(appointmentDate)) {
         toast({
           title: 'Erro no agendamento',
           description: 'Este dia não está disponível para agendamento',

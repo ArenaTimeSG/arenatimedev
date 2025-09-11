@@ -9,18 +9,22 @@ interface BlockedTimeSlotModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  onUnblock?: () => void;
   blockedDate: Date | null;
   blockedTimeSlot: string | null;
   blockadeReason?: string;
+  canUnblock?: boolean;
 }
 
 export const BlockedTimeSlotModal = ({
   isOpen,
   onClose,
   onConfirm,
+  onUnblock,
   blockedDate,
   blockedTimeSlot,
-  blockadeReason = 'Horário bloqueado'
+  blockadeReason = 'Horário bloqueado',
+  canUnblock = false
 }: BlockedTimeSlotModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,6 +35,18 @@ export const BlockedTimeSlotModal = ({
       onClose();
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUnblock = async () => {
+    if (onUnblock) {
+      setIsLoading(true);
+      try {
+        await onUnblock();
+        onClose();
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -132,6 +148,15 @@ export const BlockedTimeSlotModal = ({
             >
               Cancelar
             </Button>
+            {canUnblock && onUnblock && (
+              <Button
+                onClick={handleUnblock}
+                disabled={isLoading}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isLoading ? 'Processando...' : 'Desbloquear'}
+              </Button>
+            )}
             <Button
               onClick={handleConfirm}
               disabled={isLoading}

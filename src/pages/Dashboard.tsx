@@ -74,6 +74,7 @@ const Dashboard = () => {
   const [isUnblockModalOpen, setIsUnblockModalOpen] = useState(false);
   const [isRecurringForUnblock, setIsRecurringForUnblock] = useState(false);
   const [isBlockedTimeSlotModalOpen, setIsBlockedTimeSlotModalOpen] = useState(false);
+  const [isForceAppointment, setIsForceAppointment] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     email: string;
@@ -249,9 +250,24 @@ const Dashboard = () => {
       const isBlocked = isTimeSlotBlocked(day, timeSlot);
       
       if (isBlocked) {
-        // Se está bloqueado, mostrar modal de confirmação com motivo
-        setBlockedTimeSlot({ day, timeSlot });
-        setIsBlockedTimeSlotModalOpen(true);
+        // Verificar se é um bloqueio manual (que pode ser desbloqueado)
+        const blockadeReason = getBlockadeReason(day, timeSlot);
+        const isManualBlockade = blockadeReason !== 'BLOQUEADO';
+        
+        if (isManualBlockade) {
+          // Se é bloqueio manual, mostrar modal de desbloqueio
+          setSelectedDate(day);
+          setSelectedTime(timeSlot);
+          // Verificar se é recorrente baseado no banco de dados
+          isRecurringBlockadeFromDB(day, timeSlot).then(isRecurring => {
+            setIsRecurringForUnblock(isRecurring);
+            setIsUnblockModalOpen(true);
+          });
+        } else {
+          // Se é bloqueio por padrão (horário funcionamento/almoço), mostrar modal de confirmação
+          setBlockedTimeSlot({ day, timeSlot });
+          setIsBlockedTimeSlotModalOpen(true);
+        }
       } else {
         // Se Ctrl está pressionado, abrir modal de bloqueio
         if (event && event.ctrlKey) {
@@ -300,20 +316,6 @@ const Dashboard = () => {
     await refetch();
   };
 
-  const handleConfirmBlockedTimeSlot = () => {
-    if (blockedTimeSlot) {
-      setSelectedDate(blockedTimeSlot.day);
-      setSelectedTime(blockedTimeSlot.timeSlot);
-      setIsBlockedTimeSlotModalOpen(false);
-      setBlockedTimeSlot(null);
-      setIsModalOpen(true);
-    }
-  };
-
-  const handleCancelBlockedTimeSlot = () => {
-    setIsBlockedTimeSlotModalOpen(false);
-    setBlockedTimeSlot(null);
-  };
 
   // Calcular valores financeiros para a semana atual
   const getFinancialSummaryForCurrentWeek = () => {
@@ -362,15 +364,22 @@ const Dashboard = () => {
     }
   };
 
-  const handleOpenUnblockModal = async () => {
-    if (selectedDate && selectedTime) {
-      // Verificar se é recorrente baseado no banco de dados
-      const isRecurring = await isRecurringBlockadeFromDB(selectedDate, selectedTime);
-      console.log('🔍 Modal de desbloqueio - é recorrente?', isRecurring);
-      setIsRecurringForUnblock(isRecurring);
-      setIsUnblockModalOpen(true);
+  const handleConfirmBlockedTimeSlot = () => {
+    if (blockedTimeSlot) {
+      setSelectedDate(blockedTimeSlot.day);
+      setSelectedTime(blockedTimeSlot.timeSlot);
+      setIsForceAppointment(true); // Marcar como agendamento forçado
+      setIsBlockedTimeSlotModalOpen(false);
+      setBlockedTimeSlot(null);
+      setIsModalOpen(true);
     }
   };
+
+  const handleCancelBlockedTimeSlot = () => {
+    setIsBlockedTimeSlotModalOpen(false);
+    setBlockedTimeSlot(null);
+  };
+
 
   const generateAvailableHoursPDF = () => {
     const doc = new jsPDF();
@@ -787,11 +796,15 @@ const Dashboard = () => {
 
       <NewAppointmentModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setIsForceAppointment(false); // Resetar estado de agendamento forçado
+        }}
         selectedDate={selectedDate}
         selectedTime={selectedTime}
         onAppointmentCreated={handleAppointmentCreated}
         onBlockTime={handleOpenBlockModal}
+        forceAppointment={isForceAppointment}
       />
 
       <BlockTimeModal
@@ -809,6 +822,16 @@ const Dashboard = () => {
         selectedTime={selectedTime}
         isRecurring={isRecurringForUnblock}
         onConfirm={handleUnblockTimeSlot}
+      />
+
+      {/* Modal de horário bloqueado por padrão */}
+      <BlockedTimeSlotModal
+        isOpen={isBlockedTimeSlotModalOpen}
+        onClose={handleCancelBlockedTimeSlot}
+        onConfirm={handleConfirmBlockedTimeSlot}
+        blockedDate={blockedTimeSlot?.day || null}
+        blockedTimeSlot={blockedTimeSlot?.timeSlot || null}
+        blockadeReason={blockedTimeSlot ? getBlockadeReason(blockedTimeSlot.day, blockedTimeSlot.timeSlot) : undefined}
       />
 
       <AppointmentDetailsModal
@@ -910,15 +933,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Modal de horário bloqueado */}
-      <BlockedTimeSlotModal
-        isOpen={isBlockedTimeSlotModalOpen}
-        onClose={handleCancelBlockedTimeSlot}
-        onConfirm={handleConfirmBlockedTimeSlot}
-        blockedDate={blockedTimeSlot?.day || null}
-        blockedTimeSlot={blockedTimeSlot?.timeSlot || null}
-        blockadeReason={blockedTimeSlot ? getBlockadeReason(blockedTimeSlot.day, blockedTimeSlot.timeSlot) : undefined}
-      />
     </div>
   );
 };
