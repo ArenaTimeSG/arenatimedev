@@ -447,7 +447,7 @@ const OnlineBooking = () => {
           
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-              {reservationStatus === 'success' ? 'Reserva Confirmada!' : 'Pagamento Processado!'}
+              {reservationStatus === 'success' ? 'Reserva Confirmada!' : 'Horário Agendado!'}
             </h1>
             <p className="text-slate-600 text-sm sm:text-base">
               {reservationStatus === 'success' 
