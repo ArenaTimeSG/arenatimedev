@@ -452,7 +452,7 @@ const OnlineBooking = () => {
             <p className="text-slate-600 text-sm sm:text-base">
               {reservationStatus === 'success' 
                 ? 'Sua reserva foi confirmada automaticamente.' 
-                : 'Estamos processando seu pagamento. Seu agendamento será confirmado automaticamente assim que o pagamento for aprovado.'
+                : 'Seu agendamento foi registrado com sucesso.'
               }
             </p>
           </div>
