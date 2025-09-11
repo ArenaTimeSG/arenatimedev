@@ -12,7 +12,7 @@ const PaymentExample: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 py-8">
       {/* Carregar SDK do Mercado Pago */}
-      <MercadoPagoScript publicKey={process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || ''} />
+      <MercadoPagoScript publicKey="TEST-12345678-1234-1234-1234-123456789012" />
       
       <div className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto">

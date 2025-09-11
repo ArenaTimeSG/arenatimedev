@@ -37,7 +37,7 @@ const AppointmentDetailsModal = ({
   const [error, setError] = useState<string | null>(null);
 
   // Debug apenas em desenvolvimento
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isDevelopment = import.meta.env.DEV;
   
   useEffect(() => {
     if (isDevelopment) {

@@ -11,6 +11,7 @@ interface PaymentCheckoutNewProps {
   clientName: string;
   clientEmail: string;
   onPaymentSuccess: () => void;
+  mercadoPagoPublicKey?: string;
 }
 
 const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
@@ -20,7 +21,8 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
   modalityName,
   clientName,
   clientEmail,
-  onPaymentSuccess
+  onPaymentSuccess,
+  mercadoPagoPublicKey
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [paymentCreated, setPaymentCreated] = useState(false);
@@ -40,26 +42,44 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
       setIsLoading(true);
       console.log('🚀 [FRONTEND] Criando preferência de pagamento...');
 
+      // Buscar dados do pagamento do sessionStorage
+      console.log('🔍 [FRONTEND] Buscando dados do sessionStorage...');
+      const storedPaymentData = sessionStorage.getItem('paymentData');
+      console.log('🔍 [FRONTEND] Dados encontrados no sessionStorage:', storedPaymentData);
+      
+      if (!storedPaymentData) {
+        console.error('❌ Payment data not found in sessionStorage');
+        console.error('❌ Available sessionStorage keys:', Object.keys(sessionStorage));
+        throw new Error('Dados do pagamento não encontrados');
+      }
+
+      const paymentData = JSON.parse(storedPaymentData);
+      console.log('💳 Payment data from storage:', paymentData);
+
       const requestData = {
-        description: `Agendamento - ${modalityName}`,
-        amount: amount,
-        user_id: userId,
-        client_name: clientName,
-        client_email: clientEmail,
-        booking_id: appointmentId
+        description: paymentData.description,
+        amount: paymentData.amount,
+        user_id: paymentData.user_id,
+        client_name: paymentData.client_name,
+        client_email: paymentData.client_email,
+        appointment_data: paymentData.appointment_data
       };
 
       console.log('📤 [FRONTEND] Dados sendo enviados:', requestData);
+      console.log('📤 [FRONTEND] appointment_data:', paymentData.appointment_data);
+      console.log('📤 [FRONTEND] appointment_data type:', typeof paymentData.appointment_data);
+      console.log('📤 [FRONTEND] appointment_data keys:', paymentData.appointment_data ? Object.keys(paymentData.appointment_data) : 'null');
       
-      // Usar chave anon hardcoded temporariamente para teste
-      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dWZiZnZyZ3B6cWJ2ZGZtdGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQwNzQ4MDAsImV4cCI6MjA0OTY1MDgwMH0.xtufbfvrgpzqbvdfmtiy';
+      // Usar chave anon do ambiente
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       console.log('🔑 [FRONTEND] Chave anon:', anonKey ? 'Presente' : 'Ausente');
 
       const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/create-payment-preference', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`
         },
         body: JSON.stringify(requestData)
       });
@@ -107,7 +127,7 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
     try {
       console.log('💳 [FRONTEND] Abrindo checkout do Mercado Pago...');
       console.log('🔑 [FRONTEND] Preference ID:', preferenceId);
-      console.log('🔑 [FRONTEND] Chave pública:', process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+      console.log('🔑 [FRONTEND] Chave pública:', 'TEST-12345678-1234-1234-1234-123456789012');
       console.log('🔍 [FRONTEND] window.MercadoPago:', window.MercadoPago);
       
       // Verificar se o SDK do Mercado Pago está disponível
@@ -115,28 +135,29 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
         console.log('✅ [FRONTEND] SDK do Mercado Pago disponível');
         
         try {
-          // Usar chave pública hardcoded temporariamente
-          const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || 'TEST-12345678-1234-1234-1234-123456789012';
+          // Usar chave pública do painel de administrador
+          const publicKey = mercadoPagoPublicKey || import.meta.env.VITE_MP_PUBLIC_KEY || 'TEST-7b0b0b0b-0b0b-0b0b-0b0b-0b0b0b0b0b0b';
           const mp = new window.MercadoPago(publicKey);
           console.log('✅ [FRONTEND] Instância do Mercado Pago criada com chave:', publicKey);
           
-          const checkout = mp.checkout({
-            preference: {
-              id: preferenceId
-            }
-          });
+          // Abrir checkout de produção usando a URL retornada pela API
+          if (response.checkout_url) {
+            // Abrir o checkout de produção em uma nova janela
+            window.open(response.checkout_url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+          } else {
+            // Fallback para URL padrão
+            const initPointUrl = `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${preferenceId}`;
+            window.open(initPointUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+          }
           
           console.log('✅ [FRONTEND] Checkout aberto com sucesso');
           
-          // Simular sucesso após um tempo (em produção, o webhook vai processar)
-          setTimeout(() => {
-            toast({
-              title: 'Pagamento processado!',
-              description: 'Aguarde a confirmação automática do agendamento.',
-              variant: 'default',
-            });
-            onPaymentSuccess();
-          }, 3000);
+          // Mostrar mensagem de aguardo
+          toast({
+            title: 'Checkout aberto!',
+            description: 'Complete o pagamento no Mercado Pago. O agendamento será confirmado automaticamente.',
+            variant: 'default',
+          });
           
         } catch (mpError) {
           console.error('❌ [FRONTEND] Erro ao criar instância do Mercado Pago:', mpError);
@@ -173,7 +194,7 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
       
       const response = await fetch(`https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-booking-status?id=${appointmentId}`, {
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         }
       });
       

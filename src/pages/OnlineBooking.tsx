@@ -10,6 +10,7 @@ import { useAvailableHours } from '@/hooks/useAvailableHours';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 
 import CardModalidade from '@/components/booking/CardModalidade';
 import Calendario from '@/components/booking/Calendario';
@@ -204,9 +205,9 @@ const OnlineBooking = () => {
     setStep(5);
   }, []);
 
-  // Função para processar pagamento sem criar agendamento
+  // Função para processar pagamento - criar agendamento primeiro
   const handleProcessPayment = useCallback(async () => {
-    console.log('🔍 OnlineBooking: Processando pagamento sem criar agendamento');
+    console.log('🔍 OnlineBooking: Processando pagamento - criando agendamento primeiro');
     
     if (!adminData || !reserva.modalidade || !reserva.data || !reserva.horario || !client) {
       console.error('❌ OnlineBooking: Dados insuficientes para processar pagamento');
@@ -220,19 +221,22 @@ const OnlineBooking = () => {
       const [horas, minutos] = reserva.horario.split(':');
       dataHora.setHours(parseInt(horas), parseInt(minutos), 0, 0);
       
+      // Preparar dados do pagamento (sem criar agendamento ainda)
       const paymentData = {
         user_id: adminData.user.user_id,
         amount: reserva.modalidade.valor,
         description: `Agendamento - ${reserva.modalidade.name}`,
         client_name: client.name,
         client_email: client.email,
-        // Dados do agendamento para o webhook criar depois
+        // Dados do agendamento para criar após pagamento
         appointment_data: {
+          user_id: adminData.user.user_id,
           client_id: client.id,
           date: dataHora.toISOString(),
           modality: reserva.modalidade.name,
           valor_total: reserva.modalidade.valor,
-          payment_policy: (adminData.settings as any)?.payment_policy || 'sem_pagamento'
+          payment_status: 'pending',
+          status: 'a_cobrar'
         }
       };
       
@@ -745,6 +749,7 @@ const OnlineBooking = () => {
                   paymentPolicy={(adminData?.settings as any)?.payment_policy || 'sem_pagamento'}
                   appointmentId={sessionStorage.getItem('lastAppointmentId') || undefined}
                   userId={adminData?.user?.user_id}
+                  mercadoPagoPublicKey={(adminData?.settings as any)?.mercado_pago_public_key}
                 />
               </div>
             </div>

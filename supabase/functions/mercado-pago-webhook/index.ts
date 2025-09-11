@@ -228,31 +228,63 @@ serve(async (req) => {
 
     if (appointmentError || !appointment) {
       console.error('❌ Agendamento não encontrado:', appointmentError);
-      // Se não encontrar pelo ID, tentar buscar por external_reference na tabela payments
-      console.log('🔍 Tentando buscar por external_reference na tabela payments...');
+      console.log('🔍 Tentando criar agendamento a partir dos dados do pagamento...');
       
-      const { data: paymentRecord } = await supabase
-        .from('payments')
-        .select('appointment_id')
-        .eq('mercado_pago_payment_id', paymentId)
-        .single();
-      
-      if (paymentRecord) {
-        console.log('✅ Encontrado registro de pagamento, buscando agendamento...');
-        const { data: foundAppointment } = await supabase
-          .from('appointments')
+      // Se não encontrar o agendamento, tentar criar um novo
+      // Isso acontece quando o pagamento é feito antes da criação do agendamento
+      try {
+        // Buscar dados do agendamento na tabela payments pela preferência
+        const { data: paymentRecord } = await supabase
+          .from('payments')
           .select('*')
-          .eq('id', paymentRecord.appointment_id)
+          .eq('mercado_pago_preference_id', payment.preference_id)
           .single();
         
-        if (foundAppointment) {
-          console.log('✅ Agendamento encontrado via tabela payments:', foundAppointment.id);
-          // Continuar com o processamento usando foundAppointment
-          return await processPaymentStatus(payment, foundAppointment, supabase, corsHeaders);
+        if (paymentRecord && paymentRecord.appointment_data) {
+          console.log('✅ Encontrados dados do agendamento, criando...');
+          
+          // Criar o agendamento com os dados armazenados
+          const { data: newAppointment, error: createError } = await supabase
+            .from('appointments')
+            .insert({
+              ...paymentRecord.appointment_data,
+              status: 'pago',
+              payment_status: 'approved',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+          
+          if (createError || !newAppointment) {
+            console.error('❌ Erro ao criar agendamento:', createError);
+            return new Response("Erro ao criar agendamento", { status: 500, headers: corsHeaders });
+          }
+          
+          console.log('✅ Agendamento criado com sucesso:', newAppointment.id);
+          
+          // Atualizar o registro de pagamento com o ID do agendamento e do pagamento
+          await supabase
+            .from('payments')
+            .update({ 
+              appointment_id: newAppointment.id,
+              mercado_pago_payment_id: paymentId,
+              status: 'approved'
+            })
+            .eq('mercado_pago_preference_id', payment.preference_id);
+          
+          // Continuar com o processamento
+          return await processPaymentStatus(payment, newAppointment, supabase, corsHeaders);
         }
+        
+        // Se não há dados do agendamento, retornar erro
+        console.error('❌ Não foi possível criar agendamento - dados não encontrados');
+        return new Response("Dados do agendamento não encontrados", { status: 404, headers: corsHeaders });
+        
+      } catch (error) {
+        console.error('❌ Erro ao processar criação de agendamento:', error);
+        return new Response("Erro interno do servidor", { status: 500, headers: corsHeaders });
       }
-      
-      return new Response("Agendamento não encontrado", { status: 404, headers: corsHeaders });
     }
 
     console.log('✅ Agendamento encontrado:', appointment.id);

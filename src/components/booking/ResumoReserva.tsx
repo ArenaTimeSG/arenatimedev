@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, User, Mail, Phone, DollarSign, CheckCircle, CreditCard } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Phone, DollarSign, CheckCircle, CreditCard, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PaymentCheckoutNew from './PaymentCheckoutNew';
@@ -37,6 +37,7 @@ interface ResumoReservaProps {
   paymentPolicy?: 'sem_pagamento' | 'obrigatorio' | 'opcional';
   appointmentId?: string;
   userId?: string;
+  mercadoPagoPublicKey?: string;
 }
 
 const ResumoReserva = ({ 
@@ -47,7 +48,8 @@ const ResumoReserva = ({
   autoConfirmada = false,
   paymentPolicy = 'sem_pagamento',
   appointmentId,
-  userId
+  userId,
+  mercadoPagoPublicKey
 }: ResumoReservaProps) => {
   const [showPayment, setShowPayment] = useState(false);
   const [paymentChoice, setPaymentChoice] = useState<'pay' | 'no_pay' | null>(null);
@@ -81,6 +83,18 @@ const ResumoReserva = ({
       try {
         await onConfirmarComPagamento?.();
         console.log('✅ Payment data processed, opening modal');
+        
+        // Aguardar um pouco para garantir que os dados foram salvos
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Verificar se os dados foram salvos
+        const storedData = sessionStorage.getItem('paymentData');
+        if (!storedData) {
+          console.error('❌ Payment data not found after processing');
+          throw new Error('Dados do pagamento não foram salvos');
+        }
+        
+        console.log('✅ Payment data verified, opening modal');
         setShowPayment(true);
       } catch (error) {
         console.error('❌ Error processing payment:', error);
@@ -325,18 +339,48 @@ const ResumoReserva = ({
 
       {/* Modal de Pagamento */}
       {showPayment && (
-        <>
-          <MercadoPagoScript publicKey={process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || ''} />
-          <PaymentCheckoutNew
-            appointmentId={appointmentId || ''}
-            userId={userId || ''}
-            amount={reserva.modalidade?.valor || 0}
-            modalityName={reserva.modalidade?.name || ''}
-            clientName={reserva.cliente.nome}
-            clientEmail={reserva.cliente.email}
-            onPaymentSuccess={handlePaymentSuccess}
-          />
-        </>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto relative">
+            {/* Botão de fechar */}
+            <button
+              onClick={handlePaymentCancel}
+              className="absolute top-4 right-4 z-10 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+            
+            <MercadoPagoScript publicKey={mercadoPagoPublicKey || import.meta.env.VITE_MP_PUBLIC_KEY || "TEST-7b0b0b0b-0b0b-0b0b-0b0b-0b0b0b0b0b0b"} />
+            {(() => {
+              // Verificar se os dados do pagamento estão disponíveis
+              const paymentData = sessionStorage.getItem('paymentData');
+              if (!paymentData) {
+                console.log('⏳ Aguardando dados do pagamento...');
+                return (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">Preparando pagamento...</p>
+                    </div>
+                  </div>
+                );
+              }
+              
+              console.log('✅ Dados do pagamento disponíveis, renderizando checkout');
+              return (
+                <PaymentCheckoutNew
+                  appointmentId={appointmentId || ''}
+                  userId={userId || ''}
+                  amount={reserva.modalidade?.valor || 0}
+                  modalityName={reserva.modalidade?.name || ''}
+                  clientName={reserva.cliente.nome}
+                  clientEmail={reserva.cliente.email}
+                  onPaymentSuccess={handlePaymentSuccess}
+                  mercadoPagoPublicKey={mercadoPagoPublicKey}
+                />
+              );
+            })()}
+          </div>
+        </div>
       )}
     </div>
   );

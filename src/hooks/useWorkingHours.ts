@@ -578,17 +578,37 @@ export const useWorkingHours = () => {
       effectiveEndDate.setDate(effectiveEndDate.getDate() + 365); // Limite de 1 ano
     }
 
-    // Calcular número máximo de repetições
-    const maxDays = isIndefinite ? 365 : (effectiveEndDate ? Math.ceil((effectiveEndDate.getTime() - effectiveStartDate.getTime()) / (1000 * 60 * 60 * 24)) : 30);
+    // Calcular número máximo de repetições baseado no tipo de recorrência
+    let maxRepetitions: number;
+    if (isIndefinite) {
+      maxRepetitions = 52; // Limite de 1 ano para recorrências indefinidas
+    } else if (effectiveEndDate) {
+      switch (recurrenceType) {
+        case 'daily':
+          maxRepetitions = Math.ceil((effectiveEndDate.getTime() - effectiveStartDate.getTime()) / (1000 * 60 * 60 * 24));
+          break;
+        case 'weekly':
+          maxRepetitions = Math.ceil((effectiveEndDate.getTime() - effectiveStartDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
+          break;
+        case 'monthly':
+          maxRepetitions = Math.ceil((effectiveEndDate.getTime() - effectiveStartDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
+          break;
+        default:
+          maxRepetitions = 30;
+      }
+    } else {
+      maxRepetitions = 30; // Limite padrão
+    }
     
     let currentDate = new Date(effectiveStartDate);
-    let daysAdded = 0;
+    let repetitionsAdded = 0;
     
     console.log('🔍 Gerando bloqueios recorrentes a partir de:', format(effectiveStartDate, 'yyyy-MM-dd'));
     console.log('🔍 Tipo de recorrência:', recurrenceType);
     console.log('🔍 Data limite:', effectiveEndDate ? format(effectiveEndDate, 'yyyy-MM-dd') : 'Indefinido');
+    console.log('🔍 Máximo de repetições:', maxRepetitions);
     
-    while (daysAdded < maxDays) {
+    while (repetitionsAdded < maxRepetitions) {
       let nextDate: Date;
       
       switch (recurrenceType) {
@@ -610,7 +630,7 @@ export const useWorkingHours = () => {
       }
       
       currentDate = nextDate;
-      daysAdded++;
+      repetitionsAdded++;
       
       // Verificar se passou da data limite
       if (effectiveEndDate && currentDate > effectiveEndDate) {
@@ -702,7 +722,12 @@ export const useWorkingHours = () => {
             date: dateStr,
             time_slot: timeSlot,
             reason: blockadeInfo.reason,
-            description: blockadeInfo.description || null
+            description: blockadeInfo.description || null,
+            is_recurring: blockadeInfo.isRecurring || false,
+            recurrence_type: blockadeInfo.recurrenceType || null,
+            original_date: blockadeInfo.originalDate || null,
+            end_date: blockadeInfo.endDate || null,
+            is_indefinite: blockadeInfo.isIndefinite || false
           };
         });
 
@@ -777,7 +802,12 @@ export const useWorkingHours = () => {
             date: dateString,
             time_slot: timeSlot,
             reason: reason,
-            description: options?.description || null
+            description: options?.description || null,
+            is_recurring: false,
+            recurrence_type: null,
+            original_date: null,
+            end_date: null,
+            is_indefinite: false
           });
 
         if (error) {
@@ -831,20 +861,26 @@ export const useWorkingHours = () => {
         // Desbloquear toda a recorrência
         console.log('🔍 Desbloqueando toda a recorrência para:', timeSlot);
         
-        // ATUALIZAR ESTADO LOCAL IMEDIATAMENTE para feedback visual instantâneo
-        setManualBlockades(prev => {
-          const newBlockades = { ...prev };
-          // Remover todos os bloqueios com o mesmo horário a partir da data selecionada
-          Object.keys(newBlockades).forEach(key => {
-            const [blockadeDate, blockadeTime] = key.split('-');
-            if (blockadeTime === timeSlot && blockadeDate >= dateString) {
-              delete newBlockades[key];
-            }
-          });
-          return newBlockades;
-        });
+        // Primeiro, buscar o bloqueio original para identificar a recorrência
+        const { data: originalBlockade, error: originalError } = await (supabase as any)
+          .from('time_blockades')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('date', dateString)
+          .eq('time_slot', timeSlot)
+          .single();
         
-        // Buscar todos os bloqueios com o mesmo horário
+        if (originalError || !originalBlockade) {
+          console.error('Erro ao buscar bloqueio original:', originalError);
+          toast({
+            title: "Erro",
+            description: "Erro ao identificar bloqueio original",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        // Buscar todos os bloqueios com o mesmo horário para análise
         const { data: allBlockades, error: fetchError } = await (supabase as any)
           .from('time_blockades')
           .select('*')
@@ -853,8 +889,6 @@ export const useWorkingHours = () => {
           .gte('date', dateString); // A partir da data selecionada
         
         if (fetchError) {
-          // Se falhou na busca, reverter o estado local
-          await loadBlockadesFromDatabase();
           console.error('Erro ao buscar bloqueios para remoção:', fetchError);
           toast({
             title: "Erro",
@@ -864,16 +898,153 @@ export const useWorkingHours = () => {
           return;
         }
         
-        if (allBlockades && allBlockades.length > 0) {
-          console.log('🔍 Encontrados', allBlockades.length, 'bloqueios para remover');
+        if (!allBlockades || allBlockades.length === 0) {
+          toast({
+            title: "Aviso",
+            description: "Nenhum bloqueio recorrente encontrado para remover",
+            variant: "default"
+          });
+          return;
+        }
+        
+        // Identificar quais bloqueios pertencem à mesma recorrência
+        const blockadesToRemove = allBlockades.filter(blockade => {
+          console.log('🔍 Analisando bloqueio:', {
+            date: blockade.date,
+            time_slot: blockade.time_slot,
+            is_recurring: blockade.is_recurring,
+            recurrence_type: blockade.recurrence_type,
+            original_date: blockade.original_date,
+            blockadeDayOfWeek: new Date(blockade.date).getDay(),
+            blockadeDayName: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date(blockade.date).getDay()]
+          });
           
-          // Remover todos os bloqueios encontrados
+          // Usar dados do banco de dados para identificar recorrência
+          if (blockade.is_recurring && blockade.original_date && blockade.recurrence_type) {
+            const originalDate = blockade.original_date;
+            const recurrenceType = blockade.recurrence_type;
+            
+            console.log('🔍 Bloqueio é recorrente:', {
+              originalDate,
+              recurrenceType,
+              selectedDate: dateString,
+              selectedDayOfWeek: new Date(dateString).getDay(),
+              selectedDayName: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date(dateString).getDay()]
+            });
+            
+            // Verificar se pertence à mesma recorrência baseado no tipo
+            switch (recurrenceType) {
+              case 'daily':
+                // Para diário, remover todos a partir da data original
+                const dailyResult = blockade.date >= originalDate;
+                console.log('🔍 Diário - Resultado:', dailyResult);
+                return dailyResult;
+              case 'weekly':
+                // Para semanal, remover apenas os do mesmo dia da semana
+                const originalDayOfWeek = new Date(originalDate).getDay();
+                const blockadeDayOfWeek = new Date(blockade.date).getDay();
+                const selectedDayOfWeek = new Date(dateString).getDay();
+                
+                // CORREÇÃO: Verificar se é da mesma recorrência E do mesmo dia da semana
+                const weeklyResult = blockade.original_date === originalDate && 
+                                   blockadeDayOfWeek === selectedDayOfWeek;
+                
+                console.log('🔍 Semanal - Comparação CORRIGIDA:', {
+                  blockadeOriginalDate: blockade.original_date,
+                  selectedOriginalDate: originalDate,
+                  blockadeDate: blockade.date,
+                  selectedDate: dateString,
+                  originalDayOfWeek,
+                  blockadeDayOfWeek,
+                  selectedDayOfWeek,
+                  sameOriginalDate: blockade.original_date === originalDate,
+                  sameDayOfWeek: blockadeDayOfWeek === selectedDayOfWeek,
+                  result: weeklyResult
+                });
+                return weeklyResult;
+              case 'monthly':
+                // Para mensal, remover apenas os do mesmo dia do mês
+                const originalDayOfMonth = new Date(originalDate).getDate();
+                const blockadeDayOfMonth = new Date(blockade.date).getDate();
+                const selectedDayOfMonth = new Date(dateString).getDate();
+                
+                // CORREÇÃO: Verificar se é da mesma recorrência E do mesmo dia do mês
+                const monthlyResult = blockade.original_date === originalDate && 
+                                    blockadeDayOfMonth === selectedDayOfMonth;
+                
+                console.log('🔍 Mensal - Comparação CORRIGIDA:', {
+                  blockadeOriginalDate: blockade.original_date,
+                  selectedOriginalDate: originalDate,
+                  blockadeDate: blockade.date,
+                  selectedDate: dateString,
+                  originalDayOfMonth,
+                  blockadeDayOfMonth,
+                  selectedDayOfMonth,
+                  sameOriginalDate: blockade.original_date === originalDate,
+                  sameDayOfMonth: blockadeDayOfMonth === selectedDayOfMonth,
+                  result: monthlyResult
+                });
+                return monthlyResult;
+              default:
+                console.log('🔍 Tipo de recorrência desconhecido:', recurrenceType);
+                return false;
+            }
+          } else {
+            // Para bloqueios sem dados de recorrência, usar lógica mais conservadora
+            // Apenas remover se for exatamente a mesma data e horário
+            const exactMatch = blockade.date === dateString;
+            console.log('🔍 Bloqueio não recorrente - Comparação exata:', {
+              blockadeDate: blockade.date,
+              selectedDate: dateString,
+              result: exactMatch
+            });
+            return exactMatch;
+          }
+        });
+        
+        console.log('🔍 Bloqueios identificados para remoção:', blockadesToRemove.length);
+        console.log('🔍 Datas dos bloqueios:', blockadesToRemove.map(b => b.date));
+        console.log('🔍 Detalhes dos bloqueios para remoção:', blockadesToRemove.map(b => ({
+          date: b.date,
+          time_slot: b.time_slot,
+          is_recurring: b.is_recurring,
+          recurrence_type: b.recurrence_type,
+          original_date: b.original_date,
+          dayOfWeek: new Date(b.date).getDay()
+        })));
+        console.log('🔍 Data selecionada para exclusão:', dateString);
+        console.log('🔍 Dia da semana selecionado:', new Date(dateString).getDay());
+        
+        // Verificar se há muitos bloqueios para remover (limite de segurança)
+        if (blockadesToRemove.length > 100) {
+          console.warn('⚠️ Muitos bloqueios para remover:', blockadesToRemove.length);
+          toast({
+            title: "Aviso",
+            description: `Muitos bloqueios encontrados (${blockadesToRemove.length}). Removendo apenas os primeiros 100.`,
+            variant: "default"
+          });
+          // Limitar a 100 bloqueios para evitar erro 400
+          blockadesToRemove.splice(100);
+        }
+        
+        // ATUALIZAR ESTADO LOCAL IMEDIATAMENTE para feedback visual instantâneo
+        setManualBlockades(prev => {
+          const newBlockades = { ...prev };
+          // Remover apenas os bloqueios identificados como parte da recorrência
+          blockadesToRemove.forEach(blockade => {
+            const blockadeKey = `${blockade.date}-${blockade.time_slot}`;
+            delete newBlockades[blockadeKey];
+          });
+          return newBlockades;
+        });
+        
+        if (blockadesToRemove.length > 0) {
+          // Remover os bloqueios identificados do banco de dados
+          const blockadeIds = blockadesToRemove.map(b => b.id);
           const { error: deleteError } = await (supabase as any)
             .from('time_blockades')
             .delete()
-            .eq('user_id', user.id)
-            .eq('time_slot', timeSlot)
-            .gte('date', dateString);
+            .in('id', blockadeIds);
           
           if (deleteError) {
             // Se falhou na remoção, reverter o estado local
@@ -889,12 +1060,12 @@ export const useWorkingHours = () => {
           
           toast({
             title: "Sucesso",
-            description: `${allBlockades.length} bloqueios recorrentes foram removidos!`,
+            description: `${blockadesToRemove.length} bloqueios da recorrência foram removidos!`,
           });
         } else {
           toast({
             title: "Aviso",
-            description: "Nenhum bloqueio recorrente encontrado para remover",
+            description: "Nenhum bloqueio da recorrência encontrado para remover",
             variant: "default"
           });
         }
@@ -942,7 +1113,7 @@ export const useWorkingHours = () => {
         variant: "destructive"
       });
     }
-  }, [user?.id, toast, loadBlockadesFromDatabase]);
+  }, [user?.id, toast, loadBlockadesFromDatabase, manualBlockades]);
 
   // Função para obter o motivo do bloqueio
   const getBlockadeReason = useCallback((date: Date, timeSlot: string): string | null => {
