@@ -67,7 +67,7 @@ const PaymentPolicySettings = ({ paymentPolicy, onUpdate }: PaymentPolicySetting
   return (
     <ComingSoonCard
       title="Política de Pagamento"
-      description="Configure como os clientes devem pagar ao fazer agendamentos online"
+      description="Configure se clientes devem pagar antecipadamente, opcionalmente ou sem pagamento para agendamentos online"
       icon={<CreditCard className="w-6 h-6 text-green-600" />}
     />
   );

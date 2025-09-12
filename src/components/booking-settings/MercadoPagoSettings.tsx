@@ -165,7 +165,7 @@ const MercadoPagoSettings = ({
   return (
     <ComingSoonCard
       title="Configurações do Mercado Pago"
-      description="Configure sua conta do Mercado Pago para receber pagamentos"
+      description="Configure Access Token, Public Key e Webhook para processar pagamentos via Mercado Pago nos agendamentos online"
       icon={<CreditCard className="w-6 h-6 text-blue-600" />}
     />
   );

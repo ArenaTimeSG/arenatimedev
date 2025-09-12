@@ -24,7 +24,7 @@ const ComingSoonCard = ({ title, description, icon }: ComingSoonCardProps) => {
             EM BREVE
           </div>
           <p className="text-gray-600 text-sm">
-            Esta funcionalidade estará disponível em breve
+            {description}
           </p>
         </div>
       </div>
