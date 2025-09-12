@@ -316,9 +316,36 @@ const Financial = () => {
       doc.text(`Cancelados: R$ ${financialData.total_cancelado.toFixed(2)}`, 20, 95);
       doc.text(`Jogos Realizados: ${financialData.agendamentos_realizados}`, 20, 105);
       
-      // Tabela de agendamentos
+      // Tabela de clientes (movida para antes dos agendamentos)
       doc.setFontSize(16);
-      doc.text('Lista de Agendamentos', 20, 130);
+      doc.text('Resumo por Cliente', 20, 130);
+      
+      const clientTableData = clientsFinancial.map(client => [
+        client.name,
+        client.total_agendamentos.toString(),
+        `R$ ${client.total_pago.toFixed(2)}`,
+        `R$ ${client.total_pendente.toFixed(2)}`,
+        `R$ ${(client.total_pago + client.total_pendente).toFixed(2)}`
+      ]);
+      
+      autoTable(doc, {
+        head: [['Cliente', 'Total Agendamentos', 'Pago', 'Pendente', 'Total']],
+        body: clientTableData,
+        startY: 140,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [59, 130, 246],
+          textColor: 255,
+        },
+      });
+      
+      // Tabela de agendamentos (movida para depois do resumo por clientes)
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(16);
+      doc.text('Lista de Agendamentos', 20, finalY);
       
       const tableData = appointmentsData.map(apt => [
         format(new Date(apt.date), 'dd/MM/yyyy', { locale: ptBR }),
@@ -332,33 +359,6 @@ const Financial = () => {
       autoTable(doc, {
         head: [['Data', 'Horário', 'Cliente', 'Modalidade', 'Status', 'Valor']],
         body: tableData,
-        startY: 140,
-        styles: {
-          fontSize: 8,
-          cellPadding: 2,
-        },
-        headStyles: {
-          fillColor: [59, 130, 246],
-          textColor: 255,
-        },
-      });
-      
-      // Tabela de clientes
-      const finalY = (doc as any).lastAutoTable.finalY + 10;
-      doc.setFontSize(16);
-      doc.text('Resumo por Cliente', 20, finalY);
-      
-      const clientTableData = clientsFinancial.map(client => [
-        client.name,
-        client.total_agendamentos.toString(),
-        `R$ ${client.total_pago.toFixed(2)}`,
-        `R$ ${client.total_pendente.toFixed(2)}`,
-        `R$ ${(client.total_pago + client.total_pendente).toFixed(2)}`
-      ]);
-      
-      autoTable(doc, {
-        head: [['Cliente', 'Total Agendamentos', 'Pago', 'Pendente', 'Total']],
-        body: clientTableData,
         startY: finalY + 10,
         styles: {
           fontSize: 8,
