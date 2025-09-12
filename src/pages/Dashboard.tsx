@@ -168,7 +168,7 @@ const Dashboard = () => {
     return filteredAppointments;
   };
 
-  const getStatusColor = (status: string, date?: string, recurrence_id?: string) => {
+  const getStatusColor = (status: string, date?: string, recurrence_id?: string, is_cortesia?: boolean) => {
     let effectiveStatus = status;
     if (date && status === 'agendado') {
       const appointmentDate = new Date(date);
@@ -177,7 +177,8 @@ const Dashboard = () => {
       appointmentDate.setHours(0, 0, 0, 0);
       
       if (isBefore(appointmentDate, today)) {
-        effectiveStatus = 'a_cobrar';
+        // Se for cortesia, manter como 'cortesia', senão mudar para 'a_cobrar'
+        effectiveStatus = is_cortesia ? 'cortesia' : 'a_cobrar';
       }
     }
     
@@ -185,6 +186,7 @@ const Dashboard = () => {
       switch (effectiveStatus) {
         case 'pago': return 'bg-green-100 text-green-800 border-green-200';
         case 'a_cobrar': return 'bg-red-100 text-red-800 border-red-200';
+        case 'cortesia': return 'bg-pink-100 text-pink-800 border-pink-200';
         case 'agendado': return 'bg-blue-100 text-blue-800 border-blue-200';
         case 'cancelado': return 'bg-gray-100 text-gray-600 border-gray-200 line-through';
         default: return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -193,6 +195,7 @@ const Dashboard = () => {
       switch (effectiveStatus) {
         case 'pago': return 'bg-green-100 text-green-800 border-green-200';
         case 'a_cobrar': return 'bg-red-100 text-red-800 border-red-200';
+        case 'cortesia': return 'bg-pink-100 text-pink-800 border-pink-200';
         case 'agendado': return 'bg-purple-100 text-purple-800 border-purple-200';
         case 'cancelado': return 'bg-gray-100 text-gray-600 border-gray-200 line-through';
         default: return 'bg-purple-50 text-purple-700 border-purple-200';
@@ -200,7 +203,7 @@ const Dashboard = () => {
     }
   };
 
-  const getStatusLabel = (status: string, date?: string) => {
+  const getStatusLabel = (status: string, date?: string, is_cortesia?: boolean) => {
     if (date) {
       const appointmentDate = new Date(date);
       const today = new Date();
@@ -208,7 +211,7 @@ const Dashboard = () => {
       appointmentDate.setHours(0, 0, 0, 0);
       
       if (isBefore(appointmentDate, today) && status === 'agendado') {
-        return 'A Cobrar';
+        return is_cortesia ? 'Cortesia' : 'A Cobrar';
       }
     }
     
@@ -216,6 +219,7 @@ const Dashboard = () => {
     if (status === 'pago') return 'Pago';
     if (status === 'agendado') return 'Agendado';
     if (status === 'a_cobrar') return 'A Cobrar';
+    if (status === 'cortesia') return '🎁 Cortesia';
     
     return 'A Cobrar';
   };

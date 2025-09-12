@@ -16,6 +16,7 @@ export interface AppointmentWithModality {
   user_id: string;
   booking_source: 'manual' | 'online';
   payment_status?: 'not_required' | 'pending' | 'failed';
+  is_cortesia?: boolean;
   created_at: string;
   client?: {
     name: string;

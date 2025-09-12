@@ -27,6 +27,7 @@ interface Appointment {
   client_id?: string;
   recurrence_id?: string;
   booking_source?: 'manual' | 'online';
+  is_cortesia?: boolean;
 }
 
 interface ResponsiveCalendarProps {
@@ -37,8 +38,8 @@ interface ResponsiveCalendarProps {
   onCellClick: (day: Date, timeSlot: string) => void;
   getAppointmentForSlot: (day: Date, timeSlot: string) => Appointment | undefined;
   isTimeSlotBlocked: (day: Date, timeSlot: string) => boolean;
-  getStatusColor: (status: string) => string;
-  getStatusLabel: (status: string) => string;
+  getStatusColor: (status: string, date?: string, recurrence_id?: string, is_cortesia?: boolean) => string;
+  getStatusLabel: (status: string, date?: string, is_cortesia?: boolean) => string;
   getBlockadeReason?: (day: Date, timeSlot: string) => string | null;
 }
 
@@ -194,9 +195,9 @@ const ResponsiveCalendar: React.FC<ResponsiveCalendarProps> = ({
                 
                 {hasAppointment && (
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${getStatusColor(appointment.status)}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${getStatusColor(appointment.status, appointment.date, appointment.recurrence_id, appointment.is_cortesia)}`}></div>
                     <span className="text-xs font-medium text-slate-600">
-                      {getStatusLabel(appointment.status)}
+                      {getStatusLabel(appointment.status, appointment.date, appointment.is_cortesia)}
                     </span>
                   </div>
                 )}

@@ -18,10 +18,11 @@ interface AppointmentCardProps {
     client_id?: string;
     recurrence_id?: string;
     booking_source?: 'manual' | 'online';
+    is_cortesia?: boolean;
   };
   onClick: () => void;
-  getStatusColor: (status: string, date?: string, recurrence_id?: string) => string;
-  getStatusLabel: (status: string, date?: string) => string;
+  getStatusColor: (status: string, date?: string, recurrence_id?: string, is_cortesia?: boolean) => string;
+  getStatusLabel: (status: string, date?: string, is_cortesia?: boolean) => string;
   date?: string;
 }
 
@@ -73,6 +74,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     switch (appointment.status) {
       case 'pago': return 'bg-green-500 text-white border-green-600';
       case 'a_cobrar': return 'bg-orange-500 text-white border-orange-600';
+      case 'cortesia': return 'bg-pink-500 text-white border-pink-600';
       case 'agendado': return 'bg-white/20 text-white border-white/30';
       case 'cancelado': return 'bg-gray-500 text-white border-gray-600';
       default: return 'bg-orange-500 text-white border-orange-600';
@@ -113,7 +115,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
              variant="secondary" 
              className={`text-xs font-semibold ${getBadgeColor()}`}
            >
-             {getStatusLabel(appointment.status, date)}
+             {getStatusLabel(appointment.status, date, appointment.is_cortesia)}
            </Badge>
            <div className="flex items-center gap-0.5">
              {isOnlineBooking && (

@@ -12,12 +12,14 @@ export const updateRecurringAppointmentsStatus = async (userId: string) => {
 
     // Buscar TODOS os agendamentos com status 'agendado' que já passaram da data
     // Inclui tanto agendamentos únicos (recurrence_id = null) quanto recorrentes
+    // Exclui agendamentos cortesia (is_cortesia = true)
     const { data: expiredAppointments, error } = await supabase
       .from('appointments')
-      .select('id, date, recurrence_id')
+      .select('id, date, recurrence_id, is_cortesia')
       .eq('user_id', userId)
       .eq('status', 'agendado')
-      .lt('date', today.toISOString());
+      .lt('date', today.toISOString())
+      .or('is_cortesia.is.null,is_cortesia.eq.false');
 
     if (error) {
       console.error('❌ Erro ao buscar agendamentos vencidos:', error);
@@ -50,6 +52,30 @@ export const updateRecurringAppointmentsStatus = async (userId: string) => {
       if (updateError) {
         console.error('❌ Erro ao atualizar status dos agendamentos:', updateError);
         return { success: false, error: updateError, updatedCount: 0 };
+      }
+
+      // Buscar e atualizar agendamentos cortesia vencidos para status 'cortesia'
+      const { data: expiredCortesiaAppointments, error: cortesiaError } = await supabase
+        .from('appointments')
+        .select('id, date, recurrence_id')
+        .eq('user_id', userId)
+        .eq('status', 'agendado')
+        .eq('is_cortesia', true)
+        .lt('date', today.toISOString());
+
+      if (cortesiaError) {
+        console.error('❌ Erro ao buscar agendamentos cortesia vencidos:', cortesiaError);
+      } else if (expiredCortesiaAppointments && expiredCortesiaAppointments.length > 0) {
+        const { error: cortesiaUpdateError } = await supabase
+          .from('appointments')
+          .update({ status: 'cortesia' })
+          .in('id', expiredCortesiaAppointments.map(apt => apt.id));
+
+        if (cortesiaUpdateError) {
+          console.error('❌ Erro ao atualizar status dos agendamentos cortesia:', cortesiaUpdateError);
+        } else {
+          console.log('✅ Status atualizado para', expiredCortesiaAppointments.length, 'agendamentos cortesia vencidos');
+        }
       }
 
       console.log('✅ Status atualizado para', expiredAppointments.length, 'agendamentos vencidos:', {
