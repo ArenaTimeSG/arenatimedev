@@ -88,11 +88,7 @@ serve(async (req) => {
       description: description,
       payment_method_id: payment_method_id,
       payer: {
-        email: client_email,
-        identification: {
-          type: 'CPF',
-          number: '12345678901' // CPF fictício para teste
-        }
+        email: client_email
       },
       external_reference: appointmentId,
       notification_url: `${supabaseUrl}/functions/v1/mercado-pago-webhook`
