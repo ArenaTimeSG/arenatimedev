@@ -30,58 +30,36 @@ export default function PaymentSuccess() {
           throw new Error('Parâmetros de pagamento não encontrados');
         }
 
-        // Verificar status do pagamento na API do Mercado Pago
-        const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+        // Verificar status do pagamento usando nossa função de validação
+        const validationResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-payment`, {
+          method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_MP_ACCESS_TOKEN}`,
-            'Content-Type': 'application/json'
-          }
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            payment_id: paymentId,
+            external_reference: externalReference,
+            preference_id: preferenceId
+          })
         });
 
-        if (!mpResponse.ok) {
-          throw new Error('Erro ao verificar pagamento no Mercado Pago');
+        if (!validationResponse.ok) {
+          const errorData = await validationResponse.json();
+          throw new Error(`Erro ao validar pagamento: ${errorData.error || 'Erro desconhecido'}`);
         }
 
-        const paymentDetails = await mpResponse.json();
-        console.log('💳 Detalhes do pagamento:', paymentDetails);
+        const validationResult = await validationResponse.json();
+        console.log('💳 Resultado da validação:', validationResult);
 
-        if (paymentDetails.status === 'approved') {
-          // Pagamento aprovado - criar/atualizar agendamento
-          if (externalReference) {
-            // Buscar dados do agendamento temporário
-            const { data: tempAppointment, error: tempError } = await supabase
-              .from('appointments')
-              .select('*')
-              .eq('id', externalReference)
-              .single();
-
-            if (tempError) {
-              console.error('❌ Erro ao buscar agendamento temporário:', tempError);
-            } else if (tempAppointment) {
-              // Atualizar status do agendamento
-              const { data: updatedAppointment, error: updateError } = await supabase
-                .from('appointments')
-                .update({
-                  status: 'agendado',
-                  payment_status: 'paid',
-                  payment_id: paymentId,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', externalReference)
-                .select()
-                .single();
-
-              if (updateError) {
-                console.error('❌ Erro ao atualizar agendamento:', updateError);
-                throw new Error('Erro ao confirmar agendamento');
-              }
-
-              setAppointmentData(updatedAppointment);
-              console.log('✅ Agendamento confirmado:', updatedAppointment);
-            }
+        if (validationResult.success && validationResult.payment_status === 'approved') {
+          // Pagamento aprovado e agendamento processado
+          if (validationResult.appointment) {
+            setAppointmentData(validationResult.appointment);
+            console.log('✅ Agendamento confirmado:', validationResult.appointment);
           }
         } else {
-          throw new Error(`Pagamento não aprovado. Status: ${paymentDetails.status}`);
+          throw new Error(validationResult.message || 'Pagamento não aprovado');
         }
 
         setLoading(false);
