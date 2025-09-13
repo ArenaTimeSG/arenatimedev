@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, User, Mail, Phone, DollarSign, CheckCircle, CreditCard, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import PaymentCheckoutTransparent from './PaymentCheckoutTransparent';
+import PaymentCheckoutTransparentComplete from './PaymentCheckoutTransparentComplete';
 
 interface Modalidade {
   id: string;
@@ -345,7 +345,7 @@ const ResumoReserva = ({
               
               console.log('✅ Dados do pagamento disponíveis, renderizando checkout');
               return (
-                <PaymentCheckoutTransparent
+                <PaymentCheckoutTransparentComplete
                   appointmentId={appointmentId || ''}
                   userId={userId || ''}
                   amount={reserva.modalidade?.valor || 0}
