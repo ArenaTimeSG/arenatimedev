@@ -4,7 +4,6 @@ export const config = {
 };
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +16,7 @@ interface ProcessPaymentRequest {
   description: string;
   client_name: string;
   client_email: string;
-  payment_method_id: string; // 'pix', 'credit_card', etc.
+  payment_method_id: string;
   appointment_data: {
     user_id: string;
     client_id: string;
@@ -31,7 +30,7 @@ interface ProcessPaymentRequest {
 }
 
 serve(async (req) => {
-  console.log('💳 Direct payment processing function started');
+  console.log('💳 Simple payment processing function started');
   
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -57,20 +56,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    // Get Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('❌ Missing Supabase environment variables');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Get Mercado Pago access token
     const mpAccessToken = Deno.env.get('MP_ACCESS_TOKEN');
@@ -100,7 +85,6 @@ serve(async (req) => {
         }
       },
       external_reference: appointmentId,
-      notification_url: `${supabaseUrl}/functions/v1/mercado-pago-webhook`,
       installments: 1,
       capture: true
     };
@@ -143,94 +127,20 @@ serve(async (req) => {
     const payment = await mpResponse.json();
     console.log('✅ Payment created:', payment);
 
-    // Se o pagamento foi aprovado imediatamente (cartão de crédito)
-    if (payment.status === 'approved') {
-      console.log('✅ Pagamento aprovado imediatamente!');
-      
-      // Criar agendamento
-      const { data: newAppointment, error: createError } = await supabase
-        .from('appointments')
-        .insert({
-          id: appointmentId,
-          user_id: appointment_data.user_id,
-          client_id: appointment_data.client_id,
-          date: appointment_data.date,
-          time: appointment_data.time,
-          modality_id: appointment_data.modality_id,
-          modality_name: appointment_data.modality_name,
-          valor_total: appointment_data.valor_total,
-          status: 'agendado',
-          payment_status: 'paid',
-          payment_id: payment.id,
-          booking_source: 'online',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        console.error('❌ Erro ao criar agendamento:', createError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to create appointment', details: createError }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      console.log('✅ Agendamento criado:', newAppointment);
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          payment_status: 'approved',
-          appointment: newAppointment,
-          payment: payment,
-          message: 'Pagamento aprovado e agendamento criado'
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    } else {
-      // Pagamento pendente (Pix, boleto, etc.)
-      console.log('⏳ Pagamento pendente. Status:', payment.status);
-      
-      // Salvar dados do pagamento para processar depois
-      const { data: paymentRecord, error: paymentInsertError } = await supabase
-        .from('payments')
-        .insert({
-          user_id: user_id,
-          amount: amount,
-          description: description,
-          client_name: client_name,
-          client_email: client_email,
-          mercado_pago_payment_id: payment.id,
-          external_reference: appointmentId,
-          appointment_data: appointment_data,
-          status: payment.status,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-      
-      if (paymentInsertError) {
-        console.error('❌ Erro ao salvar dados do pagamento:', paymentInsertError);
-      } else {
-        console.log('✅ Dados do pagamento salvos:', paymentRecord.id);
-      }
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          payment_status: payment.status,
-          payment: payment,
-          appointment_id: appointmentId,
-          message: `Pagamento criado. Status: ${payment.status}`
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // Retornar resultado do pagamento
+    return new Response(
+      JSON.stringify({
+        success: true,
+        payment_status: payment.status,
+        payment: payment,
+        appointment_id: appointmentId,
+        message: `Pagamento criado. Status: ${payment.status}`
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
 
   } catch (error) {
-    console.error('❌ Direct payment processing error:', error)
+    console.error('❌ Simple payment processing error:', error)
     return new Response(
       JSON.stringify({ 
         error: 'Payment processing failed',
