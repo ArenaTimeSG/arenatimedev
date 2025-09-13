@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CreditCard, ExternalLink } from 'lucide-react';
+import { Loader2, CreditCard, ExternalLink, CheckCircle, Clock } from 'lucide-react';
 
 interface PaymentCheckoutRedirectProps {
   appointmentId: string;
@@ -27,6 +27,10 @@ const PaymentCheckoutRedirect: React.FC<PaymentCheckoutRedirectProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [paymentCreated, setPaymentCreated] = useState(false);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+  const [checkCount, setCheckCount] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const formatCurrency = (value: number) => {

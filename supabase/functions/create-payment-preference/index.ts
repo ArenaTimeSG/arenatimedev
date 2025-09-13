@@ -189,6 +189,7 @@ serve(async (req) => {
         failure: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/payment/failure`,
         pending: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/payment/pending`
       },
+      notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mercado-pago-webhook`,
       external_reference: externalRef
     }
 
