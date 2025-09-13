@@ -78,6 +78,8 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    
+    console.log('✅ Mercado Pago access token found:', mpAccessToken.substring(0, 20) + '...');
 
     // Gerar ID único para o agendamento
     const appointmentId = `appointment_${Date.now()}_${appointment_data.client_id}`;
@@ -108,8 +110,23 @@ serve(async (req) => {
     if (!mpResponse.ok) {
       const errorText = await mpResponse.text();
       console.error('❌ Mercado Pago payment error:', errorText);
+      console.error('❌ Response status:', mpResponse.status);
+      console.error('❌ Response headers:', Object.fromEntries(mpResponse.headers.entries()));
+      
+      let errorDetails;
+      try {
+        errorDetails = JSON.parse(errorText);
+      } catch {
+        errorDetails = errorText;
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to create payment', details: errorText }),
+        JSON.stringify({ 
+          error: 'Failed to create payment', 
+          details: errorDetails,
+          status: mpResponse.status,
+          paymentData: paymentData
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

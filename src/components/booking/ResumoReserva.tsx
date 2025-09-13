@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, User, Mail, Phone, DollarSign, CheckCircle, CreditCard, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import PaymentCheckoutDirect from './PaymentCheckoutDirect';
+import PaymentCheckoutRedirect from './PaymentCheckoutRedirect';
 
 interface Modalidade {
   id: string;
@@ -345,7 +345,7 @@ const ResumoReserva = ({
               
               console.log('✅ Dados do pagamento disponíveis, renderizando checkout');
               return (
-                <PaymentCheckoutDirect
+                <PaymentCheckoutRedirect
                   appointmentId={appointmentId || ''}
                   userId={userId || ''}
                   amount={reserva.modalidade?.valor || 0}
@@ -353,6 +353,7 @@ const ResumoReserva = ({
                   clientName={reserva.cliente.nome}
                   clientEmail={reserva.cliente.email}
                   onPaymentSuccess={handlePaymentSuccess}
+                  mercadoPagoPublicKey={mercadoPagoPublicKey}
                 />
               );
             })()}
