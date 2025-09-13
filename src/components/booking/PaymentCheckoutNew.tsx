@@ -127,56 +127,35 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
     try {
       console.log('💳 [FRONTEND] Abrindo checkout do Mercado Pago...');
       console.log('🔑 [FRONTEND] Preference ID:', preferenceId);
-      console.log('🔑 [FRONTEND] Chave pública:', 'TEST-12345678-1234-1234-1234-123456789012');
-      console.log('🔍 [FRONTEND] window.MercadoPago:', window.MercadoPago);
       
-      // Verificar se o SDK do Mercado Pago está disponível
-      if (typeof window !== 'undefined' && window.MercadoPago) {
-        console.log('✅ [FRONTEND] SDK do Mercado Pago disponível');
+      // Abrir checkout diretamente usando a URL do Mercado Pago
+      // Não precisamos do SDK para isso
+      const initPointUrl = `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${preferenceId}`;
+      console.log('🔗 [FRONTEND] URL do checkout:', initPointUrl);
+      
+      const paymentWindow = window.open(initPointUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+      
+      if (paymentWindow) {
+        console.log('✅ [FRONTEND] Checkout aberto com sucesso');
         
-        try {
-          // Usar chave pública do painel de administrador
-          const publicKey = mercadoPagoPublicKey || import.meta.env.VITE_MP_PUBLIC_KEY || 'TEST-7b0b0b0b-0b0b-0b0b-0b0b-0b0b0b0b0b0b';
-          const mp = new window.MercadoPago(publicKey);
-          console.log('✅ [FRONTEND] Instância do Mercado Pago criada com chave:', publicKey);
-          
-          // Abrir checkout de produção usando a URL retornada pela API
-          if (response.checkout_url) {
-            // Abrir o checkout de produção em uma nova janela
-            window.open(response.checkout_url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-          } else {
-            // Fallback para URL padrão
-            const initPointUrl = `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${preferenceId}`;
-            window.open(initPointUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-          }
-          
-          console.log('✅ [FRONTEND] Checkout aberto com sucesso');
-          
-          // Mostrar mensagem de aguardo
-          toast({
-            title: 'Checkout aberto!',
-            description: 'Complete o pagamento no Mercado Pago. O agendamento será confirmado automaticamente.',
-            variant: 'default',
-          });
-          
-        } catch (mpError) {
-          console.error('❌ [FRONTEND] Erro ao criar instância do Mercado Pago:', mpError);
-          toast({
-            title: 'Erro',
-            description: 'Erro ao inicializar Mercado Pago',
-            variant: 'destructive',
-          });
-        }
+        // Iniciar polling automático do status
+        startStatusPolling();
         
-      } else {
-        console.error('❌ [FRONTEND] SDK do Mercado Pago não encontrado');
-        console.error('❌ [FRONTEND] window.MercadoPago:', window.MercadoPago);
+        // Mostrar mensagem de aguardo
         toast({
-          title: 'Erro',
-          description: 'SDK do Mercado Pago não carregado. Aguarde um momento e tente novamente.',
+          title: 'Checkout aberto!',
+          description: 'Complete o pagamento no Mercado Pago. O agendamento será confirmado automaticamente.',
+          variant: 'default',
+        });
+      } else {
+        console.warn('⚠️ [FRONTEND] Popup bloqueado, mas URL está disponível');
+        toast({
+          title: 'Popup Bloqueado',
+          description: 'Permita pop-ups para este site ou use o link direto.',
           variant: 'destructive',
         });
       }
+      
     } catch (error) {
       console.error('❌ [FRONTEND] Erro ao abrir checkout:', error);
       toast({
@@ -187,37 +166,126 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
     }
   };
 
-  // Função para verificar status do agendamento (opcional)
-  const checkBookingStatus = async () => {
+  // Função para verificar status do pagamento via preference_id
+  const checkPaymentStatus = async () => {
     try {
-      console.log('🔍 [FRONTEND] Verificando status do agendamento...');
+      console.log('🔍 [FRONTEND] Verificando status do pagamento...');
+      console.log('🔍 [FRONTEND] Preference ID:', preferenceId);
       
-      const response = await fetch(`https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-booking-status?id=${appointmentId}`, {
+      // Verificar se temos um preferenceId válido
+      if (!preferenceId || preferenceId.trim() === '') {
+        console.warn('⚠️ [FRONTEND] Preference ID não disponível');
+        toast({
+          title: 'Erro',
+          description: 'ID da preferência não encontrado.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Verificar status do pagamento na tabela payments
+      const response = await fetch(`https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-payment-status-simple`, {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        }
+        },
+        body: JSON.stringify({
+          preference_id: preferenceId
+        })
       });
       
       if (!response.ok) {
-        throw new Error('Erro ao verificar status');
+        throw new Error('Erro ao verificar status do pagamento');
       }
       
       const status = await response.json();
-      console.log('📊 [FRONTEND] Status do agendamento:', status);
+      console.log('📊 [FRONTEND] Status do pagamento:', status);
       
-      if (status.status === 'pago') {
+      if (status.status === 'approved' && status.appointment_id) {
         toast({
           title: 'Pagamento confirmado!',
           description: 'Seu agendamento foi confirmado com sucesso.',
           variant: 'default',
         });
         onPaymentSuccess();
+      } else if (status.status === 'failed' || status.status === 'rejected') {
+        toast({
+          title: 'Pagamento não aprovado',
+          description: 'O pagamento não foi processado. Tente novamente.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Aguardando confirmação...',
+          description: 'O agendamento será confirmado automaticamente após o pagamento.',
+          variant: 'default',
+        });
       }
       
       return status;
     } catch (error) {
-      console.error('❌ [FRONTEND] Erro ao verificar status:', error);
+      console.error('❌ [FRONTEND] Erro ao verificar status do pagamento:', error);
+      toast({
+        title: 'Aguardando confirmação...',
+        description: 'O agendamento será confirmado automaticamente após o pagamento.',
+        variant: 'default',
+      });
     }
+  };
+
+  // Função para iniciar polling automático do status
+  const startStatusPolling = () => {
+    if (!preferenceId) return;
+    
+    console.log('🔄 [FRONTEND] Iniciando polling automático do status...');
+    
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-payment-status-simple`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            preference_id: preferenceId
+          })
+        });
+        
+        if (response.ok) {
+          const status = await response.json();
+          console.log('🔄 [FRONTEND] Polling - Status:', status);
+          
+          if (status.status === 'approved' && status.appointment_id) {
+            console.log('✅ [FRONTEND] Pagamento aprovado via polling!');
+            clearInterval(pollInterval);
+            toast({
+              title: 'Pagamento confirmado!',
+              description: 'Seu agendamento foi confirmado com sucesso.',
+              variant: 'default',
+            });
+            onPaymentSuccess();
+          } else if (status.status === 'failed' || status.status === 'rejected') {
+            console.log('❌ [FRONTEND] Pagamento rejeitado via polling');
+            clearInterval(pollInterval);
+            toast({
+              title: 'Pagamento não aprovado',
+              description: 'O pagamento não foi processado. Tente novamente.',
+              variant: 'destructive',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('❌ [FRONTEND] Erro no polling:', error);
+      }
+    }, 5000); // Verificar a cada 5 segundos
+    
+    // Parar polling após 5 minutos
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      console.log('⏰ [FRONTEND] Polling automático finalizado');
+    }, 300000);
   };
 
   if (paymentCreated) {
@@ -253,13 +321,13 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
               Abrir Pagamento
             </Button>
             
-            <Button
-              onClick={checkBookingStatus}
-              variant="outline"
-              className="w-full"
-            >
-              Verificar Status
-            </Button>
+                <Button
+                  onClick={checkPaymentStatus}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Verificar Status
+                </Button>
           </div>
 
           <div className="text-xs text-gray-500 text-center">

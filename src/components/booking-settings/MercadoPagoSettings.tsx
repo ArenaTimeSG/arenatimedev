@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Save, AlertCircle, Info, Eye, EyeOff, TestTube } from 'lucide-react';
+import { CreditCard, Save, AlertCircle, Info, Eye, EyeOff, TestTube, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +8,6 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePayment } from '@/hooks/usePayment';
 import { useToast } from '@/hooks/use-toast';
-import { ComingSoonCard } from './ComingSoonCard';
 
 interface MercadoPagoSettingsProps {
   mercadoPagoEnabled: boolean;
@@ -163,11 +162,138 @@ const MercadoPagoSettings = ({
   };
 
   return (
-    <ComingSoonCard
-      title="Configurações do Mercado Pago"
-      description="Configure Access Token, Public Key e Webhook para processar pagamentos via Mercado Pago nos agendamentos online"
-      icon={<CreditCard className="w-6 h-6 text-blue-600" />}
-    />
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200"
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+          <CreditCard className="w-6 h-6 text-blue-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-gray-800">Configurações do Mercado Pago</h3>
+          <p className="text-sm text-gray-600">Configure suas credenciais para processar pagamentos</p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {/* Toggle de habilitação */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div>
+            <h4 className="font-medium text-gray-800">Habilitar Mercado Pago</h4>
+            <p className="text-sm text-gray-600">Ativar processamento de pagamentos via Mercado Pago</p>
+          </div>
+          <Switch
+            checked={isEnabled}
+            onCheckedChange={setIsEnabled}
+            className="data-[state=checked]:bg-blue-600"
+          />
+        </div>
+
+        {isEnabled && (
+          <>
+            {/* Access Token */}
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">Access Token</Label>
+              <Input
+                type="password"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="APP_USR_1234567890123456-123456-12345678901234567890123456789012-123456"
+                className="border-gray-200 focus:border-blue-300"
+              />
+              <p className="text-sm text-gray-600">
+                Token de acesso do Mercado Pago (produção)
+              </p>
+            </div>
+
+            {/* Public Key */}
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">Public Key</Label>
+              <Input
+                type="text"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                placeholder="APP_USR_12345678-1234-1234-1234-123456789012"
+                className="border-gray-200 focus:border-blue-300"
+              />
+              <p className="text-sm text-gray-600">
+                Chave pública do Mercado Pago (produção)
+              </p>
+            </div>
+
+            {/* Webhook URL */}
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">Webhook URL</Label>
+              <Input
+                type="text"
+                value={webhook}
+                onChange={(e) => setWebhook(e.target.value)}
+                placeholder="https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/mercado-pago-webhook"
+                className="border-gray-200 focus:border-blue-300"
+              />
+              <p className="text-sm text-gray-600">
+                URL do webhook para receber notificações de pagamento
+              </p>
+            </div>
+
+            {/* Informações de configuração */}
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-medium text-blue-800 mb-2">Configuração do Webhook</h4>
+                  <p className="text-sm text-blue-700 mb-2">
+                    No painel do Mercado Pago, configure o webhook para:
+                  </p>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• URL: <code className="bg-blue-100 px-1 rounded">{webhook || 'URL do webhook'}</code></li>
+                    <li>• Eventos: <code className="bg-blue-100 px-1 rounded">payment</code></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Botões de ação */}
+            <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <Button
+                onClick={handleTestarConfiguracao}
+                disabled={testando || !token}
+                variant="outline"
+                className="flex-1"
+              >
+                {testando ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Testando...
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    Testar Configuração
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                onClick={() => onUpdate({
+                  mercado_pago_enabled: isEnabled,
+                  mercado_pago_access_token: token,
+                  mercado_pago_public_key: key,
+                  mercado_pago_webhook_url: webhook
+                })}
+                disabled={!hasChanges}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Salvar Configurações
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </motion.div>
   );
 };
 

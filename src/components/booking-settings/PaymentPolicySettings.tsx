@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CreditCard, Save, AlertCircle, Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PAYMENT_POLICY_OPTIONS } from '@/types/settings';
-import { ComingSoonCard } from './ComingSoonCard';
 
 interface PaymentPolicySettingsProps {
   paymentPolicy: 'sem_pagamento' | 'obrigatorio' | 'opcional';
@@ -65,11 +66,59 @@ const PaymentPolicySettings = ({ paymentPolicy, onUpdate }: PaymentPolicySetting
   };
 
   return (
-    <ComingSoonCard
-      title="Política de Pagamento"
-      description="Configure se clientes devem pagar antecipadamente, opcionalmente ou sem pagamento para agendamentos online"
-      icon={<CreditCard className="w-6 h-6 text-green-600" />}
-    />
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200"
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+          <CreditCard className="w-6 h-6 text-green-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-gray-800">Política de Pagamento</h3>
+          <p className="text-sm text-gray-600">Configure como os clientes devem pagar para agendamentos online</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-gray-700 font-medium">Política de Pagamento</Label>
+          <Select value={selectedPolicy} onValueChange={setSelectedPolicy}>
+            <SelectTrigger className="border-gray-200 focus:border-green-300">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAYMENT_POLICY_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-gray-600">
+            {getPolicyDescription(selectedPolicy)}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <Info className="w-4 h-4 text-blue-600" />
+          <p className="text-sm text-blue-700">
+            Esta configuração afeta apenas agendamentos online. Agendamentos feitos diretamente pelo administrador não são afetados.
+          </p>
+        </div>
+
+        <div className="flex justify-end pt-4 border-t border-gray-200">
+          <Button
+            onClick={() => onUpdate(selectedPolicy)}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Salvar Política
+          </Button>
+        </div>
+      </div>
+    </motion.div>
   );
 };
 

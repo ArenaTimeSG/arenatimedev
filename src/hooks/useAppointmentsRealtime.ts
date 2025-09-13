@@ -1,90 +1,96 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
 
-export const useAppointmentsRealtime = () => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const subscriptionRef = useRef<any>(null);
-  const lastUpdateRef = useRef<number>(0);
-  const pendingUpdatesRef = useRef<Set<string>>(new Set());
+interface UseAppointmentsRealtimeProps {
+  userId: string;
+  onNewAppointment: (appointment: any) => void;
+  enabled?: boolean;
+}
 
-  // Função otimizada para invalidar queries com debounce
-  const debouncedInvalidate = useCallback(() => {
-    const now = Date.now();
-    const timeSinceLastUpdate = now - lastUpdateRef.current;
-    
-    // Se passou menos de 500ms desde a última atualização, aguardar
-    if (timeSinceLastUpdate < 500) {
-      setTimeout(() => {
-        if (pendingUpdatesRef.current.size > 0) {
-          console.log('🔔 Real-time: Aplicando', pendingUpdatesRef.current.size, 'atualizações pendentes');
-          
-          // Invalidar apenas a query principal de agendamentos
-          queryClient.invalidateQueries({ 
-            queryKey: ['appointments', user?.id],
-            exact: true 
-          });
-          
-          pendingUpdatesRef.current.clear();
-          lastUpdateRef.current = Date.now();
-        }
-      }, 500 - timeSinceLastUpdate);
-    } else {
-      // Aplicar atualização imediatamente
-      console.log('🔔 Real-time: Aplicando atualização imediata');
-      
-      queryClient.invalidateQueries({ 
-        queryKey: ['appointments', user?.id],
-        exact: true 
-      });
-      
-      lastUpdateRef.current = now;
-    }
-  }, [queryClient, user?.id]);
+export const useAppointmentsRealtime = ({ 
+  userId, 
+  onNewAppointment, 
+  enabled = true 
+}: UseAppointmentsRealtimeProps) => {
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!enabled) return;
 
-    console.log('🔔 Iniciando real-time otimizado para agendamentos do usuário:', user.id);
+    console.log('🔍 Configurando Realtime para agendamentos do usuário:', userId);
 
-    // Inscrever-se para mudanças na tabela appointments
-    subscriptionRef.current = supabase
-      .channel('appointments_changes')
+    // Criar canal do Realtime
+    const channel = supabase
+      .channel('realtime:appointments')
       .on(
         'postgres_changes',
-        {
-          event: '*', // Escutar INSERT, UPDATE, DELETE
-          schema: 'public',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
           table: 'appointments',
-          filter: `user_id=eq.${user.id}`
+          filter: `user_id=eq.${userId}`
         },
         (payload) => {
-          console.log('🔔 Real-time: Mudança detectada na tabela appointments:', payload.eventType);
+          console.log('🔔 Novo agendamento inserido via Realtime:', payload.new);
           
-          // Adicionar à lista de atualizações pendentes
-          pendingUpdatesRef.current.add(payload.eventType);
+          // Verificar se é um agendamento recente (últimos 5 minutos) e aprovado
+          const createdAt = new Date(payload.new.created_at);
+          const now = new Date();
+          const diffMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60);
           
-          // Usar debounce para evitar muitas atualizações seguidas
-          debouncedInvalidate();
+          if (diffMinutes <= 5 && payload.new.status === 'agendado' && payload.new.payment_status === 'approved') {
+            console.log('✅ Agendamento confirmado via Realtime!', payload.new);
+            onNewAppointment(payload.new);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'appointments',
+          filter: `user_id=eq.${userId}`
+        },
+        (payload) => {
+          console.log('🔔 Agendamento atualizado via Realtime:', payload.new);
+          
+          // Verificar se o status mudou para aprovado
+          if (payload.new.status === 'agendado' && payload.new.payment_status === 'approved') {
+            console.log('✅ Agendamento confirmado via Realtime!', payload.new);
+            onNewAppointment(payload.new);
+          }
         }
       )
       .subscribe((status) => {
-        console.log('🔔 Real-time: Status da inscrição:', status);
+        console.log('🔍 Status da conexão Realtime:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime conectado com sucesso');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('❌ Erro na conexão Realtime:', status);
+        }
       });
 
-    // Cleanup: cancelar inscrição quando o componente for desmontado
+    channelRef.current = channel;
+
+    // Cleanup function
     return () => {
-      if (subscriptionRef.current) {
-        console.log('🔔 Real-time: Cancelando inscrição');
-        subscriptionRef.current.unsubscribe();
-        pendingUpdatesRef.current.clear();
+      if (channelRef.current) {
+        console.log('🧹 Limpando conexão Realtime');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
     };
-  }, [user?.id, debouncedInvalidate]);
+  }, [userId, onNewAppointment, enabled]);
+
+  // Função para verificar se o Realtime está conectado
+  const isConnected = () => {
+    return channelRef.current && channelRef.current.state === 'joined';
+  };
 
   return {
-    isConnected: subscriptionRef.current?.state === 'SUBSCRIBED'
+    isConnected,
+    channel: channelRef.current
   };
 };

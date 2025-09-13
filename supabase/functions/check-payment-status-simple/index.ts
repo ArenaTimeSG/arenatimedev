@@ -10,8 +10,8 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log('🔍 CHECK PAYMENT STATUS - Method:', req.method);
-  console.log('🔍 CHECK PAYMENT STATUS - URL:', req.url);
+  console.log('🔍 CHECK PAYMENT STATUS SIMPLE - Method:', req.method);
+  console.log('🔍 CHECK PAYMENT STATUS SIMPLE - URL:', req.url);
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -57,7 +57,7 @@ serve(async (req) => {
     // Criar cliente Supabase
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Buscar dados do pagamento pela preference_id
+    // Buscar dados do pagamento na tabela payments
     const { data: paymentRecord, error: paymentError } = await supabase
       .from('payments')
       .select('*')

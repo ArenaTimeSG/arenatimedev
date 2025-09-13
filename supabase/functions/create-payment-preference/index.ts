@@ -149,14 +149,14 @@ serve(async (req) => {
     
     console.log('🔍 Settings query result:', { settings, settingsError });
 
-    // Se não encontrar configurações, usar configurações padrão para teste
+    // Se não encontrar configurações, usar configurações de produção
     let accessToken = settings?.mercado_pago_access_token;
     let isEnabled = settings?.mercado_pago_enabled;
     
     if (settingsError || !settings) {
-      console.log('⚠️ Settings not found, using default test configuration');
-      // Usar token de teste padrão válido
-      accessToken = 'TEST-7b0b0b0b-0b0b-0b0b-0b0b-0b0b0b0b0b0b';
+      console.log('⚠️ Settings not found, using production configuration from environment');
+      // Usar token de produção das variáveis de ambiente
+      accessToken = Deno.env.get('MP_ACCESS_TOKEN');
       isEnabled = true;
     }
 
@@ -185,13 +185,11 @@ serve(async (req) => {
         email: client_email
       },
       back_urls: {
-        success: 'https://arenatime.vercel.app/payment/success',
-        failure: 'https://arenatime.vercel.app/payment/failure',
-        pending: 'https://arenatime.vercel.app/payment/pending'
+        success: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/payment/success`,
+        failure: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/payment/failure`,
+        pending: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/payment/pending`
       },
-      auto_return: 'approved',
-      external_reference: externalRef,
-      notification_url: 'https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/mercado-pago-webhook' // URL do webhook
+      external_reference: externalRef
     }
 
     console.log('💳 Creating Mercado Pago preference...', JSON.stringify(preferenceData, null, 2));

@@ -48,8 +48,9 @@ serve(async (req) => {
     // Obter variáveis de ambiente
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const mpAccessToken = Deno.env.get('MP_ACCESS_TOKEN');
 
-    if (!supabaseUrl || !supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseServiceKey || !mpAccessToken) {
       console.error('❌ Variáveis de ambiente não configuradas');
       return new Response("Configuração inválida", { status: 500, headers: corsHeaders });
     }
@@ -57,15 +58,11 @@ serve(async (req) => {
     // Criar cliente Supabase
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Primeiro, consultar o pagamento para obter o external_reference
-    console.log('🔍 Consultando pagamento para obter external_reference...');
-    
-    // Usar token genérico temporariamente para consultar o pagamento
-    const tempToken = Deno.env.get('MP_ACCESS_TOKEN') || 'TEST-4b0b0b0b-0b0b-0b0b-0b0b-0b0b0b0b0b0b';
-    
+    // Consultar a API do Mercado Pago em /v1/payments/:id usando MP_ACCESS_TOKEN
+    console.log('🔍 Consultando detalhes do pagamento no Mercado Pago...');
     const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: {
-        Authorization: `Bearer ${tempToken}`,
+        Authorization: `Bearer ${mpAccessToken}`,
         'Content-Type': 'application/json'
       }
     });
@@ -77,60 +74,25 @@ serve(async (req) => {
 
     const payment = await mpRes.json();
     console.log('💳 Detalhes do pagamento:', payment);
-    console.log('💳 External Reference:', payment.external_reference);
-
-    // Buscar token do Mercado Pago baseado no external_reference
-    console.log('🔍 Buscando token do Mercado Pago baseado no external_reference...');
-    const { data: settings, error: settingsError } = await supabase
-      .from('settings')
-      .select('mercado_pago_access_token, user_id')
-      .not('mercado_pago_access_token', 'is', null)
-      .eq('mercado_pago_enabled', true)
-      .single();
-
-    if (settingsError || !settings) {
-      console.error('❌ Token do Mercado Pago não encontrado nas configurações');
-      return new Response("Token do Mercado Pago não configurado", { status: 400, headers: corsHeaders });
-    }
-
-    const mpAccessToken = settings.mercado_pago_access_token;
-    console.log('✅ Token do Mercado Pago encontrado para usuário:', settings.user_id);
-
-    // Agora consultar novamente com o token correto para obter detalhes completos
-    console.log('🔍 Consultando pagamento com token correto...');
-    const mpResCorrect = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: {
-        Authorization: `Bearer ${mpAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!mpResCorrect.ok) {
-      console.error('❌ Erro ao consultar pagamento com token correto:', mpResCorrect.status);
-      return new Response("Erro ao consultar pagamento", { status: 500, headers: corsHeaders });
-    }
-
-    const paymentDetails = await mpResCorrect.json();
-    console.log('💳 Detalhes completos do pagamento:', paymentDetails);
-    console.log('💳 Status do pagamento:', paymentDetails.status);
-    console.log('💳 External Reference (Booking ID):', paymentDetails.external_reference);
+    console.log('💳 Status do pagamento:', payment.status);
+    console.log('💳 External Reference (Booking ID):', payment.external_reference);
 
     // Extrair booking_id do external_reference
-    const bookingId = paymentDetails.external_reference;
+    const bookingId = payment.external_reference;
     if (!bookingId) {
       console.error('❌ External reference (booking_id) não encontrado no pagamento');
       return new Response("Booking ID não encontrado", { status: 400, headers: corsHeaders });
     }
 
     // Processar status do pagamento
-    if (paymentDetails.status === "approved") {
+    if (payment.status === "approved") {
       console.log('✅ Pagamento aprovado - Criando agendamento');
       
       // Buscar dados do agendamento na tabela payments pela preferência
       const { data: paymentRecord } = await supabase
         .from('payments')
         .select('*')
-        .eq('mercado_pago_preference_id', paymentDetails.preference_id)
+        .eq('mercado_pago_preference_id', payment.preference_id)
         .single();
       
       if (paymentRecord && paymentRecord.appointment_data) {
@@ -164,7 +126,7 @@ serve(async (req) => {
             mercado_pago_payment_id: paymentId,
             status: 'approved'
           })
-          .eq('mercado_pago_preference_id', paymentDetails.preference_id);
+          .eq('mercado_pago_preference_id', payment.preference_id);
         
         return new Response("Pagamento aprovado e agendamento criado", { status: 200, headers: corsHeaders });
       } else {
@@ -172,14 +134,14 @@ serve(async (req) => {
         return new Response("Dados do agendamento não encontrados", { status: 404, headers: corsHeaders });
       }
 
-    } else if (paymentDetails.status === "rejected" || paymentDetails.status === "cancelled") {
+    } else if (payment.status === "rejected" || payment.status === "cancelled") {
       console.log('❌ Pagamento rejeitado/cancelado - Não criando agendamento');
       
       // Atualizar status do pagamento na tabela payments se existir
       const { data: paymentRecord } = await supabase
         .from('payments')
         .select('*')
-        .eq('mercado_pago_preference_id', paymentDetails.preference_id)
+        .eq('mercado_pago_preference_id', payment.preference_id)
         .single();
       
       if (paymentRecord) {
@@ -189,14 +151,14 @@ serve(async (req) => {
             status: 'failed',
             mercado_pago_payment_id: paymentId
           })
-          .eq('mercado_pago_preference_id', paymentDetails.preference_id);
+          .eq('mercado_pago_preference_id', payment.preference_id);
       }
 
       return new Response("Pagamento rejeitado - agendamento não criado", { status: 200, headers: corsHeaders });
 
     } else {
-      console.log('⚠️ Status de pagamento não aprovado:', paymentDetails.status);
-      return new Response(`Status: ${paymentDetails.status}`, { status: 200, headers: corsHeaders });
+      console.log('⚠️ Status de pagamento não aprovado:', payment.status);
+      return new Response(`Status: ${payment.status}`, { status: 200, headers: corsHeaders });
     }
 
   } catch (error) {

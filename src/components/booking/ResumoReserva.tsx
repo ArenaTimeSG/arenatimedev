@@ -3,8 +3,7 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, User, Mail, Phone, DollarSign, CheckCircle, CreditCard, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import PaymentCheckoutNew from './PaymentCheckoutNew';
-import MercadoPagoScript from './MercadoPagoScript';
+import PaymentCheckoutRedirect from './PaymentCheckoutRedirect';
 
 interface Modalidade {
   id: string;
@@ -76,7 +75,13 @@ const ResumoReserva = ({
   };
 
   const handleConfirmWithPayment = async () => {
-    if (paymentPolicy === 'opcional') {
+    if (paymentPolicy === 'obrigatorio') {
+      // Para política obrigatória, primeiro processar pagamento (armazenar dados)
+      // Depois abrir o modal de pagamento
+      console.log('🔒 Payment required - processing payment first');
+      onConfirmarComPagamento?.(); // ✅ Chama função que armazena dados
+      setShowPayment(true);        // ✅ Depois abre modal
+    } else if (paymentPolicy === 'opcional') {
       setPaymentChoice('pay');
       setShowPayment(true);
     } else {
@@ -323,7 +328,6 @@ const ResumoReserva = ({
               <X className="h-5 w-5 text-gray-500" />
             </button>
             
-            <MercadoPagoScript publicKey={mercadoPagoPublicKey || import.meta.env.VITE_MP_PUBLIC_KEY || "TEST-7b0b0b0b-0b0b-0b0b-0b0b-0b0b0b0b0b0b"} />
             {(() => {
               // Verificar se os dados do pagamento estão disponíveis
               const paymentData = sessionStorage.getItem('paymentData');
@@ -341,7 +345,7 @@ const ResumoReserva = ({
               
               console.log('✅ Dados do pagamento disponíveis, renderizando checkout');
               return (
-                <PaymentCheckoutNew
+                <PaymentCheckoutRedirect
                   appointmentId={appointmentId || ''}
                   userId={userId || ''}
                   amount={reserva.modalidade?.valor || 0}
