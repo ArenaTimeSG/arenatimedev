@@ -24,8 +24,7 @@ const PaymentCheckoutTransparent: React.FC<PaymentCheckoutTransparentProps> = ({
   onPaymentSuccess
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
-  const [paymentData, setPaymentData] = useState<any>(null);
+  const [paymentCreated, setPaymentCreated] = useState(false);
   const { toast } = useToast();
 
   const formatCurrency = (value: number) => {
@@ -72,14 +71,21 @@ const PaymentCheckoutTransparent: React.FC<PaymentCheckoutTransparentProps> = ({
 
       console.log('💳 [FRONTEND] Enviando pagamento para Mercado Pago...', paymentData);
 
-      // Fazer requisição direta para a API do Mercado Pago
-      const response = await fetch('https://api.mercadopago.com/v1/payments', {
+      // Fazer requisição via nossa Edge Function (que funciona)
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-preference`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer APP_USR-4461346537954793-090413-6c5cc021ed6566a910dbace683f270ae-620810417`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         },
-        body: JSON.stringify(paymentData)
+        body: JSON.stringify({
+          user_id: userId,
+          amount: amount,
+          description: `Agendamento de ${modalityName}`,
+          client_name: clientName,
+          client_email: clientEmail,
+          appointment_data: appointmentData.appointment_data
+        })
       });
 
       if (!response.ok) {
@@ -88,60 +94,22 @@ const PaymentCheckoutTransparent: React.FC<PaymentCheckoutTransparentProps> = ({
         throw new Error(`Erro do Mercado Pago: ${errorText}`);
       }
 
-      const payment = await response.json();
-      console.log('✅ [FRONTEND] Pagamento criado:', payment);
+      const preference = await response.json();
+      console.log('✅ [FRONTEND] Preferência criada:', preference);
 
-      setPaymentData(payment);
-      setPaymentStatus(payment.status);
-
-      if (payment.status === 'approved') {
-        // Pagamento aprovado - criar agendamento
-        console.log('✅ [FRONTEND] Pagamento aprovado, criando agendamento...');
+      if (preference.success && preference.checkout_url) {
+        // Abrir checkout do Mercado Pago
+        console.log('🔗 [FRONTEND] Abrindo checkout do Mercado Pago...');
+        window.open(preference.checkout_url, '_blank');
         
-        const { data: newAppointment, error: createError } = await supabase
-          .from('appointments')
-          .insert({
-            id: appointmentId,
-            user_id: appointmentData.appointment_data.user_id,
-            client_id: appointmentData.appointment_data.client_id,
-            date: appointmentData.appointment_data.date,
-            time: appointmentData.appointment_data.time,
-            modality_id: appointmentData.appointment_data.modality_id,
-            modality_name: appointmentData.appointment_data.modality_name,
-            valor_total: appointmentData.appointment_data.valor_total,
-            status: 'agendado',
-            payment_status: 'paid',
-            payment_id: payment.id,
-            booking_source: 'online',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('❌ [FRONTEND] Erro ao criar agendamento:', createError);
-          throw new Error('Erro ao criar agendamento');
-        }
-
-        console.log('✅ [FRONTEND] Agendamento criado:', newAppointment);
+        setPaymentCreated(true);
         
         toast({
-          title: "Pagamento Aprovado!",
-          description: "Seu agendamento foi confirmado com sucesso.",
-        });
-        onPaymentSuccess();
-      } else if (payment.status === 'pending') {
-        toast({
-          title: "Pagamento Pendente",
-          description: "Aguarde a confirmação do pagamento. Você receberá uma notificação quando for aprovado.",
+          title: "Checkout Aberto!",
+          description: "Complete o pagamento no Mercado Pago. O agendamento será confirmado automaticamente.",
         });
       } else {
-        toast({
-          title: "Pagamento Rejeitado",
-          description: "O pagamento não foi aprovado. Tente novamente.",
-          variant: "destructive"
-        });
+        throw new Error('Erro ao criar preferência de pagamento');
       }
 
     } catch (error) {
@@ -156,75 +124,36 @@ const PaymentCheckoutTransparent: React.FC<PaymentCheckoutTransparentProps> = ({
     }
   };
 
-  if (paymentStatus === 'approved') {
+  if (paymentCreated) {
     return (
       <div className="space-y-4">
         <div className="bg-green-50 border border-green-200 rounded-lg p-6">
           <div className="flex items-center gap-3 mb-4">
             <CheckCircle className="h-6 w-6 text-green-600" />
-            <h3 className="text-lg font-semibold text-green-800">Pagamento Aprovado!</h3>
+            <h3 className="text-lg font-semibold text-green-800">Checkout Aberto!</h3>
           </div>
           
           <p className="text-green-700 mb-4">
-            Seu agendamento foi confirmado com sucesso.
+            Complete o pagamento no Mercado Pago. O agendamento será confirmado automaticamente após o pagamento.
           </p>
 
-          {paymentData && (
-            <div className="bg-white rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">Detalhes do Pagamento:</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">ID do Pagamento:</span>
-                  <span className="font-medium">{paymentData.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className="font-medium">{paymentData.status}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Valor:</span>
-                  <span className="font-bold text-green-600">{formatCurrency(amount)}</span>
-                </div>
+          <div className="bg-white rounded-lg p-4">
+            <h4 className="font-semibold text-gray-900 mb-2">Resumo do Pagamento:</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Modalidade:</span>
+                <span className="font-medium">{modalityName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Cliente:</span>
+                <span className="font-medium">{clientName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total:</span>
+                <span className="font-bold text-green-600">{formatCurrency(amount)}</span>
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (paymentStatus === 'pending') {
-    return (
-      <div className="space-y-4">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <AlertCircle className="h-6 w-6 text-yellow-600" />
-            <h3 className="text-lg font-semibold text-yellow-800">Pagamento Pendente</h3>
           </div>
-          
-          <p className="text-yellow-700 mb-4">
-            Seu pagamento está sendo processado. Você receberá uma notificação quando for aprovado.
-          </p>
-
-          {paymentData && (
-            <div className="bg-white rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">Detalhes do Pagamento:</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">ID do Pagamento:</span>
-                  <span className="font-medium">{paymentData.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className="font-medium">{paymentData.status}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Valor:</span>
-                  <span className="font-bold text-green-600">{formatCurrency(amount)}</span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );
