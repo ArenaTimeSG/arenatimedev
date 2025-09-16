@@ -235,6 +235,10 @@ export const useClientBookings = (adminUserId?: string) => {
       return newBooking;
     },
     onSuccess: (newBooking) => {
+      // Salvar o ID do agendamento no sessionStorage para uso no pagamento
+      sessionStorage.setItem('lastAppointmentId', newBooking.id);
+      console.log('💾 Appointment ID salvo no sessionStorage:', newBooking.id);
+      
       // Otimização: Atualizar cache diretamente para agendamentos online
       queryClient.setQueryData(['clientBookings', adminUserId], (oldData: any[] | undefined) => {
         if (!oldData) return [newBooking];
