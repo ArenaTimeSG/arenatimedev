@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Settings - Mercado Pago</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .error { background-color: #ffebee; border-color: #f44336; }
+        .success { background-color: #e8f5e8; border-color: #4caf50; }
+        .info { background-color: #e3f2fd; border-color: #2196f3; }
+        pre { background-color: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; background-color: #2196f3; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background-color: #1976d2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Settings - Mercado Pago</h1>
+        
+        <div class="section info">
+            <h3>📋 Instruções</h3>
+            <p>1. Abra o console do navegador (F12)</p>
+            <p>2. Clique nos botões abaixo para testar</p>
+            <p>3. Verifique os logs no console</p>
+        </div>
+
+        <div class="section">
+            <h3>🔑 Testar Configurações do Usuário</h3>
+            <button onclick="testUserSettings()">Buscar Configurações do Usuário</button>
+            <div id="userSettingsResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>💳 Testar Criação de Preferência</h3>
+            <button onclick="testCreatePreference()">Testar Criação de Preferência</button>
+            <div id="preferenceResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>🗄️ Verificar Tabela Settings</h3>
+            <button onclick="checkSettingsTable()">Verificar Estrutura da Tabela</button>
+            <div id="tableResult"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configurações do Supabase
+        const SUPABASE_URL = 'https://xtufbfvrgpzqbvdfmtiy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dWZiZnZyZ3B6cWJ2ZGZtdGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU0NzQ4NzQsImV4cCI6MjA1MTA1MDg3NH0.8QZqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJq';
+
+        // Inicializar Supabase
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function testUserSettings() {
+            const resultDiv = document.getElementById('userSettingsResult');
+            resultDiv.innerHTML = '<p>🔄 Buscando configurações...</p>';
+            
+            try {
+                // Buscar usuário atual
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                
+                if (userError) {
+                    resultDiv.innerHTML = `<div class="error"><h4>❌ Erro ao buscar usuário:</h4><pre>${JSON.stringify(userError, null, 2)}</pre></div>`;
+                    return;
+                }
+
+                if (!user) {
+                    resultDiv.innerHTML = '<div class="error"><h4>❌ Usuário não autenticado</h4><p>Faça login primeiro</p></div>';
+                    return;
+                }
+
+                console.log('👤 Usuário:', user);
+
+                // Buscar configurações
+                const { data: settings, error: settingsError } = await supabaseClient
+                    .from('settings')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (settingsError) {
+                    resultDiv.innerHTML = `<div class="error"><h4>❌ Erro ao buscar configurações:</h4><pre>${JSON.stringify(settingsError, null, 2)}</pre></div>`;
+                    return;
+                }
+
+                console.log('⚙️ Configurações:', settings);
+
+                // Verificar configurações do Mercado Pago
+                const mpConfig = {
+                    enabled: settings?.mercado_pago_enabled || false,
+                    accessToken: settings?.mercado_pago_access_token || '',
+                    publicKey: settings?.mercado_pago_public_key || '',
+                    webhookUrl: settings?.mercado_pago_webhook_url || ''
+                };
+
+                console.log('💳 Configurações Mercado Pago:', mpConfig);
+
+                let status = 'success';
+                let message = '✅ Configurações encontradas!';
+                
+                if (!mpConfig.enabled) {
+                    status = 'error';
+                    message = '❌ Mercado Pago não está habilitado';
+                } else if (!mpConfig.accessToken) {
+                    status = 'error';
+                    message = '❌ Access Token não configurado';
+                } else if (!mpConfig.publicKey) {
+                    status = 'error';
+                    message = '❌ Public Key não configurada';
+                }
+
+                resultDiv.innerHTML = `
+                    <div class="${status}">
+                        <h4>${message}</h4>
+                        <h5>👤 Usuário ID:</h5>
+                        <pre>${user.id}</pre>
+                        <h5>⚙️ Configurações Completas:</h5>
+                        <pre>${JSON.stringify(settings, null, 2)}</pre>
+                        <h5>💳 Configurações Mercado Pago:</h5>
+                        <pre>${JSON.stringify(mpConfig, null, 2)}</pre>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                resultDiv.innerHTML = `<div class="error"><h4>❌ Erro inesperado:</h4><pre>${JSON.stringify(error, null, 2)}</pre></div>`;
+            }
+        }
+
+        async function testCreatePreference() {
+            const resultDiv = document.getElementById('preferenceResult');
+            resultDiv.innerHTML = '<p>🔄 Testando criação de preferência...</p>';
+            
+            try {
+                // Buscar usuário atual
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                
+                if (userError || !user) {
+                    resultDiv.innerHTML = '<div class="error"><h4>❌ Usuário não autenticado</h4></div>';
+                    return;
+                }
+
+                const testData = {
+                    owner_id: user.id,
+                    booking_id: 'test-booking-' + Date.now(),
+                    price: 10.00,
+                    items: [{
+                        title: 'Teste de Configuração',
+                        quantity: 1,
+                        unit_price: 10.00
+                    }],
+                    return_url: window.location.origin + '/payment/success'
+                };
+
+                console.log('📤 Dados sendo enviados:', testData);
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/create-payment-preference`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                console.log('📥 Resposta:', result);
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Preferência criada com sucesso!</h4>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Erro ao criar preferência:</h4>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                resultDiv.innerHTML = `<div class="error"><h4>❌ Erro inesperado:</h4><pre>${JSON.stringify(error, null, 2)}</pre></div>`;
+            }
+        }
+
+        async function checkSettingsTable() {
+            const resultDiv = document.getElementById('tableResult');
+            resultDiv.innerHTML = '<p>🔄 Verificando estrutura da tabela...</p>';
+            
+            try {
+                // Buscar usuário atual
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                
+                if (userError || !user) {
+                    resultDiv.innerHTML = '<div class="error"><h4>❌ Usuário não autenticado</h4></div>';
+                    return;
+                }
+
+                // Tentar buscar todas as colunas da tabela settings
+                const { data: allSettings, error: allError } = await supabaseClient
+                    .from('settings')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (allError) {
+                    resultDiv.innerHTML = `<div class="error"><h4>❌ Erro ao buscar dados:</h4><pre>${JSON.stringify(allError, null, 2)}</pre></div>`;
+                    return;
+                }
+
+                // Verificar se as colunas do Mercado Pago existem
+                const mpColumns = [
+                    'mercado_pago_enabled',
+                    'mercado_pago_access_token', 
+                    'mercado_pago_public_key',
+                    'mercado_pago_webhook_url'
+                ];
+
+                const existingColumns = mpColumns.filter(col => allSettings.hasOwnProperty(col));
+                const missingColumns = mpColumns.filter(col => !allSettings.hasOwnProperty(col));
+
+                resultDiv.innerHTML = `
+                    <div class="info">
+                        <h4>📊 Estrutura da Tabela Settings</h4>
+                        <h5>✅ Colunas do Mercado Pago encontradas:</h5>
+                        <pre>${JSON.stringify(existingColumns, null, 2)}</pre>
+                        <h5>❌ Colunas do Mercado Pago ausentes:</h5>
+                        <pre>${JSON.stringify(missingColumns, null, 2)}</pre>
+                        <h5>📋 Todas as colunas disponíveis:</h5>
+                        <pre>${JSON.stringify(Object.keys(allSettings), null, 2)}</pre>
+                        <h5>💾 Dados completos:</h5>
+                        <pre>${JSON.stringify(allSettings, null, 2)}</pre>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                resultDiv.innerHTML = `<div class="error"><h4>❌ Erro inesperado:</h4><pre>${JSON.stringify(error, null, 2)}</pre></div>`;
+            }
+        }
+    </script>
+
+    <!-- Supabase JS -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</body>
+</html>

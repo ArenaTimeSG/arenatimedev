@@ -58,7 +58,7 @@ serve(async (req) => {
     // Buscar configurações do admin (incluindo chaves do Mercado Pago)
     console.log('🔑 [CREATE-PREFERENCE] Buscando configurações do admin:', owner_id)
     const { data: adminSettings, error: settingsError } = await supabase
-      .from('user_settings')
+      .from('settings')
       .select('*')
       .eq('user_id', owner_id)
       .single()
@@ -78,10 +78,9 @@ serve(async (req) => {
     }
 
     // Verificar se Mercado Pago está habilitado e configurado
-    const settings = adminSettings.settings || {}
-    const isEnabled = settings.mercado_pago_enabled
-    const accessToken = settings.mercado_pago_access_token
-    const publicKey = settings.mercado_pago_public_key
+    const isEnabled = adminSettings.mercado_pago_enabled
+    const accessToken = adminSettings.mercado_pago_access_token
+    const publicKey = adminSettings.mercado_pago_public_key
 
     if (!isEnabled || !accessToken || !publicKey) {
       console.error('❌ [CREATE-PREFERENCE] Mercado Pago não configurado corretamente')
