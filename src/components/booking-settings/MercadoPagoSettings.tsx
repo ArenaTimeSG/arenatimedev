@@ -96,11 +96,15 @@ const MercadoPagoSettings = ({
 
       // Testar criando uma preferência de pagamento de teste
       const testData = {
-        user_id: '49014464-6ed9-4fee-af45-06105f31698b', // UUID válido para teste
-        amount: 10.00,
-        description: 'Teste de Configuração',
-        client_name: 'Cliente Teste',
-        client_email: 'teste@exemplo.com',
+        owner_id: '49014464-6ed9-4fee-af45-06105f31698b', // UUID válido para teste
+        booking_id: 'test-booking-' + Date.now(), // ID de teste único
+        price: 10.00,
+        items: [{
+          title: 'Teste de Configuração',
+          quantity: 1,
+          unit_price: 10.00
+        }],
+        return_url: window.location.origin + '/payment/success'
       };
 
       console.log('🧪 Testando configuração do Mercado Pago...');
