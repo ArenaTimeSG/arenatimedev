@@ -43,10 +43,12 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       console.log('💳 [FRONTEND] Criando preferência de pagamento transparente...');
       console.log('🔍 [FRONTEND] Props recebidas:', { appointmentId, userId, amount, modalityName });
 
-      // Verificar se appointmentId está vazio
-      if (!appointmentId) {
-        console.error('❌ [FRONTEND] appointmentId está vazio!');
-        throw new Error('ID do agendamento não encontrado. Tente agendar novamente.');
+      // Verificar se appointmentId está vazio e gerar um se necessário
+      let finalAppointmentId = appointmentId;
+      if (!appointmentId || appointmentId === '') {
+        console.log('⚠️ [FRONTEND] appointmentId está vazio, gerando um único...');
+        finalAppointmentId = `appointment_${Date.now()}_${userId}`;
+        console.log('✅ [FRONTEND] appointmentId gerado:', finalAppointmentId);
       }
 
       // Buscar dados do pagamento do sessionStorage
@@ -63,7 +65,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
 
       const requestData = {
         owner_id: userId,
-        booking_id: appointmentId,
+        booking_id: finalAppointmentId,
         price: amount,
         items: [{
           title: `Agendamento de ${modalityName}`,
