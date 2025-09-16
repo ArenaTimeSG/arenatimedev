@@ -7,7 +7,7 @@ if (!accessToken) {
 }
 
 // Configurar Mercado Pago
-mercadopago.configure({
+(mercadopago as any).configure({
   access_token: accessToken,
 });
 

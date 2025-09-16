@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { AdminKeysRequest } from '../types/payment';
 import { AdminKeysService } from '../services/adminKeysService';
 
-export const saveAdminKeys = async (req: Request, res: Response) => {
+export const saveAdminKeys = async (req: any, res: Response) => {
   console.log('🔑 [ADMIN-KEYS] Salvando chaves do admin');
   console.log('📥 [ADMIN-KEYS] Dados recebidos:', JSON.stringify(req.body, null, 2));
 
@@ -79,7 +79,7 @@ export const saveAdminKeys = async (req: Request, res: Response) => {
   }
 };
 
-export const getAdminKeys = async (req: Request, res: Response) => {
+export const getAdminKeys = async (req: any, res: Response) => {
   console.log('🔑 [ADMIN-KEYS] Buscando chaves do admin');
 
   try {
@@ -125,7 +125,7 @@ export const getAdminKeys = async (req: Request, res: Response) => {
   }
 };
 
-export const checkAdminKeys = async (req: Request, res: Response) => {
+export const checkAdminKeys = async (req: any, res: Response) => {
   console.log('🔑 [ADMIN-KEYS] Verificando se admin tem chaves configuradas');
 
   try {

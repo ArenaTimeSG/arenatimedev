@@ -27,7 +27,7 @@ app.use((req, res, next) => {
 
 // Middleware de autenticação simples (para desenvolvimento)
 // Em produção, implementar autenticação JWT adequada
-app.use('/api/admin', (req, res, next) => {
+app.use('/api/admin', (req: any, res, next) => {
   // Simular usuário autenticado para desenvolvimento
   // Em produção, validar JWT token
   req.user = { id: req.headers['x-user-id'] as string || 'default-user' };

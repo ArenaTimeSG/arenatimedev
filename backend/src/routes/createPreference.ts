@@ -51,7 +51,7 @@ export const createPreference = async (req: Request, res: Response) => {
     console.log('✅ [CREATE-PREFERENCE] Agendamento encontrado:', booking.id);
 
     // Configurar Mercado Pago com as chaves do admin
-    mercadopago.configure({
+    (mercadopago as any).configure({
       access_token: adminKeys.prod_access_token,
     });
 
@@ -77,7 +77,7 @@ export const createPreference = async (req: Request, res: Response) => {
 
     console.log('💳 [CREATE-PREFERENCE] Dados da preferência:', JSON.stringify(preference, null, 2));
 
-    const mpResp = await mercadopago.preferences.create(preference);
+    const mpResp = await (mercadopago as any).preferences.create(preference);
     const preferenceData = mpResp.body;
 
     console.log('✅ [CREATE-PREFERENCE] Preferência criada com sucesso!');
