@@ -79,12 +79,15 @@ const PaymentCheckoutTransparent: React.FC<PaymentCheckoutTransparentProps> = ({
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
-          user_id: userId,
-          amount: amount,
-          description: `Agendamento de ${modalityName}`,
-          client_name: clientName,
-          client_email: clientEmail,
-          appointment_data: appointmentData.appointment_data
+          owner_id: userId,
+          booking_id: appointmentId,
+          price: amount,
+          items: [{
+            title: `Agendamento de ${modalityName}`,
+            quantity: 1,
+            unit_price: amount
+          }],
+          return_url: window.location.origin + '/payment/success'
         })
       });
 

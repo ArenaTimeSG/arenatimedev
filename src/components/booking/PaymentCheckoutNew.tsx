@@ -57,12 +57,15 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
       console.log('💳 Payment data from storage:', paymentData);
 
       const requestData = {
-        description: paymentData.description,
-        amount: paymentData.amount,
-        user_id: paymentData.user_id,
-        client_name: paymentData.client_name,
-        client_email: paymentData.client_email,
-        appointment_data: paymentData.appointment_data
+        owner_id: paymentData.user_id,
+        booking_id: appointmentId,
+        price: paymentData.amount,
+        items: [{
+          title: paymentData.description || `Agendamento de ${modalityName}`,
+          quantity: 1,
+          unit_price: paymentData.amount
+        }],
+        return_url: window.location.origin + '/payment/success'
       };
 
       console.log('📤 [FRONTEND] Dados sendo enviados:', requestData);
