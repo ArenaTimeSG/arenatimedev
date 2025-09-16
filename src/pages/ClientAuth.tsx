@@ -7,9 +7,10 @@ import { Calendar, Users, Clock, CheckCircle } from 'lucide-react';
 interface ClientAuthProps {
   onAuthSuccess: () => void;
   adminName?: string;
+  adminUserId?: string;
 }
 
-const ClientAuth = ({ onAuthSuccess, adminName }: ClientAuthProps) => {
+const ClientAuth = ({ onAuthSuccess, adminName, adminUserId }: ClientAuthProps) => {
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
 
   const handleSwitchToSignUp = () => {
@@ -141,6 +142,7 @@ const ClientAuth = ({ onAuthSuccess, adminName }: ClientAuthProps) => {
               <ClientLoginForm 
                 onSuccess={handleAuthSuccess}
                 onSwitchToSignUp={handleSwitchToSignUp}
+                adminUserId={adminUserId}
               />
             ) : (
               <ClientSignUpForm 

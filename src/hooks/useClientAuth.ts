@@ -171,12 +171,19 @@ export const useClientAuth = () => {
 
   // Mutation para login
   const loginMutation = useMutation({
-    mutationFn: async (data: LoginClientData) => {
-      const { data: client, error } = await supabase
+    mutationFn: async (data: LoginClientData & { user_id?: string }) => {
+      // Buscar cliente por email e user_id (se fornecido)
+      let query = supabase
         .from('booking_clients')
         .select('*')
-        .eq('email', data.email)
-        .single();
+        .eq('email', data.email);
+      
+      // Se user_id foi fornecido, filtrar por ele também
+      if (data.user_id) {
+        query = query.eq('user_id', data.user_id);
+      }
+      
+      const { data: client, error } = await query.single();
 
       if (error || !client) {
         throw new Error('Email ou senha incorretos');
@@ -223,6 +230,7 @@ export const useClientAuth = () => {
     loading,
     register: registerMutation.mutate,
     login: loginMutation.mutate,
+    loginClient: loginMutation.mutate,
     update: updateMutation.mutate,
     logout,
     verifyClientExists,

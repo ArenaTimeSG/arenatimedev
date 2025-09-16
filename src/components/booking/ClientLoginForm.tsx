@@ -11,9 +11,10 @@ import { Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
 interface ClientLoginFormProps {
   onSuccess: () => void;
   onSwitchToSignUp: () => void;
+  adminUserId?: string;
 }
 
-export const ClientLoginForm = ({ onSuccess, onSwitchToSignUp }: ClientLoginFormProps) => {
+export const ClientLoginForm = ({ onSuccess, onSwitchToSignUp, adminUserId }: ClientLoginFormProps) => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -97,6 +98,7 @@ export const ClientLoginForm = ({ onSuccess, onSwitchToSignUp }: ClientLoginForm
       await loginClient({
         email: formData.email,
         password: formData.password,
+        user_id: adminUserId,
       });
       
       toast({

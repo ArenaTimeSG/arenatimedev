@@ -427,6 +427,7 @@ const OnlineBooking = () => {
       <ClientAuth 
         onAuthSuccess={handleAuthSuccess}
         adminName={adminData.user.name}
+        adminUserId={adminData.user.user_id}
       />
     );
   }
