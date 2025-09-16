@@ -55,20 +55,20 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Buscar chaves de produção do admin
-    console.log('🔑 [CREATE-PREFERENCE] Buscando chaves do admin:', owner_id)
-    const { data: adminKeys, error: keysError } = await supabase
-      .from('admin_mercado_pago_keys')
+    // Buscar configurações do admin (incluindo chaves do Mercado Pago)
+    console.log('🔑 [CREATE-PREFERENCE] Buscando configurações do admin:', owner_id)
+    const { data: adminSettings, error: settingsError } = await supabase
+      .from('user_settings')
       .select('*')
-      .eq('owner_id', owner_id)
+      .eq('user_id', owner_id)
       .single()
 
-    if (keysError || !adminKeys) {
-      console.error('❌ [CREATE-PREFERENCE] Admin não configurado com chaves de produção')
+    if (settingsError || !adminSettings) {
+      console.error('❌ [CREATE-PREFERENCE] Configurações do admin não encontradas:', settingsError)
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'Owner não configurado com chaves de produção'
+          error: 'Configurações do admin não encontradas'
         } as CreatePreferenceResponse),
         { 
           status: 400, 
@@ -76,6 +76,28 @@ serve(async (req) => {
         }
       )
     }
+
+    // Verificar se Mercado Pago está habilitado e configurado
+    const settings = adminSettings.settings || {}
+    const isEnabled = settings.mercado_pago_enabled
+    const accessToken = settings.mercado_pago_access_token
+    const publicKey = settings.mercado_pago_public_key
+
+    if (!isEnabled || !accessToken || !publicKey) {
+      console.error('❌ [CREATE-PREFERENCE] Mercado Pago não configurado corretamente')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Mercado Pago não está habilitado ou configurado corretamente'
+        } as CreatePreferenceResponse),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    console.log('✅ [CREATE-PREFERENCE] Mercado Pago configurado:', { isEnabled, hasToken: !!accessToken, hasPublicKey: !!publicKey })
 
     // Verificar se o agendamento existe
     console.log('🔍 [CREATE-PREFERENCE] Verificando se agendamento existe:', booking_id)
@@ -129,7 +151,7 @@ serve(async (req) => {
     const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${adminKeys.prod_access_token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(preference)
