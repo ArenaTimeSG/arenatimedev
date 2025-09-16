@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Manual - Mercado Pago</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste Manual - Sistema de Pagamento</h1>
+        <p>Este teste verifica se a integração com Mercado Pago está funcionando corretamente.</p>
+
+        <!-- Teste 1: Verificar se a função está acessível -->
+        <div class="test-section">
+            <h3>1. Teste de Conectividade</h3>
+            <p>Verifica se a Supabase Edge Function está acessível.</p>
+            <button onclick="testConnectivity()">Testar Conectividade</button>
+            <div id="connectivity-result" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Teste 2: Teste com dados válidos -->
+        <div class="test-section">
+            <h3>2. Teste de Criação de Preferência</h3>
+            <p>Testa a criação de uma preferência de pagamento com dados válidos.</p>
+            
+            <div class="form-group">
+                <label for="owner-id">Owner ID (Admin):</label>
+                <input type="text" id="owner-id" value="49014464-6ed9-4fee-af45-06105f31698b" placeholder="UUID do admin">
+            </div>
+            
+            <div class="form-group">
+                <label for="booking-id">Booking ID:</label>
+                <input type="text" id="booking-id" value="" placeholder="ID do agendamento">
+            </div>
+            
+            <div class="form-group">
+                <label for="price">Preço (R$):</label>
+                <input type="number" id="price" value="1.00" step="0.01" placeholder="Valor do pagamento">
+            </div>
+            
+            <div class="form-group">
+                <label for="item-title">Título do Item:</label>
+                <input type="text" id="item-title" value="Teste de Agendamento" placeholder="Descrição do serviço">
+            </div>
+            
+            <button onclick="generateBookingId()">Gerar Booking ID</button>
+            <button onclick="testCreatePreference()">Criar Preferência</button>
+            <div id="preference-result" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Teste 3: Teste com dados inválidos -->
+        <div class="test-section">
+            <h3>3. Teste de Validação</h3>
+            <p>Testa se a validação de campos obrigatórios está funcionando.</p>
+            <button onclick="testValidation()">Testar Validação</button>
+            <div id="validation-result" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Teste 4: Verificar webhook -->
+        <div class="test-section">
+            <h3>4. Teste do Webhook</h3>
+            <p>Verifica se o webhook está configurado corretamente.</p>
+            <button onclick="testWebhook()">Testar Webhook</button>
+            <div id="webhook-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xtufbfvrgpzqbvdfmtiy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dWZiZnZyZ3B6cWJ2ZGZtdGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3ODUzMDYsImV4cCI6MjA3MTM2MTMwNn0.kckI90iRHcw2hY_J5-tNveAzB1oD8xRT7MyM_tLDZ4M';
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${type}`;
+            element.textContent = message;
+        }
+
+        function generateBookingId() {
+            const bookingId = 'test-booking-' + Date.now();
+            document.getElementById('booking-id').value = bookingId;
+            showResult('preference-result', `Booking ID gerado: ${bookingId}`, 'info');
+        }
+
+        async function testConnectivity() {
+            showResult('connectivity-result', 'Testando conectividade...', 'info');
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/create-payment-preference`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                if (response.ok) {
+                    showResult('connectivity-result', '✅ Conectividade OK!\nA função está acessível.', 'success');
+                } else {
+                    showResult('connectivity-result', `❌ Erro de conectividade: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showResult('connectivity-result', `❌ Erro de rede: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCreatePreference() {
+            const ownerId = document.getElementById('owner-id').value;
+            const bookingId = document.getElementById('booking-id').value;
+            const price = parseFloat(document.getElementById('price').value);
+            const itemTitle = document.getElementById('item-title').value;
+
+            if (!ownerId || !bookingId || !price || !itemTitle) {
+                showResult('preference-result', '❌ Preencha todos os campos antes de testar!', 'error');
+                return;
+            }
+
+            showResult('preference-result', 'Criando preferência de pagamento...', 'info');
+
+            const testData = {
+                owner_id: ownerId,
+                booking_id: bookingId,
+                price: price,
+                items: [{
+                    title: itemTitle,
+                    quantity: 1,
+                    unit_price: price
+                }],
+                return_url: window.location.origin + '/payment/success'
+            };
+
+            try {
+                console.log('📤 Enviando dados:', testData);
+                
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/create-payment-preference`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                console.log('📥 Resposta recebida:', response.status);
+
+                const result = await response.json();
+                console.log('📥 Dados da resposta:', result);
+
+                if (response.ok && result.success) {
+                    showResult('preference-result', 
+                        `✅ Preferência criada com sucesso!\n\n` +
+                        `Preference ID: ${result.preference_id}\n` +
+                        `Init Point: ${result.init_point}\n\n` +
+                        `🎉 O sistema está funcionando corretamente!`, 
+                        'success'
+                    );
+                } else {
+                    showResult('preference-result', 
+                        `❌ Erro ao criar preferência:\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Erro: ${result.error || 'Erro desconhecido'}\n\n` +
+                        `Dados enviados: ${JSON.stringify(testData, null, 2)}`, 
+                        'error'
+                    );
+                }
+            } catch (error) {
+                showResult('preference-result', 
+                    `❌ Erro de rede:\n\n${error.message}\n\n` +
+                    `Dados enviados: ${JSON.stringify(testData, null, 2)}`, 
+                    'error'
+                );
+            }
+        }
+
+        async function testValidation() {
+            showResult('validation-result', 'Testando validação com dados inválidos...', 'info');
+
+            const invalidData = {
+                // Campos obrigatórios ausentes
+                user_id: 'test-user',
+                amount: 10.00
+            };
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/create-payment-preference`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify(invalidData)
+                });
+
+                const result = await response.json();
+
+                if (response.status === 400 && result.error && result.error.includes('Campos obrigatórios')) {
+                    showResult('validation-result', 
+                        `✅ Validação funcionando!\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Erro esperado: ${result.error}\n\n` +
+                        `A validação está rejeitando dados inválidos corretamente.`, 
+                        'success'
+                    );
+                } else {
+                    showResult('validation-result', 
+                        `⚠️ Validação não funcionou como esperado:\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Resposta: ${JSON.stringify(result, null, 2)}`, 
+                        'error'
+                    );
+                }
+            } catch (error) {
+                showResult('validation-result', `❌ Erro de rede: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWebhook() {
+            showResult('webhook-result', 'Testando webhook...', 'info');
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/notification-webhook`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (response.ok) {
+                    showResult('webhook-result', 
+                        `✅ Webhook acessível!\n\n` +
+                        `Status: ${response.status}\n` +
+                        `URL: ${SUPABASE_URL}/functions/v1/notification-webhook\n\n` +
+                        `Configure esta URL no Mercado Pago.`, 
+                        'success'
+                    );
+                } else {
+                    showResult('webhook-result', 
+                        `⚠️ Webhook retornou status ${response.status}\n\n` +
+                        `Isso pode ser normal se o webhook espera dados específicos.`, 
+                        'info'
+                    );
+                }
+            } catch (error) {
+                showResult('webhook-result', `❌ Erro ao testar webhook: ${error.message}`, 'error');
+            }
+        }
+
+        // Gerar booking ID automaticamente ao carregar
+        window.onload = function() {
+            generateBookingId();
+        };
+    </script>
+</body>
+</html>

@@ -41,6 +41,13 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
     try {
       setIsLoading(true);
       console.log('💳 [FRONTEND] Criando preferência de pagamento transparente...');
+      console.log('🔍 [FRONTEND] Props recebidas:', { appointmentId, userId, amount, modalityName });
+
+      // Verificar se appointmentId está vazio
+      if (!appointmentId) {
+        console.error('❌ [FRONTEND] appointmentId está vazio!');
+        throw new Error('ID do agendamento não encontrado. Tente agendar novamente.');
+      }
 
       // Buscar dados do pagamento do sessionStorage
       const storedPaymentData = sessionStorage.getItem('paymentData');
@@ -54,23 +61,27 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+      const requestData = {
+        owner_id: userId,
+        booking_id: appointmentId,
+        price: amount,
+        items: [{
+          title: `Agendamento de ${modalityName}`,
+          quantity: 1,
+          unit_price: amount
+        }],
+        return_url: window.location.origin + '/payment/success'
+      };
+
+      console.log('📤 [FRONTEND] Dados sendo enviados:', requestData);
+
       const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-preference`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseAnonKey}`
         },
-        body: JSON.stringify({
-          owner_id: userId,
-          booking_id: appointmentId,
-          price: amount,
-          items: [{
-            title: `Agendamento de ${modalityName}`,
-            quantity: 1,
-            unit_price: amount
-          }],
-          return_url: window.location.origin + '/payment/success'
-        })
+        body: JSON.stringify(requestData)
       });
 
       if (!response.ok) {
