@@ -99,29 +99,49 @@ serve(async (req) => {
 
     console.log('✅ [CREATE-PREFERENCE] Mercado Pago configurado:', { isEnabled, hasToken: !!accessToken, hasPublicKey: !!publicKey })
 
-    // Verificar se o agendamento existe
+    // Verificar se o agendamento existe, se não existir, criar um temporário
     console.log('🔍 [CREATE-PREFERENCE] Verificando se agendamento existe:', booking_id)
-    const { data: booking, error: bookingError } = await supabase
+    let { data: booking, error: bookingError } = await supabase
       .from('appointments')
       .select('*')
       .eq('id', booking_id)
       .single()
 
     if (bookingError || !booking) {
-      console.error('❌ [CREATE-PREFERENCE] Agendamento não encontrado:', bookingError)
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Agendamento não encontrado'
-        } as CreatePreferenceResponse),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
+      console.log('⚠️ [CREATE-PREFERENCE] Agendamento não encontrado, criando temporário...')
+      
+      // Criar agendamento temporário com status pending_payment
+      const { data: newBooking, error: createError } = await supabase
+        .from('appointments')
+        .insert({
+          id: booking_id,
+          user_id: owner_id,
+          status: 'pending_payment',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
 
-    console.log('✅ [CREATE-PREFERENCE] Agendamento encontrado:', booking.id)
+      if (createError) {
+        console.error('❌ [CREATE-PREFERENCE] Erro ao criar agendamento temporário:', createError)
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Erro ao criar agendamento temporário'
+          } as CreatePreferenceResponse),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      booking = newBooking
+      console.log('✅ [CREATE-PREFERENCE] Agendamento temporário criado:', booking.id)
+    } else {
+      console.log('✅ [CREATE-PREFERENCE] Agendamento encontrado:', booking.id)
+    }
 
     // Criar preferência do Mercado Pago
     console.log('💳 [CREATE-PREFERENCE] Criando preferência no Mercado Pago...')
