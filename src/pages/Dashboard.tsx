@@ -199,6 +199,21 @@ const Dashboard = () => {
     });
     return { aCobrar, pagos };
   }, [monthlyEventsByDay]);
+
+  // Função para contar eventos mensais da semana atual
+  const getMonthlyEventsForCurrentWeek = () => {
+    const weekStart = startOfWeek(currentWeek, { locale: ptBR });
+    const weekEnd = addDays(weekStart, 6);
+    
+    let count = 0;
+    Object.entries(monthlyEventsByDay).forEach(([dateKey, events]) => {
+      const eventDate = new Date(dateKey);
+      if (eventDate >= weekStart && eventDate <= weekEnd) {
+        count += events.length;
+      }
+    });
+    return count;
+  };
   const [isRecurringForUnblock, setIsRecurringForUnblock] = useState(false);
   const [isBlockedTimeSlotModalOpen, setIsBlockedTimeSlotModalOpen] = useState(false);
   const [isForceAppointment, setIsForceAppointment] = useState(false);
@@ -905,10 +920,10 @@ const Dashboard = () => {
               <>
                 <StatCard
                   title="Esta Semana"
-                  value={getAppointmentsForCurrentWeek().length}
+                  value={getMonthlyEventsForCurrentWeek()}
                   icon={TrendingUp}
                   color="orange"
-                  description="Total de agendamentos"
+                  description="Eventos desta semana"
                   delay={0}
                 />
                 <StatCard
