@@ -75,6 +75,7 @@ const Financial = () => {
   
   // Navegação por ano
   const [selectedYear, setSelectedYear] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
   
   // Estado para modal de pagamento em massa
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -113,7 +114,7 @@ const Financial = () => {
     if (user && appointments.length > 0) {
       fetchFinancialData();
     }
-  }, [user, selectedYear, appointments]);
+  }, [user, selectedMonth, appointments]);
 
   useEffect(() => {
     if (user && activeTab === 'eventos') {
@@ -125,25 +126,28 @@ const Financial = () => {
     try {
       setIsLoading(true);
 
-      const startOfSelectedYear = new Date(selectedYear.getFullYear(), 0, 1);
-      const endOfSelectedYear = new Date(selectedYear.getFullYear(), 11, 31);
+      // Para horários: usar filtro mensal
+      const startOfSelectedMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
+      const endOfSelectedMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
 
-      // Filtrar agendamentos do ano selecionado
-      const yearAppointments = appointments.filter(apt => {
+      // Filtrar agendamentos do mês selecionado
+      const monthAppointments = appointments.filter(apt => {
         const aptDate = new Date(apt.date);
         const aptYear = aptDate.getFullYear();
-        const selectedYearNum = selectedYear.getFullYear();
+        const aptMonth = aptDate.getMonth();
+        const selectedYearNum = selectedMonth.getFullYear();
+        const selectedMonthNum = selectedMonth.getMonth();
         
-        return aptYear === selectedYearNum;
+        return aptYear === selectedYearNum && aptMonth === selectedMonthNum;
       });
 
       // Debug: verificar agendamentos cancelados
-      const agendamentosCancelados = yearAppointments.filter(apt => apt.status === 'cancelado');
+      const agendamentosCancelados = monthAppointments.filter(apt => apt.status === 'cancelado');
       console.log('🔍 Financial - Agendamentos cancelados encontrados:', agendamentosCancelados);
-      console.log('🔍 Financial - Total de agendamentos do ano:', yearAppointments.length);
-      console.log('🔍 Financial - Status dos agendamentos:', yearAppointments.map(apt => ({ id: apt.id, status: apt.status, date: apt.date, valor_total: apt.valor_total })));
+      console.log('🔍 Financial - Total de agendamentos do mês:', monthAppointments.length);
+      console.log('🔍 Financial - Status dos agendamentos:', monthAppointments.map(apt => ({ id: apt.id, status: apt.status, date: apt.date, valor_total: apt.valor_total })));
 
-      setAppointmentsData(yearAppointments.map(apt => ({
+      setAppointmentsData(monthAppointments.map(apt => ({
         id: apt.client_id,
         date: apt.date,
         status: apt.status,
@@ -153,17 +157,17 @@ const Financial = () => {
       })));
 
       // Usar o hook para calcular dados financeiros
-      const summary = getFinancialSummary(yearAppointments);
+      const summary = getFinancialSummary(monthAppointments);
       
       // Debug: verificar resumo financeiro
       console.log('🔍 Financial - Resumo financeiro calculado:', summary);
       console.log('🔍 Financial - Agendamentos cancelados no resumo:', summary.agendamentos_cancelados);
       console.log('🔍 Financial - Total cancelado no resumo:', summary.total_cancelado);
-      console.log('🔍 Financial - Agendamentos pagos encontrados:', yearAppointments.filter(apt => apt.status === 'pago').length);
-      console.log('🔍 Financial - Agendamentos a_cobrar encontrados:', yearAppointments.filter(apt => apt.status === 'a_cobrar').length);
-      console.log('🔍 Financial - Status dos agendamentos após atualização:', yearAppointments.map(apt => ({ id: apt.id, status: apt.status, valor: apt.valor_total })));
+      console.log('🔍 Financial - Agendamentos pagos encontrados:', monthAppointments.filter(apt => apt.status === 'pago').length);
+      console.log('🔍 Financial - Agendamentos a_cobrar encontrados:', monthAppointments.filter(apt => apt.status === 'a_cobrar').length);
+      console.log('🔍 Financial - Status dos agendamentos após atualização:', monthAppointments.map(apt => ({ id: apt.id, status: apt.status, valor: apt.valor_total })));
       
-      const agendamentosRealizados = yearAppointments.filter(a => {
+      const agendamentosRealizados = monthAppointments.filter(a => {
         const aptDate = new Date(a.date);
         const today = new Date();
         return aptDate < today;
@@ -303,6 +307,18 @@ const Financial = () => {
     setSelectedYear(new Date());
   };
 
+  const handlePreviousMonth = () => {
+    setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, selectedMonth.getDate()));
+  };
+
+  const handleNextMonth = () => {
+    setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, selectedMonth.getDate()));
+  };
+
+  const handleCurrentMonth = () => {
+    setSelectedMonth(new Date());
+  };
+
   // Função para abrir modal de pagamento em massa
   const handleOpenPaymentModal = (client: ClientFinancial) => {
     // Buscar agendamentos reais do hook useAppointments, não do appointmentsData
@@ -390,10 +406,10 @@ const Financial = () => {
     
       // Cabeçalho
       doc.setFontSize(20);
-      doc.text(`${user?.user_metadata?.full_name || user?.user_metadata?.name || 'Usuário'} - Relatório Financeiro Anual`, 105, 20, { align: 'center' });
+      doc.text(`${user?.user_metadata?.full_name || user?.user_metadata?.name || 'Usuário'} - Relatório Financeiro`, 105, 20, { align: 'center' });
       
       doc.setFontSize(12);
-      doc.text(`Período: ${selectedYear.getFullYear()}`, 105, 30, { align: 'center' });
+      doc.text(`Período: ${activeTab === 'horarios' ? format(selectedMonth, 'MMMM yyyy', { locale: ptBR }) : selectedYear.getFullYear()}`, 105, 30, { align: 'center' });
       doc.text(`Data do relatório: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 105, 40, { align: 'center' });
       
       if (activeTab === 'horarios') {
@@ -449,7 +465,7 @@ const Financial = () => {
           headStyles: { fillColor: [59, 130, 246] }
         });
         
-        doc.save(`relatorio-agendamentos-${selectedYear.getFullYear()}.pdf`);
+        doc.save(`relatorio-agendamentos-${format(selectedMonth, 'yyyy-MM', { locale: ptBR })}.pdf`);
         
       } else {
         // Relatório para eventos
@@ -492,7 +508,7 @@ const Financial = () => {
       
       toast({
         title: 'Relatório gerado!',
-        description: `Relatório de ${selectedYear.getFullYear()} foi baixado com sucesso.`,
+        description: `Relatório de ${activeTab === 'horarios' ? format(selectedMonth, 'MMMM yyyy', { locale: ptBR }) : selectedYear.getFullYear()} foi baixado com sucesso.`,
       });
       
     } catch (error) {
@@ -588,48 +604,94 @@ const Financial = () => {
             <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
               <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
                 <Calendar className="h-6 w-6 text-blue-600" />
-                Navegação por Ano
+                {activeTab === 'horarios' ? 'Navegação por Mês' : 'Navegação por Ano'}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handlePreviousYear}
-                  className="hover:bg-slate-100 transition-colors px-4 py-2"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  Ano Anterior
-                </Button>
-                
-                <div className="flex items-center gap-4">
-                  <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
-                    <h3 className="text-lg font-semibold text-blue-800">
-                      {selectedYear.getFullYear()}
-                    </h3>
-                  </div>
-                  {selectedYear.getFullYear() === new Date().getFullYear() && (
+                {activeTab === 'horarios' ? (
+                  // Navegação mensal para horários
+                  <>
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      onClick={handleCurrentYear}
-                      className="border-slate-200 hover:bg-slate-50"
+                      onClick={handlePreviousMonth}
+                      className="hover:bg-slate-100 transition-colors px-4 py-2"
                     >
-                      Ano Atual
+                      <ChevronLeft className="h-4 w-4 mr-2" />
+                      Mês Anterior
                     </Button>
-                  )}
-                </div>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleNextYear}
-                  className="hover:bg-slate-100 transition-colors px-4 py-2"
-                >
-                  Próximo Ano
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                        <h3 className="text-lg font-semibold text-blue-800">
+                          {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
+                        </h3>
+                      </div>
+                      {(selectedMonth.getMonth() === new Date().getMonth() && selectedMonth.getFullYear() === new Date().getFullYear()) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCurrentMonth}
+                          className="border-slate-200 hover:bg-slate-50"
+                        >
+                          Mês Atual
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleNextMonth}
+                      className="hover:bg-slate-100 transition-colors px-4 py-2"
+                    >
+                      Próximo Mês
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </>
+                ) : (
+                  // Navegação anual para eventos
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handlePreviousYear}
+                      className="hover:bg-slate-100 transition-colors px-4 py-2"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-2" />
+                      Ano Anterior
+                    </Button>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                        <h3 className="text-lg font-semibold text-blue-800">
+                          {selectedYear.getFullYear()}
+                        </h3>
+                      </div>
+                      {selectedYear.getFullYear() === new Date().getFullYear() && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCurrentYear}
+                          className="border-slate-200 hover:bg-slate-50"
+                        >
+                          Ano Atual
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleNextYear}
+                      className="hover:bg-slate-100 transition-colors px-4 py-2"
+                    >
+                      Próximo Ano
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -861,7 +923,7 @@ const Financial = () => {
             <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
               <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
                 <Users className="h-6 w-6 text-blue-600" />
-                {activeTab === 'horarios' ? 'Resumo por Cliente' : 'Resumo por Evento'} - {selectedYear.getFullYear()}
+                {activeTab === 'horarios' ? `Resumo por Cliente - ${format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}` : `Resumo por Evento - ${selectedYear.getFullYear()}`}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -872,7 +934,7 @@ const Financial = () => {
                     <DollarSign className="h-16 w-16 mx-auto text-slate-300 mb-4" />
                     <p className="text-lg font-medium text-slate-600 mb-2">Nenhum dado financeiro</p>
                     <p className="text-slate-500 mb-6">
-                      Não há agendamentos registrados em {selectedYear.getFullYear()}
+                      Não há agendamentos registrados em {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
                     </p>
                     <Button 
                       onClick={() => navigate('/appointments/new')}
