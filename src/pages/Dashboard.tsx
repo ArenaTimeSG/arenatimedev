@@ -177,9 +177,9 @@ const Dashboard = () => {
         id: ev.id,
         title: ev.clientName,
         color:
-          ev.status === 'pago'
+          (ev.status ?? '').toString().toLowerCase().trim() === 'pago'
             ? 'bg-green-200 text-green-800'
-            : ev.status === 'cancelado'
+            : (ev.status ?? '').toString().toLowerCase().trim() === 'cancelado'
             ? 'bg-gray-200 text-gray-600'
             : 'bg-yellow-200 text-yellow-800'
       }));
@@ -192,8 +192,9 @@ const Dashboard = () => {
     let pagos = 0;
     Object.values(monthlyEventsByDay).forEach(list => {
       list.forEach(ev => {
-        if (ev.status === 'a_cobrar') aCobrar += Number(ev.amount || 0);
-        if (ev.status === 'pago') pagos += Number(ev.amount || 0);
+        const st = (ev.status ?? '').toString().toLowerCase().trim();
+        if (st === 'a_cobrar') aCobrar += Number(ev.amount || 0);
+        if (st === 'pago') pagos += Number(ev.amount || 0);
       });
     });
     return { aCobrar, pagos };
@@ -989,9 +990,17 @@ const Dashboard = () => {
                   )}
                   dayBgByKey={Object.fromEntries(
                     Object.entries(monthlyEventsByDay).map(([k, arr]) => {
-                      const hasPaid = arr.some(e => e.status === 'pago');
-                      const hasCancelled = arr.every(e => e.status === 'cancelado');
-                      const bg = hasPaid ? 'bg-green-300' : hasCancelled ? 'bg-gray-200' : arr.length ? 'bg-yellow-200' : '';
+                      const hasPaid = arr.some(e => {
+                        const status = (e.status ?? '').toString().toLowerCase().trim();
+                        console.log(`🔍 Evento ${e.id} no dia ${k}: status="${e.status}" -> normalizado="${status}"`);
+                        return status === 'pago';
+                      });
+                      const isAllCancelled = arr.length > 0 && arr.every(e => {
+                        const status = (e.status ?? '').toString().toLowerCase().trim();
+                        return status === 'cancelado';
+                      });
+                      const bg = hasPaid ? 'bg-green-300' : isAllCancelled ? 'bg-gray-300' : arr.length ? 'bg-yellow-200' : '';
+                      console.log(`🎨 Dia ${k}: hasPaid=${hasPaid}, isAllCancelled=${isAllCancelled}, bg=${bg}`);
                       return [k, bg];
                     })
                   )}
@@ -1076,6 +1085,53 @@ const Dashboard = () => {
           notes: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.notes,
           guests: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.guests,
         } : null}
+        onUpdateStatus={async (newStatus) => {
+          if (!selectedEvent || !user?.id) return;
+          const dateKey = selectedEvent.dateKey;
+          console.log(`🔄 Atualizando status do evento ${selectedEvent.id} para: ${newStatus}`);
+          
+          // Update state
+          setMonthlyEventsByDay(prev => {
+            const copy = { ...prev };
+            copy[dateKey] = (copy[dateKey] || []).map(ev => ev.id === selectedEvent.id ? { ...ev, status: newStatus } : ev);
+            return copy;
+          });
+          
+          // Update DB
+          try {
+            console.log(`📤 Enviando para DB: id=${selectedEvent.id}, user_id=${user.id}, status=${newStatus}`);
+            
+            // Primeiro, verificar se o evento existe
+            const { data: existingEvent, error: fetchError } = await supabaseClient
+              .from('monthly_events')
+              .select('id, user_id, status')
+              .eq('id', selectedEvent.id)
+              .single();
+              
+            if (fetchError) {
+              console.error('❌ Erro ao buscar evento:', fetchError);
+              return;
+            }
+            
+            console.log('📋 Evento encontrado:', existingEvent);
+            
+            // Atualizar apenas o status
+            const { data, error } = await supabaseClient
+              .from('monthly_events')
+              .update({ status: newStatus })
+              .eq('id', selectedEvent.id)
+              .select();
+              
+            if (error) {
+              console.error('❌ Erro ao atualizar status no DB:', error);
+              console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2));
+            } else {
+              console.log('✅ Status atualizado no DB:', data);
+            }
+          } catch (err) {
+            console.error('❌ Exceção ao atualizar status:', err);
+          }
+        }}
         onSave={async (payload) => {
           if (!selectedEvent || !user?.id) return;
           const dateKey = selectedEvent.dateKey;
@@ -1104,18 +1160,6 @@ const Dashboard = () => {
             guests: payload.guests,
             status: payload.status
           }).eq('id', selectedEvent.id).eq('user_id', user.id);
-        }}
-        onUpdateStatus={async (newStatus) => {
-          if (!selectedEvent || !user?.id) return;
-          const dateKey = selectedEvent.dateKey;
-          // Update state
-          setMonthlyEventsByDay(prev => {
-            const copy = { ...prev };
-            copy[dateKey] = (copy[dateKey] || []).map(ev => ev.id === selectedEvent.id ? { ...ev, status: newStatus } : ev);
-            return copy;
-          });
-          // Update DB
-          await supabaseClient.from('monthly_events').update({ status: newStatus }).eq('id', selectedEvent.id).eq('user_id', user.id);
         }}
         onDelete={async () => {
           if (!selectedEvent || !user?.id) return;

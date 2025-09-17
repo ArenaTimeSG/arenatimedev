@@ -69,20 +69,20 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
   const years = useMemo(() => yearsRange(getYear(new Date())), []);
 
   return (
-    <div className="bg-white/80 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm">
+    <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-lg overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200/60">
+      <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-blue-50">
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrev}
-            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
             aria-label="Mês anterior"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={handleNext}
-            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
             aria-label="Próximo mês"
           >
             <ChevronRight className="w-4 h-4" />
@@ -90,11 +90,11 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
         </div>
 
         <div className="flex items-center gap-3">
-          <h2 className="text-lg sm:text-xl font-semibold text-slate-800 capitalize">
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-800 capitalize tracking-tight">
             {monthYearLabel}
           </h2>
           <select
-            className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm"
             value={getYear(cursor)}
             onChange={handleYearChange}
           >
@@ -106,7 +106,7 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
       </div>
 
       {/* Weekday header */}
-      <div className="grid grid-cols-7 text-xs sm:text-sm text-slate-600 bg-slate-50 border-b border-slate-200/60">
+      <div className="grid grid-cols-7 text-[11px] sm:text-xs md:text-sm text-slate-600 bg-slate-50/80 border-b border-slate-200/60">
         {dayNames.map(d => (
           <div key={d} className="px-2 py-2 text-center uppercase tracking-wide font-medium">{d}</div>
         ))}
@@ -123,6 +123,9 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
           // Usar a cor do primeiro evento para preencher a célula inteira
           const bgClass = dayBgByKey[dateKey] || dayEvents[0]?.color;
           const cellHasBg = !!bgClass;
+          const baseBgClass = cellHasBg
+            ? ''
+            : (isCurrentMonth ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/60 text-slate-400 hover:bg-slate-100');
 
           const hasEvents = dayEvents.length > 0;
 
@@ -140,10 +143,11 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
               key={dateKey + idx}
               onClick={handleCellClick}
               className={[
-                'min-h-[84px] sm:min-h-[96px] p-2 border border-slate-100 text-left transition-colors',
-                isCurrentMonth ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/60 text-slate-400 hover:bg-slate-100',
-                bgClass ? `${bgClass} bg-opacity-60 hover:bg-opacity-70` : '',
-                isToday ? 'relative ring-1 ring-blue-300 ring-offset-0' : ''
+                'min-h-[92px] sm:min-h-[104px] p-2 border border-slate-100 text-left transition-all duration-200 rounded-xl',
+                baseBgClass,
+                bgClass ? `${bgClass}` : '',
+                isToday ? 'relative ring-1 ring-blue-300 ring-offset-0' : '',
+                'hover:shadow-md'
               ].join(' ')}
             >
               <div className="flex items-center justify-between">
@@ -151,7 +155,7 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
                   {format(day, 'd', { locale: ptBR })}
                 </span>
                 {isToday && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700">Hoje</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 shadow-sm">Hoje</span>
                 )}
               </div>
 
@@ -161,7 +165,7 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
                   <div
                     key={ev.id}
                     className={[
-                      'text-[12px] sm:text-[13px] px-1.5 py-0.5 rounded-md truncate cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-200',
+                      'text-[12px] sm:text-[13px] px-2 py-1 rounded-md truncate shadow-sm',
                       cellHasBg ? 'bg-white/70 text-slate-800 border border-white/50' : (ev.color || 'bg-blue-50 text-blue-700')
                     ].join(' ')}
                     title={ev.title}
