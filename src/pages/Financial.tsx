@@ -73,8 +73,8 @@ const Financial = () => {
   const [appointmentsData, setAppointmentsData] = useState<AppointmentData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Navegação por mês
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  // Navegação por ano
+  const [selectedYear, setSelectedYear] = useState(new Date());
   
   // Estado para modal de pagamento em massa
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -113,40 +113,37 @@ const Financial = () => {
     if (user && appointments.length > 0) {
       fetchFinancialData();
     }
-  }, [user, selectedMonth, appointments]);
+  }, [user, selectedYear, appointments]);
 
   useEffect(() => {
     if (user && activeTab === 'eventos') {
       fetchEventsFinancialData();
     }
-  }, [user, selectedMonth, activeTab]);
+  }, [user, selectedYear, activeTab]);
 
   const fetchFinancialData = async () => {
     try {
       setIsLoading(true);
 
-      const startOfSelectedMonth = startOfMonth(selectedMonth);
-      const endOfSelectedMonth = endOfMonth(selectedMonth);
+      const startOfSelectedYear = new Date(selectedYear.getFullYear(), 0, 1);
+      const endOfSelectedYear = new Date(selectedYear.getFullYear(), 11, 31);
 
-      // Filtrar agendamentos do mês selecionado
-      const monthAppointments = appointments.filter(apt => {
+      // Filtrar agendamentos do ano selecionado
+      const yearAppointments = appointments.filter(apt => {
         const aptDate = new Date(apt.date);
-        // Normalizar as datas para comparar apenas ano e mês
         const aptYear = aptDate.getFullYear();
-        const aptMonth = aptDate.getMonth();
-        const selectedYear = selectedMonth.getFullYear();
-        const selectedMonthNum = selectedMonth.getMonth();
+        const selectedYearNum = selectedYear.getFullYear();
         
-        return aptYear === selectedYear && aptMonth === selectedMonthNum;
+        return aptYear === selectedYearNum;
       });
 
       // Debug: verificar agendamentos cancelados
-      const agendamentosCancelados = monthAppointments.filter(apt => apt.status === 'cancelado');
+      const agendamentosCancelados = yearAppointments.filter(apt => apt.status === 'cancelado');
       console.log('🔍 Financial - Agendamentos cancelados encontrados:', agendamentosCancelados);
-      console.log('🔍 Financial - Total de agendamentos do mês:', monthAppointments.length);
-      console.log('🔍 Financial - Status dos agendamentos:', monthAppointments.map(apt => ({ id: apt.id, status: apt.status, date: apt.date, valor_total: apt.valor_total })));
+      console.log('🔍 Financial - Total de agendamentos do ano:', yearAppointments.length);
+      console.log('🔍 Financial - Status dos agendamentos:', yearAppointments.map(apt => ({ id: apt.id, status: apt.status, date: apt.date, valor_total: apt.valor_total })));
 
-      setAppointmentsData(monthAppointments.map(apt => ({
+      setAppointmentsData(yearAppointments.map(apt => ({
         id: apt.client_id,
         date: apt.date,
         status: apt.status,
@@ -156,17 +153,17 @@ const Financial = () => {
       })));
 
       // Usar o hook para calcular dados financeiros
-      const summary = getFinancialSummary(monthAppointments);
+      const summary = getFinancialSummary(yearAppointments);
       
       // Debug: verificar resumo financeiro
       console.log('🔍 Financial - Resumo financeiro calculado:', summary);
       console.log('🔍 Financial - Agendamentos cancelados no resumo:', summary.agendamentos_cancelados);
       console.log('🔍 Financial - Total cancelado no resumo:', summary.total_cancelado);
-      console.log('🔍 Financial - Agendamentos pagos encontrados:', monthAppointments.filter(apt => apt.status === 'pago').length);
-      console.log('🔍 Financial - Agendamentos a_cobrar encontrados:', monthAppointments.filter(apt => apt.status === 'a_cobrar').length);
-      console.log('🔍 Financial - Status dos agendamentos após atualização:', monthAppointments.map(apt => ({ id: apt.id, status: apt.status, valor: apt.valor_total })));
+      console.log('🔍 Financial - Agendamentos pagos encontrados:', yearAppointments.filter(apt => apt.status === 'pago').length);
+      console.log('🔍 Financial - Agendamentos a_cobrar encontrados:', yearAppointments.filter(apt => apt.status === 'a_cobrar').length);
+      console.log('🔍 Financial - Status dos agendamentos após atualização:', yearAppointments.map(apt => ({ id: apt.id, status: apt.status, valor: apt.valor_total })));
       
-      const agendamentosRealizados = monthAppointments.filter(a => {
+      const agendamentosRealizados = yearAppointments.filter(a => {
         const aptDate = new Date(a.date);
         const today = new Date();
         return aptDate < today;
@@ -230,16 +227,16 @@ const Financial = () => {
     try {
       setIsLoading(true);
       
-      const monthStart = startOfMonth(selectedMonth);
-      const monthEnd = endOfMonth(selectedMonth);
+      const yearStart = new Date(selectedYear.getFullYear(), 0, 1);
+      const yearEnd = new Date(selectedYear.getFullYear(), 11, 31);
       
-      // Buscar eventos do mês selecionado
+      // Buscar eventos do ano selecionado
       const { data: events, error } = await supabase
         .from('monthly_events')
         .select('*')
         .eq('user_id', user?.id)
-        .gte('event_date', monthStart.toISOString().split('T')[0])
-        .lte('event_date', monthEnd.toISOString().split('T')[0]);
+        .gte('event_date', yearStart.toISOString().split('T')[0])
+        .lte('event_date', yearEnd.toISOString().split('T')[0]);
 
       if (error) throw error;
 
@@ -294,16 +291,16 @@ const Financial = () => {
     }
   };
 
-  const handlePreviousMonth = () => {
-    setSelectedMonth(subMonths(selectedMonth, 1));
+  const handlePreviousYear = () => {
+    setSelectedYear(new Date(selectedYear.getFullYear() - 1, selectedYear.getMonth(), selectedYear.getDate()));
   };
 
-  const handleNextMonth = () => {
-    setSelectedMonth(addMonths(selectedMonth, 1));
+  const handleNextYear = () => {
+    setSelectedYear(new Date(selectedYear.getFullYear() + 1, selectedYear.getMonth(), selectedYear.getDate()));
   };
 
-  const handleCurrentMonth = () => {
-    setSelectedMonth(new Date());
+  const handleCurrentYear = () => {
+    setSelectedYear(new Date());
   };
 
   // Função para abrir modal de pagamento em massa
@@ -393,10 +390,10 @@ const Financial = () => {
     
       // Cabeçalho
       doc.setFontSize(20);
-      doc.text(`${user?.user_metadata?.full_name || user?.user_metadata?.name || 'Usuário'} - Relatório Financeiro Mensal`, 105, 20, { align: 'center' });
+      doc.text(`${user?.user_metadata?.full_name || user?.user_metadata?.name || 'Usuário'} - Relatório Financeiro Anual`, 105, 20, { align: 'center' });
       
       doc.setFontSize(12);
-      doc.text(`Período: ${format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}`, 105, 30, { align: 'center' });
+      doc.text(`Período: ${selectedYear.getFullYear()}`, 105, 30, { align: 'center' });
       doc.text(`Data do relatório: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 105, 40, { align: 'center' });
       
       // Resumo financeiro
@@ -554,7 +551,7 @@ const Financial = () => {
       </motion.header>
 
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-        {/* Navegação por Mês */}
+        {/* Navegação por Ano */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -564,7 +561,7 @@ const Financial = () => {
             <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
               <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
                 <Calendar className="h-6 w-6 text-blue-600" />
-                Navegação por Mês
+                Navegação por Ano
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -572,27 +569,27 @@ const Financial = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handlePreviousMonth}
+                  onClick={handlePreviousYear}
                   className="hover:bg-slate-100 transition-colors px-4 py-2"
                 >
                   <ChevronLeft className="h-4 w-4 mr-2" />
-                  Mês Anterior
+                  Ano Anterior
                 </Button>
                 
                 <div className="flex items-center gap-4">
                   <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
                     <h3 className="text-lg font-semibold text-blue-800">
-                      {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
+                      {selectedYear.getFullYear()}
                     </h3>
                   </div>
-                  {format(selectedMonth, 'MMMM yyyy', { locale: ptBR }) === format(new Date(), 'MMMM yyyy', { locale: ptBR }) && (
+                  {selectedYear.getFullYear() === new Date().getFullYear() && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleCurrentMonth}
+                      onClick={handleCurrentYear}
                       className="border-slate-200 hover:bg-slate-50"
                     >
-                      Mês Atual
+                      Ano Atual
                     </Button>
                   )}
                 </div>
@@ -600,10 +597,10 @@ const Financial = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleNextMonth}
+                  onClick={handleNextYear}
                   className="hover:bg-slate-100 transition-colors px-4 py-2"
                 >
-                  Próximo Mês
+                  Próximo Ano
                   <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
@@ -802,14 +799,14 @@ const Financial = () => {
             <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
               <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
                 <FileText className="h-6 w-6 text-blue-600" />
-                Relatório Mensal
+                Relatório Anual
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <p className="text-sm text-slate-600 font-medium">
-                    Gere um relatório completo em PDF com todos os dados financeiros do mês selecionado.
+                    Gere um relatório completo em PDF com todos os dados financeiros do ano selecionado.
                   </p>
                   <p className="text-xs text-slate-500">
                     O relatório incluirá: lista de agendamentos, resumo por cliente, estatísticas financeiras e receita total.
@@ -837,7 +834,7 @@ const Financial = () => {
             <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
               <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
                 <Users className="h-6 w-6 text-blue-600" />
-                {activeTab === 'horarios' ? 'Resumo por Cliente' : 'Resumo por Evento'} - {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
+                {activeTab === 'horarios' ? 'Resumo por Cliente' : 'Resumo por Evento'} - {selectedYear.getFullYear()}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -848,7 +845,7 @@ const Financial = () => {
                     <DollarSign className="h-16 w-16 mx-auto text-slate-300 mb-4" />
                     <p className="text-lg font-medium text-slate-600 mb-2">Nenhum dado financeiro</p>
                     <p className="text-slate-500 mb-6">
-                      Não há agendamentos registrados em {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
+                      Não há agendamentos registrados em {selectedYear.getFullYear()}
                     </p>
                     <Button 
                       onClick={() => navigate('/appointments/new')}
@@ -912,7 +909,7 @@ const Financial = () => {
                     <Calendar className="h-16 w-16 mx-auto text-slate-300 mb-4" />
                     <p className="text-lg font-medium text-slate-600 mb-2">Nenhum evento encontrado</p>
                     <p className="text-slate-500 mb-6">
-                      Não há eventos registrados em {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
+                      Não há eventos registrados em {selectedYear.getFullYear()}
                     </p>
                     <Button 
                       onClick={() => navigate('/dashboard')}
