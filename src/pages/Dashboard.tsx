@@ -908,10 +908,10 @@ const Dashboard = () => {
         </motion.header>
 
         {/* Main Content Area */}
-        <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
+        <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
           {/* Stats Cards - Adapt to viewMode */}
           <motion.div 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}

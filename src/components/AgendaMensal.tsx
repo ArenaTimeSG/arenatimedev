@@ -140,9 +140,9 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
       </div>
 
       {/* Weekday header */}
-      <div className="grid grid-cols-7 text-xs text-slate-600 bg-slate-50/80 border-b border-slate-200/60">
+      <div className="grid grid-cols-7 text-[11px] sm:text-xs md:text-sm text-slate-600 bg-slate-50/80 border-b border-slate-200/60">
         {dayNames.map(d => (
-          <div key={d} className="px-1 py-1 text-center uppercase tracking-wide font-medium">{d}</div>
+          <div key={d} className="px-2 py-2 text-center uppercase tracking-wide font-medium">{d}</div>
         ))}
       </div>
 
@@ -177,29 +177,29 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
               key={dateKey + idx}
               onClick={handleCellClick}
               className={[
-                'min-h-[60px] sm:min-h-[70px] p-1 border border-slate-100 text-left transition-all duration-200 rounded-lg',
+                'min-h-[92px] sm:min-h-[104px] p-2 border border-slate-100 text-left transition-all duration-200 rounded-xl',
                 baseBgClass,
                 bgClass ? `${bgClass}` : '',
                 isToday ? 'relative ring-1 ring-blue-300 ring-offset-0' : '',
-                'hover:shadow-sm'
+                'hover:shadow-md'
               ].join(' ')}
             >
               <div className="flex items-center justify-between">
-                <span className={['text-xs font-bold', isCurrentMonth ? 'text-slate-700' : 'text-slate-400'].join(' ')}>
+                <span className={['text-sm font-bold', isCurrentMonth ? 'text-slate-700' : 'text-slate-400'].join(' ')}>
                   {format(day, 'd', { locale: ptBR })}
                 </span>
                 {isToday && (
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-blue-100 text-blue-700">Hoje</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 shadow-sm">Hoje</span>
                 )}
               </div>
 
               {/* Events preview area */}
-              <div className="mt-1 space-y-0.5 pointer-events-none">
-                {dayEvents.slice(0, 2).map(ev => (
+              <div className="mt-2 space-y-1 pointer-events-none">
+                {dayEvents.slice(0, 3).map(ev => (
                   <div
                     key={ev.id}
                     className={[
-                      'text-[10px] px-1 py-0.5 rounded truncate',
+                      'text-[12px] sm:text-[13px] px-2 py-1 rounded-md truncate shadow-sm',
                       cellHasBg ? 'bg-white/70 text-slate-800 border border-white/50' : (ev.color || 'bg-blue-50 text-blue-700')
                     ].join(' ')}
                     title={ev.title}
@@ -208,8 +208,8 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
                     {ev.title || 'Evento'}
                   </div>
                 ))}
-                {dayEvents.length > 2 && (
-                  <div className="text-[9px] text-slate-500">+{dayEvents.length - 2}</div>
+                {dayEvents.length > 3 && (
+                  <div className="text-[10px] text-slate-500">+{dayEvents.length - 3} mais</div>
                 )}
               </div>
             </button>
