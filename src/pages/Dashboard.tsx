@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,7 +11,7 @@ import { useSettingsSync } from '@/hooks/useSettingsSync';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointments } from '@/hooks/useAppointments';
 import { formatCurrency } from '@/utils/currency';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 import { Calendar, Plus, Users, DollarSign, Activity, LogOut, FileText, Settings, ChevronLeft, ChevronRight, User, ChevronDown, Shield, Mail, Phone, Clock, TrendingUp, CheckCircle, AlertCircle, AlertTriangle, Repeat } from 'lucide-react';
 
 import { format, startOfWeek, addDays, isSameDay, isBefore, isEqual } from 'date-fns';
@@ -24,6 +24,9 @@ import { BlockedTimeSlotModal } from '@/components/BlockedTimeSlotModal';
 import { StatCard } from '@/components/animated/StatCard';
 import { AppointmentCard } from '@/components/animated/AppointmentCard';
 import ResponsiveCalendar from '@/components/ResponsiveCalendar';
+import AgendaMensal from '@/components/AgendaMensal';
+import NewMonthlyEventModal, { NewMonthlyEventData } from '@/components/NewMonthlyEventModal';
+import EventActionsModal from '@/components/EventActionsModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,6 +75,129 @@ const Dashboard = () => {
   const [blockedTimeSlot, setBlockedTimeSlot] = useState<{ day: Date; timeSlot: string } | null>(null);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [isUnblockModalOpen, setIsUnblockModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'weekly' | 'monthly'>('weekly');
+  const [monthlyEventsByDay, setMonthlyEventsByDay] = useState<Record<string, NewMonthlyEventData[]>>({});
+  const [isMonthlyEventModalOpen, setIsMonthlyEventModalOpen] = useState(false);
+  const [selectedMonthlyDate, setSelectedMonthlyDate] = useState<Date | null>(null);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<{ id: string; dateKey: string } | null>(null);
+
+  const addMonthlyEvent = (data: NewMonthlyEventData) => {
+    setMonthlyEventsByDay(prev => {
+      const list = prev[data.date] ? [...prev[data.date]] : [];
+      list.push(data);
+      return { ...prev, [data.date]: list };
+    });
+  };
+
+  // Persist to Supabase (com logs de erro para diagnóstico)
+  const saveMonthlyEvent = async (data: NewMonthlyEventData) => {
+    if (!user?.id) {
+      console.error('MonthlyEvents: usuário não autenticado');
+      return;
+    }
+    try {
+      const { data: inserted, error } = await supabaseClient
+        .from('monthly_events')
+        .insert({
+          user_id: user.id,
+          event_date: data.date,
+          client_name: data.clientName,
+          amount: data.amount,
+          start_time: data.startTime,
+          end_time: data.endTime,
+          notes: data.notes,
+          guests: data.guests || 0,
+          status: data.status
+        })
+        .select('id, event_date')
+        .single();
+
+      if (error) {
+        console.error('MonthlyEvents insert error:', error);
+        toast({
+          title: 'Erro ao salvar evento',
+          description: error.message || 'Falha desconhecida ao salvar.',
+          variant: 'destructive'
+        });
+      } else {
+        console.log('MonthlyEvents salvo com sucesso:', inserted);
+      }
+    } catch (e: any) {
+      console.error('MonthlyEvents insert exception:', e);
+      toast({
+        title: 'Erro inesperado',
+        description: e?.message || 'Falha inesperada ao salvar o evento.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Load events for the visible month
+  useEffect(() => {
+    const load = async () => {
+      if (!user?.id) return;
+      const start = new Date(currentWeek.getFullYear(), currentWeek.getMonth(), 1);
+      const end = new Date(currentWeek.getFullYear(), currentWeek.getMonth() + 1, 0);
+      const { data, error } = await supabaseClient
+        .from('monthly_events')
+        .select('id, event_date, client_name, amount, start_time, end_time, notes, guests, status')
+        .gte('event_date', start.toISOString().slice(0,10))
+        .lte('event_date', end.toISOString().slice(0,10))
+        .eq('user_id', user.id);
+      if (error) {
+        console.error('MonthlyEvents load error:', error);
+      }
+      const map: Record<string, NewMonthlyEventData[]> = {};
+      (data || []).forEach(ev => {
+        const key = ev.event_date;
+        const arr = map[key] || [];
+        arr.push({
+          id: ev.id,
+          date: key,
+          clientName: ev.client_name,
+          amount: Number(ev.amount || 0),
+          startTime: ev.start_time,
+          endTime: ev.end_time,
+          notes: ev.notes || undefined,
+          guests: Number(ev.guests || 0),
+          status: ev.status
+        });
+        map[key] = arr;
+      });
+      setMonthlyEventsByDay(map);
+    };
+    load();
+  }, [user?.id, currentWeek]);
+
+  const monthlyEventsDisplay = useMemo(() => {
+    const map: Record<string, { id: string; title: string; color?: string }[]> = {};
+    Object.entries(monthlyEventsByDay).forEach(([date, list]) => {
+      map[date] = list.map(ev => ({
+        id: ev.id,
+        title: ev.clientName,
+        color:
+          ev.status === 'pago'
+            ? 'bg-green-200 text-green-800'
+            : ev.status === 'cancelado'
+            ? 'bg-gray-200 text-gray-600'
+            : 'bg-yellow-200 text-yellow-800'
+      }));
+    });
+    return map;
+  }, [monthlyEventsByDay]);
+
+  const monthlyTotals = useMemo(() => {
+    let aCobrar = 0;
+    let pagos = 0;
+    Object.values(monthlyEventsByDay).forEach(list => {
+      list.forEach(ev => {
+        if (ev.status === 'a_cobrar') aCobrar += Number(ev.amount || 0);
+        if (ev.status === 'pago') pagos += Number(ev.amount || 0);
+      });
+    });
+    return { aCobrar, pagos };
+  }, [monthlyEventsByDay]);
   const [isRecurringForUnblock, setIsRecurringForUnblock] = useState(false);
   const [isBlockedTimeSlotModalOpen, setIsBlockedTimeSlotModalOpen] = useState(false);
   const [isForceAppointment, setIsForceAppointment] = useState(false);
@@ -117,7 +243,7 @@ const Dashboard = () => {
     if (!user?.id) return;
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('user_profiles')
         .select('name, email, phone')
         .eq('user_id', user.id)
@@ -710,6 +836,17 @@ const Dashboard = () => {
                     Horários Disponíveis
                   </Button>
                 </motion.div>
+
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setViewMode(m => (m === 'weekly' ? 'monthly' : 'weekly'))}
+                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                  >
+                    {viewMode === 'weekly' ? 'Ver Agenda Mensal' : 'Ver Agenda Semanal'}
+                  </Button>
+                </motion.div>
               </div>
             </div>
           </div>
@@ -717,57 +854,93 @@ const Dashboard = () => {
 
         {/* Main Content Area */}
         <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-          {/* Enhanced Stats Cards */}
+          {/* Stats Cards - Adapt to viewMode */}
           <motion.div 
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <StatCard
-              title="Agendamentos Hoje"
-              value={appointments.filter(apt => {
-                const aptDate = new Date(apt.date);
-                const today = new Date();
-                return isSameDay(aptDate, today);
-              }).length}
-              icon={Calendar}
-              color="blue"
-              description="Horários do dia"
-              delay={0}
-            />
-            
-            <StatCard
-              title="A Cobrar"
-              value={formatCurrency(getFinancialSummaryForCurrentWeek().total_pendente)}
-              icon={AlertCircle}
-              color="red"
-              description="Pendentes de pagamento"
-              delay={0.1}
-            />
-            
-            <StatCard
-              title="Pagos"
-              value={formatCurrency(getFinancialSummaryForCurrentWeek().total_recebido)}
-              icon={CheckCircle}
-              color="green"
-              description="Recebidos este período"
-              delay={0.2}
-            />
-            
-            <StatCard
-              title="Esta Semana"
-              value={getAppointmentsForCurrentWeek().length}
-              icon={TrendingUp}
-              color="orange"
-              description="Total de agendamentos"
-              delay={0.3}
-            />
+            {viewMode === 'weekly' ? (
+              <>
+                <StatCard
+                  title="Agendamentos Hoje"
+                  value={appointments.filter(apt => {
+                    const aptDate = new Date(apt.date);
+                    const today = new Date();
+                    return isSameDay(aptDate, today);
+                  }).length}
+                  icon={Calendar}
+                  color="blue"
+                  description="Horários do dia"
+                  delay={0}
+                />
+                <StatCard
+                  title="A Cobrar"
+                  value={formatCurrency(getFinancialSummaryForCurrentWeek().total_pendente)}
+                  icon={AlertCircle}
+                  color="red"
+                  description="Pendentes de pagamento"
+                  delay={0.1}
+                />
+                <StatCard
+                  title="Pagos"
+                  value={formatCurrency(getFinancialSummaryForCurrentWeek().total_recebido)}
+                  icon={CheckCircle}
+                  color="green"
+                  description="Recebidos este período"
+                  delay={0.2}
+                />
+                <StatCard
+                  title="Esta Semana"
+                  value={getAppointmentsForCurrentWeek().length}
+                  icon={TrendingUp}
+                  color="orange"
+                  description="Total de agendamentos"
+                  delay={0.3}
+                />
+              </>
+            ) : (
+              <>
+                <StatCard
+                  title="Esta Semana"
+                  value={getAppointmentsForCurrentWeek().length}
+                  icon={TrendingUp}
+                  color="orange"
+                  description="Total de agendamentos"
+                  delay={0}
+                />
+                <StatCard
+                  title="A Cobrar"
+                  value={formatCurrency(monthlyTotals.aCobrar)}
+                  icon={AlertCircle}
+                  color="red"
+                  description="Pendências de eventos"
+                  delay={0.1}
+                />
+                <StatCard
+                  title="Pagos"
+                  value={formatCurrency(monthlyTotals.pagos)}
+                  icon={CheckCircle}
+                  color="green"
+                  description="Recebidos em eventos"
+                  delay={0.2}
+                />
+                <StatCard
+                  title="Este Mês"
+                  value={monthlyEventsByDay ? Object.values(monthlyEventsByDay).flat().length : 0}
+                  icon={Calendar}
+                  color="blue"
+                  description="Eventos cadastrados"
+                  delay={0.3}
+                />
+              </>
+            )}
           </motion.div>
 
 
 
-          {/* Responsive Calendar */}
+          {/* Calendar Area - Weekly or Monthly */}
           <motion.div
             key={currentWeek.toISOString()}
             initial={{ opacity: 0, x: 50 }}
@@ -781,18 +954,49 @@ const Dashboard = () => {
                <span className="ml-3 text-slate-600">Carregando agenda...</span>
              </div>
            ) : (
-                           <ResponsiveCalendar
-                currentWeek={currentWeek}
-                setCurrentWeek={setCurrentWeek}
-                appointments={getAppointmentsForCurrentWeek()}
-                timeSlots={timeSlots}
-                onCellClick={handleCellClick}
-                getAppointmentForSlot={getAppointmentForSlot}
-                isTimeSlotBlocked={isTimeSlotBlocked}
-                getStatusColor={getStatusColor}
-                getStatusLabel={getStatusLabel}
-                getBlockadeReason={getBlockadeReason}
-              />
+              viewMode === 'weekly' ? (
+                <ResponsiveCalendar
+                  currentWeek={currentWeek}
+                  setCurrentWeek={setCurrentWeek}
+                  appointments={getAppointmentsForCurrentWeek()}
+                  timeSlots={timeSlots}
+                  onCellClick={handleCellClick}
+                  getAppointmentForSlot={getAppointmentForSlot}
+                  isTimeSlotBlocked={isTimeSlotBlocked}
+                  getStatusColor={getStatusColor}
+                  getStatusLabel={getStatusLabel}
+                  getBlockadeReason={getBlockadeReason}
+                />
+              ) : (
+                <AgendaMensal
+                  initialDate={currentWeek}
+                  onDayClick={(d) => {
+                    setCurrentWeek(d);
+                    setSelectedMonthlyDate(d);
+                    setIsMonthlyEventModalOpen(true);
+                  }}
+                  eventsByDay={Object.fromEntries(
+                    Object.entries(monthlyEventsDisplay).map(([k, arr]) => [
+                      k,
+                      arr.map(ev => ({
+                        ...ev,
+                        onClick: (id: string) => {
+                          setSelectedEvent({ id, dateKey: k });
+                          setIsActionsOpen(true);
+                        }
+                      }))
+                    ])
+                  )}
+                  dayBgByKey={Object.fromEntries(
+                    Object.entries(monthlyEventsByDay).map(([k, arr]) => {
+                      const hasPaid = arr.some(e => e.status === 'pago');
+                      const hasCancelled = arr.every(e => e.status === 'cancelado');
+                      const bg = hasPaid ? 'bg-green-300' : hasCancelled ? 'bg-gray-200' : arr.length ? 'bg-yellow-200' : '';
+                      return [k, bg];
+                    })
+                  )}
+                />
+              )
            )}
           </motion.div>
         </div>
@@ -846,6 +1050,83 @@ const Dashboard = () => {
         }}
         appointment={selectedAppointment}
         onAppointmentUpdated={handleAppointmentUpdated}
+      />
+
+      {/* Modal de novo evento mensal (sem horários padrão) */}
+      <NewMonthlyEventModal
+        isOpen={isMonthlyEventModalOpen}
+        onClose={() => setIsMonthlyEventModalOpen(false)}
+        selectedDate={selectedMonthlyDate}
+        onCreate={async (data) => {
+          addMonthlyEvent(data);
+          await saveMonthlyEvent(data);
+        }}
+      />
+
+      <EventActionsModal
+        isOpen={isActionsOpen}
+        onClose={() => setIsActionsOpen(false)}
+        eventId={selectedEvent?.id || null}
+        currentStatus={(selectedEvent && monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.status) || 'a_cobrar'}
+        info={selectedEvent ? {
+          clientName: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.clientName || '',
+          amount: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.amount || 0,
+          startTime: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.startTime || '',
+          endTime: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.endTime || '',
+          notes: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.notes,
+          guests: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.guests,
+        } : null}
+        onSave={async (payload) => {
+          if (!selectedEvent || !user?.id) return;
+          const dateKey = selectedEvent.dateKey;
+          // Atualiza estado
+          setMonthlyEventsByDay(prev => {
+            const copy = { ...prev };
+            copy[dateKey] = (copy[dateKey] || []).map(ev => ev.id === selectedEvent.id ? {
+              ...ev,
+              clientName: payload.clientName,
+              amount: payload.amount,
+              startTime: payload.startTime,
+              endTime: payload.endTime,
+              notes: payload.notes,
+              guests: payload.guests,
+              status: payload.status
+            } : ev);
+            return copy;
+          });
+          // Atualiza banco
+          await supabaseClient.from('monthly_events').update({
+            client_name: payload.clientName,
+            amount: payload.amount,
+            start_time: payload.startTime,
+            end_time: payload.endTime,
+            notes: payload.notes,
+            guests: payload.guests,
+            status: payload.status
+          }).eq('id', selectedEvent.id).eq('user_id', user.id);
+        }}
+        onUpdateStatus={async (newStatus) => {
+          if (!selectedEvent || !user?.id) return;
+          const dateKey = selectedEvent.dateKey;
+          // Update state
+          setMonthlyEventsByDay(prev => {
+            const copy = { ...prev };
+            copy[dateKey] = (copy[dateKey] || []).map(ev => ev.id === selectedEvent.id ? { ...ev, status: newStatus } : ev);
+            return copy;
+          });
+          // Update DB
+          await supabaseClient.from('monthly_events').update({ status: newStatus }).eq('id', selectedEvent.id).eq('user_id', user.id);
+        }}
+        onDelete={async () => {
+          if (!selectedEvent || !user?.id) return;
+          const dateKey = selectedEvent.dateKey;
+          setMonthlyEventsByDay(prev => {
+            const copy = { ...prev };
+            copy[dateKey] = (copy[dateKey] || []).filter(ev => ev.id !== selectedEvent.id);
+            return copy;
+          });
+          await supabaseClient.from('monthly_events').delete().eq('id', selectedEvent.id).eq('user_id', user.id);
+        }}
       />
 
       {/* Enhanced Confirmation Modal */}
