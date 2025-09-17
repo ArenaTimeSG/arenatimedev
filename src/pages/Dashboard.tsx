@@ -993,30 +993,6 @@ const Dashboard = () => {
             )}
           </motion.div>
 
-          {/* Status Legend - Only show in monthly mode */}
-          {viewMode === 'monthly' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-lg p-4"
-            >
-              <div className="flex items-center justify-center gap-6">
-                <div className="flex items-center gap-1 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-green-700 text-sm font-medium">Pago</span>
-                </div>
-                <div className="flex items-center gap-1 px-3 py-2 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <span className="text-yellow-700 text-sm font-medium">A Cobrar</span>
-                </div>
-                <div className="flex items-center gap-1 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
-                  <span className="text-gray-700 text-sm font-medium">Cancelado</span>
-                </div>
-              </div>
-            </motion.div>
-          )}
 
           {/* Calendar Area - Weekly or Monthly */}
           <motion.div
