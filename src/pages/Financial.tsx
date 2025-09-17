@@ -919,56 +919,158 @@ const Financial = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {eventsData.map((event) => (
-                      <motion.div 
-                        key={event.id} 
-                        className="border border-slate-200 rounded-xl p-6 bg-white/50 hover:bg-white/80 transition-all duration-300"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-slate-800 text-lg mb-2">{event.client_name}</h3>
-                            <div className="flex items-center gap-6 text-sm">
-                              <span className="text-slate-600">
-                                <strong>{format(new Date(event.event_date), 'dd/MM/yyyy')}</strong>
-                              </span>
-                              <span className="text-slate-600">
-                                {event.start_time} - {event.end_time}
-                              </span>
-                              {event.guests > 0 && (
-                                <span className="text-slate-600">
-                                  {event.guests} convidados
-                                </span>
-                              )}
-                            </div>
-                            {event.notes && (
-                              <p className="text-xs text-slate-500 mt-2 italic">{event.notes}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-6">
-                            <div className="text-right">
-                              <p className="text-sm text-slate-500 font-medium">Valor</p>
-                              <p className={`font-bold text-lg ${
-                                event.status === 'pago' ? 'text-green-600' :
-                                event.status === 'a_cobrar' ? 'text-orange-600' :
-                                'text-red-600'
-                              }`}>
-                                {formatCurrency(event.amount)}
-                              </p>
-                            </div>
-                            <Badge 
-                              variant={event.status === 'pago' ? 'default' : event.status === 'a_cobrar' ? 'secondary' : 'destructive'}
-                              className="ml-4"
+                  <div className="space-y-6">
+                    {/* Eventos Realizados */}
+                    <div>
+                      <h4 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        Eventos Realizados
+                      </h4>
+                      <div className="space-y-3">
+                        {eventsData
+                          .filter(event => {
+                            const eventDate = new Date(event.event_date);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            return eventDate < today;
+                          })
+                          .map((event) => (
+                            <motion.div 
+                              key={event.id} 
+                              className="border border-slate-200 rounded-xl p-4 bg-white/50 hover:bg-white/80 transition-all duration-300"
+                              whileHover={{ scale: 1.01 }}
                             >
-                              {event.status === 'pago' ? 'Pago' :
-                               event.status === 'a_cobrar' ? 'A Cobrar' :
-                               'Cancelado'}
-                            </Badge>
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-slate-800 mb-1">{event.client_name}</h3>
+                                  <div className="flex items-center gap-4 text-sm">
+                                    <span className="text-slate-600">
+                                      <strong>{format(new Date(event.event_date), 'dd/MM/yyyy')}</strong>
+                                    </span>
+                                    <span className="text-slate-600">
+                                      {event.start_time} - {event.end_time}
+                                    </span>
+                                    {event.guests > 0 && (
+                                      <span className="text-slate-600">
+                                        {event.guests} convidados
+                                      </span>
+                                    )}
+                                  </div>
+                                  {event.notes && (
+                                    <p className="text-xs text-slate-500 mt-1 italic">{event.notes}</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="text-right">
+                                    <p className="text-sm text-slate-500 font-medium">Valor</p>
+                                    <p className={`font-bold ${
+                                      event.status === 'pago' ? 'text-green-600' :
+                                      event.status === 'a_cobrar' ? 'text-orange-600' :
+                                      'text-red-600'
+                                    }`}>
+                                      {formatCurrency(event.amount)}
+                                    </p>
+                                  </div>
+                                  <Badge 
+                                    variant={event.status === 'pago' ? 'default' : event.status === 'a_cobrar' ? 'secondary' : 'destructive'}
+                                    className="text-xs"
+                                  >
+                                    {event.status === 'pago' ? 'Pago' :
+                                     event.status === 'a_cobrar' ? 'A Cobrar' :
+                                     'Cancelado'}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        {eventsData.filter(event => {
+                          const eventDate = new Date(event.event_date);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return eventDate < today;
+                        }).length === 0 && (
+                          <div className="text-center py-4 text-slate-500">
+                            Nenhum evento realizado encontrado
                           </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Eventos Futuros */}
+                    <div>
+                      <h4 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-blue-600" />
+                        Eventos Futuros
+                      </h4>
+                      <div className="space-y-3">
+                        {eventsData
+                          .filter(event => {
+                            const eventDate = new Date(event.event_date);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            return eventDate >= today;
+                          })
+                          .map((event) => (
+                            <motion.div 
+                              key={event.id} 
+                              className="border border-slate-200 rounded-xl p-4 bg-white/50 hover:bg-white/80 transition-all duration-300"
+                              whileHover={{ scale: 1.01 }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-slate-800 mb-1">{event.client_name}</h3>
+                                  <div className="flex items-center gap-4 text-sm">
+                                    <span className="text-slate-600">
+                                      <strong>{format(new Date(event.event_date), 'dd/MM/yyyy')}</strong>
+                                    </span>
+                                    <span className="text-slate-600">
+                                      {event.start_time} - {event.end_time}
+                                    </span>
+                                    {event.guests > 0 && (
+                                      <span className="text-slate-600">
+                                        {event.guests} convidados
+                                      </span>
+                                    )}
+                                  </div>
+                                  {event.notes && (
+                                    <p className="text-xs text-slate-500 mt-1 italic">{event.notes}</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="text-right">
+                                    <p className="text-sm text-slate-500 font-medium">Valor</p>
+                                    <p className={`font-bold ${
+                                      event.status === 'pago' ? 'text-green-600' :
+                                      event.status === 'a_cobrar' ? 'text-orange-600' :
+                                      'text-red-600'
+                                    }`}>
+                                      {formatCurrency(event.amount)}
+                                    </p>
+                                  </div>
+                                  <Badge 
+                                    variant={event.status === 'pago' ? 'default' : event.status === 'a_cobrar' ? 'secondary' : 'destructive'}
+                                    className="text-xs"
+                                  >
+                                    {event.status === 'pago' ? 'Pago' :
+                                     event.status === 'a_cobrar' ? 'A Cobrar' :
+                                     'Cancelado'}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        {eventsData.filter(event => {
+                          const eventDate = new Date(event.event_date);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return eventDate >= today;
+                        }).length === 0 && (
+                          <div className="text-center py-4 text-slate-500">
+                            Nenhum evento futuro encontrado
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )
               )}
