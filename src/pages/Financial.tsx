@@ -396,78 +396,105 @@ const Financial = () => {
       doc.text(`Período: ${selectedYear.getFullYear()}`, 105, 30, { align: 'center' });
       doc.text(`Data do relatório: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 105, 40, { align: 'center' });
       
-      // Resumo financeiro
-      doc.setFontSize(16);
-      doc.text('Resumo Financeiro', 20, 60);
-      
-      doc.setFontSize(10);
-      doc.text(`Valor Recebido: R$ ${financialData.total_recebido.toFixed(2)}`, 20, 75);
-      doc.text(`A Cobrar: R$ ${financialData.total_pendente.toFixed(2)}`, 20, 85);
-      doc.text(`Cancelados: R$ ${financialData.total_cancelado.toFixed(2)}`, 20, 95);
-      doc.text(`Jogos Realizados: ${financialData.agendamentos_realizados}`, 20, 105);
-      
-      // Tabela de clientes (movida para antes dos agendamentos)
-      doc.setFontSize(16);
-      doc.text('Resumo por Cliente', 20, 130);
-      
-      const clientTableData = clientsFinancial.map(client => [
-        client.name,
-        client.total_agendamentos.toString(),
-        `R$ ${client.total_pago.toFixed(2)}`,
-        `R$ ${client.total_pendente.toFixed(2)}`,
-        `R$ ${(client.total_pago + client.total_pendente).toFixed(2)}`
-      ]);
-      
-      autoTable(doc, {
-        head: [['Cliente', 'Total Agendamentos', 'Pago', 'Pendente', 'Total']],
-        body: clientTableData,
-        startY: 140,
-        styles: {
-          fontSize: 8,
-          cellPadding: 2,
-        },
-        headStyles: {
-          fillColor: [59, 130, 246],
-          textColor: 255,
-        },
-      });
-      
-      // Tabela de agendamentos (movida para depois do resumo por clientes)
-      const finalY = (doc as any).lastAutoTable.finalY + 10;
-      doc.setFontSize(16);
-      doc.text('Lista de Agendamentos', 20, finalY);
-      
-      const tableData = appointmentsData.map(apt => [
-        format(new Date(apt.date), 'dd/MM/yyyy', { locale: ptBR }),
-        format(new Date(apt.date), 'HH:mm', { locale: ptBR }),
-        apt.client.name,
-        apt.modality,
-        apt.status === 'pago' ? 'Pago' : apt.status === 'a_cobrar' ? 'A Cobrar' : apt.status === 'agendado' ? 'Agendado' : apt.status === 'cancelado' ? 'Cancelado' : apt.status,
-        `R$ ${apt.valor_total.toFixed(2).replace('.', ',')}`
-      ]);
-      
-      autoTable(doc, {
-        head: [['Data', 'Horário', 'Cliente', 'Modalidade', 'Status', 'Valor']],
-        body: tableData,
-        startY: finalY + 10,
-        styles: {
-          fontSize: 8,
-          cellPadding: 2,
-        },
-        headStyles: {
-          fillColor: [59, 130, 246],
-          textColor: 255,
-        },
-      });
-      
-      // Download do arquivo
-      const fileName = `relatorio_financeiro_${format(selectedMonth, 'yyyy_MM', { locale: ptBR })}.pdf`;
-      doc.save(fileName);
+      if (activeTab === 'horarios') {
+        // Relatório para agendamentos de horários
+        doc.setFontSize(16);
+        doc.text('Resumo Financeiro - Agendamentos', 20, 60);
+        
+        doc.setFontSize(10);
+        doc.text(`Valor Recebido: R$ ${financialData.total_recebido.toFixed(2)}`, 20, 75);
+        doc.text(`A Cobrar: R$ ${financialData.total_pendente.toFixed(2)}`, 20, 85);
+        doc.text(`Cancelados: R$ ${financialData.total_cancelado.toFixed(2)}`, 20, 95);
+        doc.text(`Agendamentos Realizados: ${financialData.agendamentos_realizados}`, 20, 105);
+        
+        // Tabela de clientes
+        doc.setFontSize(16);
+        doc.text('Resumo por Cliente', 20, 130);
+        
+        const clientTableData = clientsFinancial.map(client => [
+          client.name,
+          client.total_agendamentos.toString(),
+          `R$ ${client.total_pago.toFixed(2)}`,
+          `R$ ${client.total_pendente.toFixed(2)}`,
+          `R$ ${(client.total_pago + client.total_pendente).toFixed(2)}`
+        ]);
+        
+        autoTable(doc, {
+          head: [['Cliente', 'Agendamentos', 'Pago', 'Pendente', 'Total']],
+          body: clientTableData,
+          startY: 140,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [59, 130, 246] }
+        });
+        
+        // Lista de agendamentos
+        const finalY = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFontSize(16);
+        doc.text('Lista de Agendamentos', 20, finalY);
+        
+        const tableData = appointmentsData.map(apt => [
+          format(new Date(apt.date), 'dd/MM/yyyy', { locale: ptBR }),
+          format(new Date(apt.date), 'HH:mm', { locale: ptBR }),
+          apt.client?.name || 'Cliente',
+          apt.modality,
+          apt.status === 'pago' ? 'Pago' : apt.status === 'a_cobrar' ? 'A Cobrar' : apt.status === 'agendado' ? 'Agendado' : apt.status === 'cancelado' ? 'Cancelado' : apt.status,
+          `R$ ${apt.valor_total.toFixed(2)}`
+        ]);
+        
+        autoTable(doc, {
+          head: [['Data', 'Horário', 'Cliente', 'Modalidade', 'Status', 'Valor']],
+          body: tableData,
+          startY: finalY + 10,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [59, 130, 246] }
+        });
+        
+        doc.save(`relatorio-agendamentos-${selectedYear.getFullYear()}.pdf`);
+        
+      } else {
+        // Relatório para eventos
+        doc.setFontSize(16);
+        doc.text('Resumo Financeiro - Eventos', 20, 60);
+        
+        doc.setFontSize(10);
+        doc.text(`Valor Recebido: R$ ${eventsFinancialData.total_recebido.toFixed(2)}`, 20, 75);
+        doc.text(`A Cobrar: R$ ${eventsFinancialData.total_pendente.toFixed(2)}`, 20, 85);
+        doc.text(`Cancelados: R$ ${eventsFinancialData.total_cancelado.toFixed(2)}`, 20, 95);
+        doc.text(`Total de Eventos: ${eventsFinancialData.agendamentos_realizados}`, 20, 105);
+        
+        // Lista de eventos
+        doc.setFontSize(16);
+        doc.text('Lista de Eventos', 20, 130);
+        
+        const eventTableData = eventsData.map(event => [
+          format(new Date(event.event_date), 'dd/MM/yyyy', { locale: ptBR }),
+          event.client_name,
+          `${event.start_time} - ${event.end_time}`,
+          event.guests > 0 ? event.guests.toString() : '-',
+          event.status === 'pago' ? 'Pago' : event.status === 'a_cobrar' ? 'A Cobrar' : 'Cancelado',
+          `R$ ${event.amount.toFixed(2)}`,
+          event.notes || '-'
+        ]);
+        
+        autoTable(doc, {
+          head: [['Data', 'Cliente', 'Horário', 'Convidados', 'Status', 'Valor', 'Observações']],
+          body: eventTableData,
+          startY: 140,
+          styles: { fontSize: 7 },
+          headStyles: { fillColor: [59, 130, 246] },
+          columnStyles: {
+            6: { cellWidth: 30 } // Coluna de observações mais larga
+          }
+        });
+        
+        doc.save(`relatorio-eventos-${selectedYear.getFullYear()}.pdf`);
+      }
       
       toast({
         title: 'Relatório gerado!',
-        description: `Relatório de ${format(selectedMonth, 'MMMM yyyy', { locale: ptBR })} foi baixado com sucesso.`,
+        description: `Relatório de ${selectedYear.getFullYear()} foi baixado com sucesso.`,
       });
+      
     } catch (error) {
       console.error('Erro ao gerar relatório:', error);
       toast({
