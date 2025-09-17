@@ -111,10 +111,10 @@ const Financial = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (user && appointments.length > 0) {
+    if (user && appointments.length > 0 && activeTab === 'horarios') {
       fetchFinancialData();
     }
-  }, [user, selectedMonth, appointments]);
+  }, [user, selectedMonth, appointments, activeTab]);
 
   useEffect(() => {
     if (user && activeTab === 'eventos') {
