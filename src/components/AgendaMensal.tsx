@@ -109,7 +109,7 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
 
       {/* Navigation */}
       <div className="p-6">
-        <div className="flex items-center justify-between bg-slate-50/80 rounded-2xl p-4">
+        <div className="flex items-center justify-between bg-slate-200/60 rounded-2xl p-4">
           <button
             onClick={handlePrev}
             className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-800 transition-colors"
