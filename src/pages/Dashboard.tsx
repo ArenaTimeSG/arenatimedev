@@ -103,6 +103,7 @@ const Dashboard = () => {
           user_id: user.id,
           event_date: data.date,
           client_name: data.clientName,
+          phone: data.phone,
           amount: data.amount,
           start_time: data.startTime,
           end_time: data.endTime,
@@ -141,7 +142,7 @@ const Dashboard = () => {
       const end = new Date(currentWeek.getFullYear(), currentWeek.getMonth() + 1, 0);
       const { data, error } = await supabaseClient
         .from('monthly_events')
-        .select('id, event_date, client_name, amount, start_time, end_time, notes, guests, status')
+        .select('id, event_date, client_name, phone, amount, start_time, end_time, notes, guests, status')
         .gte('event_date', start.toISOString().slice(0,10))
         .lte('event_date', end.toISOString().slice(0,10))
         .eq('user_id', user.id);
@@ -156,6 +157,7 @@ const Dashboard = () => {
           id: ev.id,
           date: key,
           clientName: ev.client_name,
+          phone: ev.phone || undefined,
           amount: Number(ev.amount || 0),
           startTime: ev.start_time,
           endTime: ev.end_time,
@@ -364,7 +366,7 @@ const Dashboard = () => {
     if (recurrence_id) {
       switch (effectiveStatus) {
         case 'pago': return 'bg-green-100 text-green-800 border-green-200';
-        case 'a_cobrar': return 'bg-red-100 text-red-800 border-red-200';
+        case 'a_cobrar': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
         case 'cortesia': return 'bg-pink-100 text-pink-800 border-pink-200';
         case 'agendado': return 'bg-blue-100 text-blue-800 border-blue-200';
         case 'cancelado': return 'bg-gray-100 text-gray-600 border-gray-200 line-through';
@@ -373,7 +375,7 @@ const Dashboard = () => {
     } else {
       switch (effectiveStatus) {
         case 'pago': return 'bg-green-100 text-green-800 border-green-200';
-        case 'a_cobrar': return 'bg-red-100 text-red-800 border-red-200';
+        case 'a_cobrar': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
         case 'cortesia': return 'bg-pink-100 text-pink-800 border-pink-200';
         case 'agendado': return 'bg-purple-100 text-purple-800 border-purple-200';
         case 'cancelado': return 'bg-gray-100 text-gray-600 border-gray-200 line-through';
@@ -991,7 +993,30 @@ const Dashboard = () => {
             )}
           </motion.div>
 
-
+          {/* Status Legend - Only show in monthly mode */}
+          {viewMode === 'monthly' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-lg p-4"
+            >
+              <div className="flex items-center justify-center gap-6">
+                <div className="flex items-center gap-1 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span className="text-green-700 text-sm font-medium">Pago</span>
+                </div>
+                <div className="flex items-center gap-1 px-3 py-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  <span className="text-yellow-700 text-sm font-medium">A Cobrar</span>
+                </div>
+                <div className="flex items-center gap-1 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                  <span className="text-gray-700 text-sm font-medium">Cancelado</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {/* Calendar Area - Weekly or Monthly */}
           <motion.div
@@ -1054,7 +1079,7 @@ const Dashboard = () => {
                         const status = (e.status ?? '').toString().toLowerCase().trim();
                         return status === 'cancelado';
                       });
-                      const bg = hasPaid ? 'bg-green-300' : isAllCancelled ? 'bg-gray-300' : arr.length ? 'bg-yellow-200' : '';
+                      const bg = hasPaid ? 'bg-green-300' : isAllCancelled ? 'bg-gray-300' : arr.length ? 'bg-yellow-300' : '';
                       console.log(`🎨 Dia ${k}: hasPaid=${hasPaid}, isAllCancelled=${isAllCancelled}, bg=${bg}`);
                       return [k, bg];
                     })
@@ -1134,6 +1159,7 @@ const Dashboard = () => {
         currentStatus={(selectedEvent && monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.status) || 'a_cobrar'}
         info={selectedEvent ? {
           clientName: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.clientName || '',
+          phone: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.phone,
           amount: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.amount || 0,
           startTime: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.startTime || '',
           endTime: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.endTime || '',
@@ -1196,6 +1222,7 @@ const Dashboard = () => {
             copy[dateKey] = (copy[dateKey] || []).map(ev => ev.id === selectedEvent.id ? {
               ...ev,
               clientName: payload.clientName,
+              phone: payload.phone,
               amount: payload.amount,
               startTime: payload.startTime,
               endTime: payload.endTime,
@@ -1208,6 +1235,7 @@ const Dashboard = () => {
           // Atualiza banco
           await supabaseClient.from('monthly_events').update({
             client_name: payload.clientName,
+            phone: payload.phone,
             amount: payload.amount,
             start_time: payload.startTime,
             end_time: payload.endTime,

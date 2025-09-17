@@ -7,12 +7,13 @@ export interface NewMonthlyEventData {
   id: string;
   date: string; // yyyy-MM-dd
   clientName: string;
+  phone?: string;
   amount: number;
   startTime: string; // HH:mm
   endTime: string;   // HH:mm
   notes?: string;
   guests?: number;
-  status: 'a_cobrar' | 'pago';
+  status: 'a_cobrar' | 'pago' | 'cancelado';
 }
 
 interface NewMonthlyEventModalProps {
@@ -27,21 +28,24 @@ const toKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart
 const NewMonthlyEventModal: React.FC<NewMonthlyEventModalProps> = ({ isOpen, onClose, selectedDate, onCreate }) => {
   const dateKey = useMemo(() => (selectedDate ? toKey(selectedDate) : ''), [selectedDate]);
   const [clientName, setClientName] = useState('');
+  const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState<string>('');
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('22:00');
   const [notes, setNotes] = useState('');
-  const [status, setStatus] = useState<'a_cobrar' | 'pago'>('a_cobrar');
+  const [status, setStatus] = useState<'a_cobrar' | 'pago' | 'cancelado'>('a_cobrar');
   const [guests, setGuests] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
       setClientName('');
+      setPhone('');
       setAmount('');
       setStartTime('18:00');
       setEndTime('22:00');
       setNotes('');
       setStatus('a_cobrar');
+      setGuests('');
     }
   }, [isOpen, dateKey]);
 
@@ -54,6 +58,7 @@ const NewMonthlyEventModal: React.FC<NewMonthlyEventModalProps> = ({ isOpen, onC
       id: crypto.randomUUID(),
       date: dateKey,
       clientName: clientName.trim() || 'Cliente',
+      phone: phone.trim() || undefined,
       amount: isNaN(numeric) ? 0 : Number(numeric.toFixed(2)),
       startTime,
       endTime,
@@ -76,6 +81,10 @@ const NewMonthlyEventModal: React.FC<NewMonthlyEventModalProps> = ({ isOpen, onC
           <div>
             <Label className="text-sm">Cliente</Label>
             <Input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Nome do cliente" />
+          </div>
+          <div>
+            <Label className="text-sm">Telefone</Label>
+            <Input value={phone} onChange={e => setPhone(e.target.value.replace(/[^0-9+()-]/g,''))} placeholder="(11) 99999-9999" />
           </div>
           <div>
             <Label className="text-sm">Valor (R$)</Label>
@@ -113,6 +122,7 @@ const NewMonthlyEventModal: React.FC<NewMonthlyEventModalProps> = ({ isOpen, onC
             >
               <option value="a_cobrar">A Cobrar</option>
               <option value="pago">Pago</option>
+              <option value="cancelado">Cancelado</option>
             </select>
           </div>
         </div>
