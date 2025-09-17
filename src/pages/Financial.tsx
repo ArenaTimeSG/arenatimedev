@@ -837,25 +837,27 @@ const Financial = () => {
             <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
               <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
                 <Users className="h-6 w-6 text-blue-600" />
-                Resumo por Cliente - {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
+                {activeTab === 'horarios' ? 'Resumo por Cliente' : 'Resumo por Evento'} - {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              {clientsFinancial.length === 0 ? (
-                <div className="text-center py-12">
-                  <DollarSign className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-                  <p className="text-lg font-medium text-slate-600 mb-2">Nenhum dado financeiro</p>
-                  <p className="text-slate-500 mb-6">
-                    Não há agendamentos registrados em {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
-                  </p>
-                  <Button 
-                    onClick={() => navigate('/appointments/new')}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Criar Primeiro Agendamento
-                  </Button>
-                </div>
-              ) : (
+              {activeTab === 'horarios' ? (
+                // Conteúdo para agendamentos de horários
+                clientsFinancial.length === 0 ? (
+                  <div className="text-center py-12">
+                    <DollarSign className="h-16 w-16 mx-auto text-slate-300 mb-4" />
+                    <p className="text-lg font-medium text-slate-600 mb-2">Nenhum dado financeiro</p>
+                    <p className="text-slate-500 mb-6">
+                      Não há agendamentos registrados em {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
+                    </p>
+                    <Button 
+                      onClick={() => navigate('/appointments/new')}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Criar Primeiro Agendamento
+                    </Button>
+                  </div>
+                ) : (
                 <div className="space-y-4">
                   {clientsFinancial.map((client) => (
                     <motion.div 
@@ -902,6 +904,76 @@ const Financial = () => {
                     </motion.div>
                   ))}
                 </div>
+                )
+              ) : (
+                // Conteúdo para eventos mensais
+                eventsData.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Calendar className="h-16 w-16 mx-auto text-slate-300 mb-4" />
+                    <p className="text-lg font-medium text-slate-600 mb-2">Nenhum evento encontrado</p>
+                    <p className="text-slate-500 mb-6">
+                      Não há eventos registrados em {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
+                    </p>
+                    <Button 
+                      onClick={() => navigate('/dashboard')}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Ir para Dashboard
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {eventsData.map((event) => (
+                      <motion.div 
+                        key={event.id} 
+                        className="border border-slate-200 rounded-xl p-6 bg-white/50 hover:bg-white/80 transition-all duration-300"
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-slate-800 text-lg mb-2">{event.client_name}</h3>
+                            <div className="flex items-center gap-6 text-sm">
+                              <span className="text-slate-600">
+                                <strong>{format(new Date(event.event_date), 'dd/MM/yyyy')}</strong>
+                              </span>
+                              <span className="text-slate-600">
+                                {event.start_time} - {event.end_time}
+                              </span>
+                              {event.guests > 0 && (
+                                <span className="text-slate-600">
+                                  {event.guests} convidados
+                                </span>
+                              )}
+                            </div>
+                            {event.notes && (
+                              <p className="text-xs text-slate-500 mt-2 italic">{event.notes}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div className="text-right">
+                              <p className="text-sm text-slate-500 font-medium">Valor</p>
+                              <p className={`font-bold text-lg ${
+                                event.status === 'pago' ? 'text-green-600' :
+                                event.status === 'a_cobrar' ? 'text-orange-600' :
+                                'text-red-600'
+                              }`}>
+                                {formatCurrency(event.amount)}
+                              </p>
+                            </div>
+                            <Badge 
+                              variant={event.status === 'pago' ? 'default' : event.status === 'a_cobrar' ? 'secondary' : 'destructive'}
+                              className="ml-4"
+                            >
+                              {event.status === 'pago' ? 'Pago' :
+                               event.status === 'a_cobrar' ? 'A Cobrar' :
+                               'Cancelado'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )
               )}
             </CardContent>
           </Card>
