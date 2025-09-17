@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { addMonths, eachDayOfInterval, endOfMonth, format, getDay, getMonth, getYear, isSameDay, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
 export interface MonthlyEvent {
   id: string;
@@ -83,40 +83,13 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
   return (
     <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-lg overflow-hidden">
       {/* Header */}
-      <div className="p-4 sm:p-6 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-blue-50">
+      <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrev}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
-              aria-label="Mês anterior"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleNext}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
-              aria-label="Próximo mês"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            <Calendar className="h-6 w-6 text-blue-600" />
+            <h2 className="text-xl font-bold text-slate-800">Agenda</h2>
           </div>
-
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg sm:text-xl font-semibold text-slate-800 capitalize tracking-tight">
-              {monthYearLabel}
-            </h2>
-            <select
-              className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm"
-              value={getYear(cursor)}
-              onChange={handleYearChange}
-            >
-              {years.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          </div>
-
+          
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 px-2 py-1 bg-green-50 rounded-md">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -131,6 +104,41 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
               <span className="text-gray-700 text-sm font-medium">Cancelado</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex items-center justify-between p-6 bg-slate-50/30">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrev}
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleNext}
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
+            aria-label="Próximo mês"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg sm:text-xl font-semibold text-slate-800 capitalize tracking-tight">
+            {monthYearLabel}
+          </h3>
+          <select
+            className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm"
+            value={getYear(cursor)}
+            onChange={handleYearChange}
+          >
+            {years.map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
         </div>
       </div>
 
