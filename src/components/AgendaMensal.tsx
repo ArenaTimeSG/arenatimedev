@@ -108,13 +108,14 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
       </div>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between p-6 bg-slate-50/30">
+      <div className="flex items-center justify-between p-6 bg-slate-50/80">
         <button
           onClick={handlePrev}
-          className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
+          className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-800 transition-colors"
           aria-label="Mês anterior"
         >
           <ChevronLeft className="w-4 h-4" />
+          <span className="text-sm font-medium">Anterior</span>
         </button>
 
         <div className="flex items-center gap-3">
@@ -134,9 +135,10 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
 
         <button
           onClick={handleNext}
-          className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
+          className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-800 transition-colors"
           aria-label="Próximo mês"
         >
+          <span className="text-sm font-medium">Próxima</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
