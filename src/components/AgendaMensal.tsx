@@ -108,37 +108,41 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
       </div>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between p-6 bg-slate-100 border-t border-slate-200/60">
-        <button
-          onClick={handlePrev}
-          className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
-          aria-label="Mês anterior"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-
-        <div className="flex items-center gap-3">
-          <h3 className="text-lg sm:text-xl font-semibold text-slate-800 capitalize tracking-tight">
-            {monthYearLabel}
-          </h3>
-          <select
-            className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm"
-            value={getYear(cursor)}
-            onChange={handleYearChange}
+      <div className="p-6">
+        <div className="flex items-center justify-between bg-slate-50/80 rounded-2xl p-4">
+          <button
+            onClick={handlePrev}
+            className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-800 transition-colors"
+            aria-label="Mês anterior"
           >
-            {years.map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-        </div>
+            <ChevronLeft className="w-4 h-4" />
+            <span className="text-sm font-medium">Anterior</span>
+          </button>
 
-        <button
-          onClick={handleNext}
-          className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
-          aria-label="Próximo mês"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg sm:text-xl font-semibold text-slate-800 capitalize tracking-tight">
+              {monthYearLabel}
+            </h3>
+            <select
+              className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm"
+              value={getYear(cursor)}
+              onChange={handleYearChange}
+            >
+              {years.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={handleNext}
+            className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-800 transition-colors"
+            aria-label="Próximo mês"
+          >
+            <span className="text-sm font-medium">Próxima</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Weekday header */}
