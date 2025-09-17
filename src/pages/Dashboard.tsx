@@ -1048,15 +1048,26 @@ const Dashboard = () => {
                     Object.entries(monthlyEventsByDay).map(([k, arr]) => {
                       const hasPaid = arr.some(e => {
                         const status = (e.status ?? '').toString().toLowerCase().trim();
-                        console.log(`🔍 Evento ${e.id} no dia ${k}: status="${e.status}" -> normalizado="${status}"`);
                         return status === 'pago';
                       });
                       const isAllCancelled = arr.length > 0 && arr.every(e => {
                         const status = (e.status ?? '').toString().toLowerCase().trim();
                         return status === 'cancelado';
                       });
-                      const bg = hasPaid ? 'bg-green-300' : isAllCancelled ? 'bg-gray-300' : arr.length ? 'bg-yellow-300' : '';
-                      console.log(`🎨 Dia ${k}: hasPaid=${hasPaid}, isAllCancelled=${isAllCancelled}, bg=${bg}`);
+                      const hasPending = arr.some(e => {
+                        const status = (e.status ?? '').toString().toLowerCase().trim();
+                        return status === 'a_cobrar';
+                      });
+                      
+                      let bg = '';
+                      if (hasPaid) {
+                        bg = 'bg-gradient-to-br from-green-200 to-green-300 border-green-400';
+                      } else if (isAllCancelled) {
+                        bg = 'bg-gradient-to-br from-gray-200 to-gray-300 border-gray-400';
+                      } else if (hasPending) {
+                        bg = 'bg-gradient-to-br from-yellow-200 to-yellow-300 border-yellow-400';
+                      }
+                      
                       return [k, bg];
                     })
                   )}

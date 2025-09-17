@@ -183,11 +183,11 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
               key={dateKey + idx}
               onClick={handleCellClick}
               className={[
-                'min-h-[92px] sm:min-h-[104px] p-2 border border-slate-100 text-left transition-all duration-200 rounded-xl',
+                'min-h-[92px] sm:min-h-[104px] p-2 border text-left transition-all duration-200 rounded-xl',
                 baseBgClass,
                 bgClass ? `${bgClass}` : '',
-                isToday ? 'relative ring-1 ring-blue-300 ring-offset-0' : '',
-                'hover:shadow-md'
+                isToday ? 'relative ring-2 ring-blue-400 ring-offset-1 shadow-lg' : '',
+                'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]'
               ].join(' ')}
             >
               <div className="flex items-center justify-between">
@@ -205,8 +205,8 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
                   <div
                     key={ev.id}
                     className={[
-                      'text-[12px] sm:text-[13px] px-2 py-1 rounded-md truncate shadow-sm',
-                      cellHasBg ? 'bg-white/70 text-slate-800 border border-white/50' : (ev.color || 'bg-blue-50 text-blue-700')
+                      'text-[11px] sm:text-[12px] px-2 py-1.5 rounded-lg truncate shadow-sm font-medium',
+                      cellHasBg ? 'bg-white/90 text-slate-800 border border-white/60 backdrop-blur-sm' : (ev.color || 'bg-blue-100 text-blue-800 border border-blue-200')
                     ].join(' ')}
                     title={ev.title}
                     // Os eventos não recebem cliques diretos; o clique da célula centraliza a ação
@@ -215,7 +215,7 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
                   </div>
                 ))}
                 {dayEvents.length > 3 && (
-                  <div className="text-[10px] text-slate-500">+{dayEvents.length - 3} mais</div>
+                  <div className="text-[9px] text-slate-500 font-medium">+{dayEvents.length - 3} mais</div>
                 )}
               </div>
             </button>
