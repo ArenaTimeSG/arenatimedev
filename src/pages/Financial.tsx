@@ -185,7 +185,7 @@ const Financial = () => {
       // Agrupar por cliente
       const clientsMap = new Map<string, ClientFinancial>();
       
-      monthAppointments.forEach(appointment => {
+      yearAppointments.forEach(appointment => {
         const clientId = appointment.client_id;
         const clientName = appointment.client?.name || 'Cliente';
         const valor = appointment.valor_total || 0;
