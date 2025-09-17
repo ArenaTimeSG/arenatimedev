@@ -83,51 +83,51 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
   return (
     <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-lg overflow-hidden">
       {/* Header */}
-      <div className="p-4 sm:p-6 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-blue-50">
+      <div className="p-3 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-blue-50">
         {/* Title and Legend */}
-        <div className="text-center mb-4">
-          <h2 className="text-xl font-bold text-slate-800 mb-3">Agenda de Eventos</h2>
-          <div className="flex items-center justify-center gap-2">
-            <div className="flex items-center gap-1 px-2 py-1 bg-green-50 rounded-md">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span className="text-green-700 text-sm font-medium">Pago</span>
+        <div className="text-center mb-2">
+          <h2 className="text-lg font-bold text-slate-800 mb-2">Agenda de Eventos</h2>
+          <div className="flex items-center justify-center gap-1">
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-50 rounded text-xs">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-green-700 font-medium">Pago</span>
             </div>
-            <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-md">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              <span className="text-yellow-700 text-sm font-medium">A Cobrar</span>
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-yellow-50 rounded text-xs">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+              <span className="text-yellow-700 font-medium">A Cobrar</span>
             </div>
-            <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-md">
-              <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
-              <span className="text-gray-700 text-sm font-medium">Cancelado</span>
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 rounded text-xs">
+              <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+              <span className="text-gray-700 font-medium">Cancelado</span>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={handlePrev}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
               aria-label="Mês anterior"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3 h-3" />
             </button>
             <button
               onClick={handleNext}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
               aria-label="Próximo mês"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3 h-3" />
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg sm:text-xl font-semibold text-slate-800 capitalize tracking-tight">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold text-slate-800 capitalize tracking-tight">
               {monthYearLabel}
             </h3>
             <select
-              className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm"
+              className="text-xs bg-white border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-200 shadow-sm"
               value={getYear(cursor)}
               onChange={handleYearChange}
             >
@@ -140,9 +140,9 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
       </div>
 
       {/* Weekday header */}
-      <div className="grid grid-cols-7 text-[11px] sm:text-xs md:text-sm text-slate-600 bg-slate-50/80 border-b border-slate-200/60">
+      <div className="grid grid-cols-7 text-xs text-slate-600 bg-slate-50/80 border-b border-slate-200/60">
         {dayNames.map(d => (
-          <div key={d} className="px-2 py-2 text-center uppercase tracking-wide font-medium">{d}</div>
+          <div key={d} className="px-1 py-1 text-center uppercase tracking-wide font-medium">{d}</div>
         ))}
       </div>
 
@@ -177,29 +177,29 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
               key={dateKey + idx}
               onClick={handleCellClick}
               className={[
-                'min-h-[92px] sm:min-h-[104px] p-2 border border-slate-100 text-left transition-all duration-200 rounded-xl',
+                'min-h-[60px] sm:min-h-[70px] p-1 border border-slate-100 text-left transition-all duration-200 rounded-lg',
                 baseBgClass,
                 bgClass ? `${bgClass}` : '',
                 isToday ? 'relative ring-1 ring-blue-300 ring-offset-0' : '',
-                'hover:shadow-md'
+                'hover:shadow-sm'
               ].join(' ')}
             >
               <div className="flex items-center justify-between">
-                <span className={['text-sm font-bold', isCurrentMonth ? 'text-slate-700' : 'text-slate-400'].join(' ')}>
+                <span className={['text-xs font-bold', isCurrentMonth ? 'text-slate-700' : 'text-slate-400'].join(' ')}>
                   {format(day, 'd', { locale: ptBR })}
                 </span>
                 {isToday && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 shadow-sm">Hoje</span>
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-blue-100 text-blue-700">Hoje</span>
                 )}
               </div>
 
               {/* Events preview area */}
-              <div className="mt-2 space-y-1 pointer-events-none">
-                {dayEvents.slice(0, 3).map(ev => (
+              <div className="mt-1 space-y-0.5 pointer-events-none">
+                {dayEvents.slice(0, 2).map(ev => (
                   <div
                     key={ev.id}
                     className={[
-                      'text-[12px] sm:text-[13px] px-2 py-1 rounded-md truncate shadow-sm',
+                      'text-[10px] px-1 py-0.5 rounded truncate',
                       cellHasBg ? 'bg-white/70 text-slate-800 border border-white/50' : (ev.color || 'bg-blue-50 text-blue-700')
                     ].join(' ')}
                     title={ev.title}
@@ -208,8 +208,8 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
                     {ev.title || 'Evento'}
                   </div>
                 ))}
-                {dayEvents.length > 3 && (
-                  <div className="text-[10px] text-slate-500">+{dayEvents.length - 3} mais</div>
+                {dayEvents.length > 2 && (
+                  <div className="text-[9px] text-slate-500">+{dayEvents.length - 2}</div>
                 )}
               </div>
             </button>
