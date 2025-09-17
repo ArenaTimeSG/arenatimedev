@@ -109,22 +109,13 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
 
       {/* Navigation */}
       <div className="flex items-center justify-between p-6 bg-slate-50/30">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePrev}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
-            aria-label="Mês anterior"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleNext}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
-            aria-label="Próximo mês"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          onClick={handlePrev}
+          className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
+          aria-label="Mês anterior"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
 
         <div className="flex items-center gap-3">
           <h3 className="text-lg sm:text-xl font-semibold text-slate-800 capitalize tracking-tight">
@@ -140,6 +131,14 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
             ))}
           </select>
         </div>
+
+        <button
+          onClick={handleNext}
+          className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 shadow-sm"
+          aria-label="Próximo mês"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Weekday header */}
