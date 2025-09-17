@@ -205,8 +205,8 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
                   <div
                     key={ev.id}
                     className={[
-                      'text-[11px] sm:text-[12px] px-2 py-1.5 rounded-lg truncate shadow-sm font-medium',
-                      cellHasBg ? 'bg-white/90 text-slate-800 border border-white/60 backdrop-blur-sm' : (ev.color || 'bg-blue-100 text-blue-800 border border-blue-200')
+                      'text-[11px] sm:text-[12px] px-2 py-1.5 rounded-lg truncate shadow-lg font-semibold',
+                      cellHasBg ? 'bg-white/95 text-slate-900 border-2 border-white/80 backdrop-blur-sm' : (ev.color || 'bg-blue-200 text-blue-900 border-2 border-blue-300')
                     ].join(' ')}
                     title={ev.title}
                     // Os eventos não recebem cliques diretos; o clique da célula centraliza a ação

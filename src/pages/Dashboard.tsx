@@ -1061,11 +1061,11 @@ const Dashboard = () => {
                       
                       let bg = '';
                       if (hasPaid) {
-                        bg = 'bg-gradient-to-br from-green-200 to-green-300 border-green-400';
+                        bg = 'bg-gradient-to-br from-green-400 to-green-500 border-green-600 shadow-green-200/50';
                       } else if (isAllCancelled) {
-                        bg = 'bg-gradient-to-br from-gray-200 to-gray-300 border-gray-400';
+                        bg = 'bg-gradient-to-br from-gray-400 to-gray-500 border-gray-600 shadow-gray-200/50';
                       } else if (hasPending) {
-                        bg = 'bg-gradient-to-br from-yellow-200 to-yellow-300 border-yellow-400';
+                        bg = 'bg-gradient-to-br from-yellow-400 to-yellow-500 border-yellow-600 shadow-yellow-200/50';
                       }
                       
                       return [k, bg];
