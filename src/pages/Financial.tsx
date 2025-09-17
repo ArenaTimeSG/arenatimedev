@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -82,6 +83,24 @@ const Financial = () => {
     name: string;
     appointments: AppointmentData[];
   } | null>(null);
+
+  // Estado para controlar aba ativa
+  const [activeTab, setActiveTab] = useState<'horarios' | 'eventos'>('horarios');
+  
+  // Estado para dados financeiros dos eventos
+  const [eventsFinancialData, setEventsFinancialData] = useState<FinancialData>({
+    total_recebido: 0,
+    total_pago: 0,
+    total_pendente: 0,
+    total_agendado: 0,
+    total_cancelado: 0,
+    agendamentos_pagos: 0,
+    agendamentos_pendentes: 0,
+    agendamentos_agendados: 0,
+    agendamentos_cancelados: 0,
+    agendamentos_realizados: 0,
+  });
+  const [eventsData, setEventsData] = useState<any[]>([]);
   
 
   useEffect(() => {
@@ -95,6 +114,12 @@ const Financial = () => {
       fetchFinancialData();
     }
   }, [user, selectedMonth, appointments]);
+
+  useEffect(() => {
+    if (user && activeTab === 'eventos') {
+      fetchEventsFinancialData();
+    }
+  }, [user, selectedMonth, activeTab]);
 
   const fetchFinancialData = async () => {
     try {
@@ -193,6 +218,74 @@ const Financial = () => {
     } catch (error: any) {
       toast({
         title: 'Erro ao carregar dados financeiros',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchEventsFinancialData = async () => {
+    try {
+      setIsLoading(true);
+      
+      const monthStart = startOfMonth(selectedMonth);
+      const monthEnd = endOfMonth(selectedMonth);
+      
+      // Buscar eventos do mês selecionado
+      const { data: events, error } = await supabase
+        .from('monthly_events')
+        .select('*')
+        .eq('user_id', user?.id)
+        .gte('event_date', monthStart.toISOString().split('T')[0])
+        .lte('event_date', monthEnd.toISOString().split('T')[0]);
+
+      if (error) throw error;
+
+      setEventsData(events || []);
+
+      // Calcular dados financeiros dos eventos
+      let total_recebido = 0;
+      let total_pendente = 0;
+      let total_pago = 0;
+      let total_cancelado = 0;
+      let agendamentos_pagos = 0;
+      let agendamentos_pendentes = 0;
+      let agendamentos_cancelados = 0;
+
+      (events || []).forEach(event => {
+        const amount = Number(event.amount || 0);
+        
+        if (event.status === 'pago') {
+          total_recebido += amount;
+          total_pago += amount;
+          agendamentos_pagos++;
+        } else if (event.status === 'a_cobrar') {
+          total_pendente += amount;
+          agendamentos_pendentes++;
+        } else if (event.status === 'cancelado') {
+          total_cancelado += amount;
+          agendamentos_cancelados++;
+        }
+      });
+
+      setEventsFinancialData({
+        total_recebido,
+        total_pago,
+        total_pendente,
+        total_agendado: 0,
+        total_cancelado,
+        agendamentos_pagos,
+        agendamentos_pendentes,
+        agendamentos_agendados: 0,
+        agendamentos_cancelados,
+        agendamentos_realizados: agendamentos_pagos + agendamentos_pendentes,
+      });
+
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao carregar dados financeiros dos eventos',
         description: error.message,
         variant: 'destructive',
       });
@@ -518,13 +611,26 @@ const Financial = () => {
           </Card>
         </motion.div>
 
-        {/* Financial Overview Cards */}
+        {/* Financial Overview with Tabs */}
         <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'horarios' | 'eventos')} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="horarios" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Agenda de Horários
+              </TabsTrigger>
+              <TabsTrigger value="eventos" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Agenda de Eventos
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="horarios" className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -601,6 +707,89 @@ const Financial = () => {
               </div>
             </CardContent>
           </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="eventos" className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">Valor Recebido</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {formatCurrency(eventsFinancialData.total_recebido)}
+                        </p>
+                        <p className="text-xs text-slate-500 font-medium">
+                          {eventsFinancialData.agendamentos_pagos} eventos
+                        </p>
+                      </div>
+                      <div className="p-3 bg-green-100 rounded-xl">
+                        <CheckCircle className="h-6 w-6 text-green-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">A Cobrar</p>
+                        <p className="text-2xl font-bold text-orange-600">
+                          {formatCurrency(eventsFinancialData.total_pendente)}
+                        </p>
+                        <p className="text-xs text-slate-500 font-medium">
+                          {eventsFinancialData.agendamentos_pendentes} eventos
+                        </p>
+                      </div>
+                      <div className="p-3 bg-orange-100 rounded-xl">
+                        <AlertCircle className="h-6 w-6 text-orange-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">Total de Eventos</p>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {eventsFinancialData.agendamentos_realizados}
+                        </p>
+                        <p className="text-xs text-slate-500 font-medium">
+                          eventos realizados
+                        </p>
+                      </div>
+                      <div className="p-3 bg-blue-100 rounded-xl">
+                        <Calendar className="h-6 w-6 text-blue-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">Cancelados</p>
+                        <p className="text-2xl font-bold text-red-600">
+                          {formatCurrency(eventsFinancialData.total_cancelado)}
+                        </p>
+                        <p className="text-xs text-slate-500 font-medium">
+                          {eventsFinancialData.agendamentos_cancelados} eventos
+                        </p>
+                      </div>
+                      <div className="p-3 bg-red-100 rounded-xl">
+                        <XCircle className="h-6 w-6 text-red-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
         </motion.div>
 
         {/* Relatório PDF */}
