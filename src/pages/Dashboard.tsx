@@ -14,7 +14,7 @@ import { formatCurrency } from '@/utils/currency';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
 import { Calendar, Plus, Users, DollarSign, Activity, LogOut, FileText, Settings, ChevronLeft, ChevronRight, User, ChevronDown, Shield, Mail, Phone, Clock, TrendingUp, CheckCircle, AlertCircle, AlertTriangle, Repeat } from 'lucide-react';
 
-import { format, startOfWeek, addDays, isSameDay, isBefore, isEqual } from 'date-fns';
+import { format, startOfWeek, addDays, isSameDay, isBefore, isEqual, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import NewAppointmentModal from '@/components/NewAppointmentModal';
 import AppointmentDetailsModal from '@/components/AppointmentDetailsModal';
@@ -213,6 +213,43 @@ const Dashboard = () => {
       }
     });
     return count;
+  };
+
+  // Função para contar eventos mensais do mês selecionado
+  const getMonthlyEventsForSelectedMonth = () => {
+    const monthStart = startOfMonth(currentWeek);
+    const monthEnd = endOfMonth(currentWeek);
+    
+    let count = 0;
+    Object.entries(monthlyEventsByDay).forEach(([dateKey, events]) => {
+      const eventDate = new Date(dateKey);
+      if (eventDate >= monthStart && eventDate <= monthEnd) {
+        count += events.length;
+      }
+    });
+    return count;
+  };
+
+  // Função para calcular totais financeiros do mês selecionado
+  const getMonthlyTotalsForSelectedMonth = () => {
+    const monthStart = startOfMonth(currentWeek);
+    const monthEnd = endOfMonth(currentWeek);
+    
+    let aCobrar = 0;
+    let pagos = 0;
+    
+    Object.entries(monthlyEventsByDay).forEach(([dateKey, events]) => {
+      const eventDate = new Date(dateKey);
+      if (eventDate >= monthStart && eventDate <= monthEnd) {
+        events.forEach(ev => {
+          const st = (ev.status ?? '').toString().toLowerCase().trim();
+          if (st === 'a_cobrar') aCobrar += Number(ev.amount || 0);
+          if (st === 'pago') pagos += Number(ev.amount || 0);
+        });
+      }
+    });
+    
+    return { aCobrar, pagos };
   };
   const [isRecurringForUnblock, setIsRecurringForUnblock] = useState(false);
   const [isBlockedTimeSlotModalOpen, setIsBlockedTimeSlotModalOpen] = useState(false);
@@ -928,7 +965,7 @@ const Dashboard = () => {
                 />
                 <StatCard
                   title="A Cobrar"
-                  value={formatCurrency(monthlyTotals.aCobrar)}
+                  value={formatCurrency(getMonthlyTotalsForSelectedMonth().aCobrar)}
                   icon={AlertCircle}
                   color="red"
                   description="Pendências de eventos"
@@ -936,7 +973,7 @@ const Dashboard = () => {
                 />
                 <StatCard
                   title="Pagos"
-                  value={formatCurrency(monthlyTotals.pagos)}
+                  value={formatCurrency(getMonthlyTotalsForSelectedMonth().pagos)}
                   icon={CheckCircle}
                   color="green"
                   description="Recebidos em eventos"
@@ -944,7 +981,7 @@ const Dashboard = () => {
                 />
                 <StatCard
                   title="Este Mês"
-                  value={monthlyEventsByDay ? Object.values(monthlyEventsByDay).flat().length : 0}
+                  value={getMonthlyEventsForSelectedMonth()}
                   icon={Calendar}
                   color="blue"
                   description="Eventos cadastrados"
@@ -990,6 +1027,9 @@ const Dashboard = () => {
                     setCurrentWeek(d);
                     setSelectedMonthlyDate(d);
                     setIsMonthlyEventModalOpen(true);
+                  }}
+                  onMonthChange={(newMonth) => {
+                    setCurrentWeek(newMonth);
                   }}
                   eventsByDay={Object.fromEntries(
                     Object.entries(monthlyEventsDisplay).map(([k, arr]) => [

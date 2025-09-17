@@ -18,6 +18,8 @@ export interface AgendaMensalProps {
   eventsByDay?: Record<string, MonthlyEvent[]>;
   // Optional background color per day (Tailwind classes)
   dayBgByKey?: Record<string, string>;
+  // Callback when month/year changes
+  onMonthChange?: (newMonth: Date) => void;
 }
 
 // Helper to format to yyyy-MM-dd
@@ -35,7 +37,7 @@ const yearsRange = (centerYear: number, span = 5) => {
 
 const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), onDayClick, eventsByDay = {}, dayBgByKey = {} }) => {
+const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), onDayClick, eventsByDay = {}, dayBgByKey = {}, onMonthChange }) => {
   const [cursor, setCursor] = useState<Date>(new Date(initialDate));
 
   const monthStart = useMemo(() => startOfMonth(cursor), [cursor]);
@@ -54,14 +56,24 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
     return eachDayOfInterval({ start: gridStart, end: gridEnd });
   }, [monthStart, monthEnd]);
 
-  const handlePrev = () => setCursor(prev => addMonths(prev, -1));
-  const handleNext = () => setCursor(prev => addMonths(prev, 1));
+  const handlePrev = () => {
+    const newCursor = addMonths(cursor, -1);
+    setCursor(newCursor);
+    onMonthChange?.(newCursor);
+  };
+  
+  const handleNext = () => {
+    const newCursor = addMonths(cursor, 1);
+    setCursor(newCursor);
+    onMonthChange?.(newCursor);
+  };
 
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newYear = parseInt(e.target.value, 10);
     const updated = new Date(cursor);
     updated.setFullYear(newYear);
     setCursor(updated);
+    onMonthChange?.(updated);
   };
 
   const monthYearLabel = `${format(cursor, 'MMMM', { locale: ptBR })} de ${getYear(cursor)}`;
