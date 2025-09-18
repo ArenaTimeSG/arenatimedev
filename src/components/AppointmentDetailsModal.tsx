@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Trash2, DollarSign, X, Calendar, User, Activity, Loader2, AlertCircle } from 'lucide-react';
+import { Trash2, DollarSign, X, Calendar, User, Activity, Loader2, AlertCircle, MessageCircle } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
 import { useAppointments, AppointmentWithModality } from '@/hooks/useAppointments';
 import { useQueryClient } from '@tanstack/react-query';
@@ -113,6 +113,49 @@ const AppointmentDetailsModal = ({
       case 'cancelado': return 'Cancelado';
       default: return status;
     }
+  };
+
+  // Monta link do WhatsApp com mensagem de confirmação
+  const buildWhatsAppLink = () => {
+    const phoneRaw = appointment?.client?.phone as any;
+    let digits = (phoneRaw || '').toString().replace(/\D/g, '');
+    if (!digits) return null;
+
+    // Normalização para WhatsApp: precisa ter código do país.
+    // Se não vier com 55, assumimos BR e adicionamos.
+    if (digits.startsWith('0')) {
+      digits = digits.replace(/^0+/, '');
+    }
+    if (!digits.startsWith('55')) {
+      // Se parece DDD+numero (10 ou 11 dígitos), prefixa 55
+      if (digits.length === 10 || digits.length === 11) {
+        digits = '55' + digits;
+      }
+    }
+
+    const nome = appointment?.client?.name || 'Cliente';
+    const data = appointment?.date ? format(new Date(appointment.date), "dd/MM/yyyy", { locale: ptBR }) : '';
+    const horario = appointment?.date ? format(new Date(appointment.date), "HH:mm", { locale: ptBR }) : '';
+    const modalidade = (appointment as any)?.modality_info?.name || (appointment as any)?.modality || '';
+
+    // Fallback 100% compatível com WhatsApp Web/API (sem emojis e sem acentos)
+    const mensagemPlain = [
+      `Ola, ${nome}!`,
+      `Lembrete do seu agendamento:`,
+      modalidade ? `Atividade: ${modalidade}` : null,
+      `Data: ${data}`,
+      `Horario: ${horario}`,
+      `Local: [NOME DO GINASIO/ARENA]`,
+      ``,
+      `Por favor, confirme sua presenca respondendo:`,
+      `[1] Confirmo`,
+      `[2] Nao poderei comparecer`,
+      ``,
+      `Agradecemos a confirmacao!`,
+    ].filter(Boolean).join('\n');
+
+    const encoded = encodeURIComponent(mensagemPlain);
+    return `https://wa.me/${digits}?text=${encoded}`;
   };
 
   // Hooks useCallback - devem vir antes de qualquer lógica condicional
@@ -569,6 +612,17 @@ const AppointmentDetailsModal = ({
           )}
 
           <DialogFooter>
+            {appointment?.client && (appointment.client as any).phone && (
+              <a
+                href={buildWhatsAppLink() || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
+              </a>
+            )}
             <Button variant="outline" onClick={onClose} disabled={isLoading}>
               Fechar
             </Button>

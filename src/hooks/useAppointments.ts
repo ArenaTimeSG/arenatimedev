@@ -20,6 +20,7 @@ export interface AppointmentWithModality {
   created_at: string;
   client?: {
     name: string;
+    phone?: string;
   };
   modality_info?: {
     name: string;
@@ -75,7 +76,7 @@ export const useAppointments = () => {
     // Buscar dados em paralelo apenas para IDs que não estão no cache
     const [clientsResponse, modalitiesResponse] = await Promise.all([
       missingClientIds.length > 0 
-        ? supabase.from('booking_clients').select('id, name').in('id', missingClientIds).eq('user_id', userId)
+        ? supabase.from('booking_clients').select('id, name, phone').in('id', missingClientIds).eq('user_id', userId)
         : Promise.resolve({ data: null, error: null }),
       missingModalityIds.length > 0 
         ? supabase.from('modalities').select('id, name, valor').in('id', missingModalityIds).eq('user_id', userId)
@@ -138,7 +139,7 @@ export const useAppointments = () => {
 
         return {
           ...appointment,
-          client: clientData ? { name: clientData.name } : undefined,
+          client: clientData ? { name: clientData.name, phone: clientData.phone } : undefined,
           modality_info: modalityData ? {
             name: modalityData.name,
             valor: modalityData.valor
@@ -178,7 +179,7 @@ export const useAppointments = () => {
 
       return {
         ...appointment,
-        client: clientData ? { name: clientData.name } : undefined,
+        client: clientData ? { name: clientData.name, phone: clientData.phone } : undefined,
         modality_info: modalityData ? {
           name: modalityData.name,
           valor: modalityData.valor
