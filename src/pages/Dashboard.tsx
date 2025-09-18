@@ -1152,6 +1152,7 @@ const Dashboard = () => {
           endTime: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.endTime || '',
           notes: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.notes,
           guests: monthlyEventsByDay[selectedEvent.dateKey]?.find(e => e.id === selectedEvent.id)?.guests,
+          eventDate: selectedEvent.dateKey,
         } : null}
         onUpdateStatus={async (newStatus) => {
           if (!selectedEvent || !user?.id) return;
