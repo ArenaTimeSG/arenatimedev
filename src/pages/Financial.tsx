@@ -227,6 +227,20 @@ const Financial = () => {
     }
   };
 
+  // Normaliza datas YYYY-MM-DD como datas locais (evita voltar 1 dia por fuso horário)
+  const normalizeLocalDate = (isoDate: string): Date => {
+    try {
+      if (!isoDate) return new Date();
+      const [yearStr, monthStr, dayStr] = isoDate.split('-');
+      const year = parseInt(yearStr, 10);
+      const month = Math.max(1, parseInt(monthStr || '1', 10)) - 1;
+      const day = Math.max(1, parseInt(dayStr || '1', 10));
+      return new Date(year, month, day);
+    } catch {
+      return new Date(isoDate);
+    }
+  };
+
   const fetchEventsFinancialData = async () => {
     try {
       setIsLoading(true);
@@ -483,7 +497,7 @@ const Financial = () => {
         doc.text('Lista de Eventos', 20, 130);
         
         const eventTableData = eventsData.map(event => [
-          format(new Date(event.event_date), 'dd/MM/yyyy', { locale: ptBR }),
+          format(normalizeLocalDate(event.event_date as any), 'dd/MM/yyyy', { locale: ptBR }),
           event.client_name,
           `${event.start_time} - ${event.end_time}`,
           event.guests > 0 ? event.guests.toString() : '-',
@@ -1018,7 +1032,7 @@ const Financial = () => {
                       <div className="space-y-3">
                         {eventsData
                           .filter(event => {
-                            const eventDate = new Date(event.event_date);
+                            const eventDate = normalizeLocalDate(event.event_date as any);
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
                             return eventDate >= today;
@@ -1034,7 +1048,7 @@ const Financial = () => {
                                   <h3 className="font-semibold text-slate-800 mb-1">{event.client_name}</h3>
                                   <div className="flex items-center gap-4 text-sm">
                                     <span className="text-slate-600">
-                                      <strong>{format(new Date(event.event_date), 'dd/MM/yyyy')}</strong>
+                                      <strong>{format(normalizeLocalDate(event.event_date as any), 'dd/MM/yyyy')}</strong>
                                     </span>
                                     <span className="text-slate-600">
                                       {event.start_time} - {event.end_time}
@@ -1073,7 +1087,7 @@ const Financial = () => {
                             </motion.div>
                           ))}
                         {eventsData.filter(event => {
-                          const eventDate = new Date(event.event_date);
+                          const eventDate = normalizeLocalDate(event.event_date as any);
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
                           return eventDate >= today;
@@ -1094,7 +1108,7 @@ const Financial = () => {
                       <div className="space-y-3">
                         {eventsData
                           .filter(event => {
-                            const eventDate = new Date(event.event_date);
+                            const eventDate = normalizeLocalDate(event.event_date as any);
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
                             return eventDate < today;
@@ -1110,7 +1124,7 @@ const Financial = () => {
                                   <h3 className="font-semibold text-slate-800 mb-1">{event.client_name}</h3>
                                   <div className="flex items-center gap-4 text-sm">
                                     <span className="text-slate-600">
-                                      <strong>{format(new Date(event.event_date), 'dd/MM/yyyy')}</strong>
+                                      <strong>{format(normalizeLocalDate(event.event_date as any), 'dd/MM/yyyy')}</strong>
                                     </span>
                                     <span className="text-slate-600">
                                       {event.start_time} - {event.end_time}
@@ -1149,7 +1163,7 @@ const Financial = () => {
                             </motion.div>
                           ))}
                         {eventsData.filter(event => {
-                          const eventDate = new Date(event.event_date);
+                          const eventDate = normalizeLocalDate(event.event_date as any);
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
                           return eventDate < today;
