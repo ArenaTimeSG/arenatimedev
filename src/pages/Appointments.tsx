@@ -525,20 +525,20 @@ const Appointments = () => {
                                   </div>
                                 </div>
                               </div>
-                        <div className="flex items-center gap-4 sm:gap-6">
+                            <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-6 w-full sm:w-auto">
                                 <div className="text-right">
                                   <p className="text-sm text-slate-500 font-medium">Data</p>
-                                  <p className="font-semibold text-slate-800">
+                                <p className="font-semibold text-slate-800 text-sm sm:text-base">
                                     {format(new Date(appointment.date), 'dd/MM/yyyy', { locale: ptBR })}
                                   </p>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm text-slate-500 font-medium">Horário</p>
-                                  <p className="font-semibold text-slate-800">
+                                <p className="font-semibold text-slate-800 text-sm sm:text-base">
                                     {format(new Date(appointment.date), 'HH:mm', { locale: ptBR })}
                                   </p>
                                 </div>
-                                <div className="flex flex-col gap-1">
+                              <div className="flex flex-col gap-1 items-end">
                                   <Badge className={getStatusColor(appointment.status)}>
                                     {getStatusLabel(appointment.status)}
                                   </Badge>
@@ -635,20 +635,20 @@ const Appointments = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-4 sm:gap-6">
+                              <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-6 w-full sm:w-auto">
                                 <div className="text-right">
                                   <p className="text-sm text-slate-500 font-medium">Data</p>
-                                  <p className="font-semibold text-slate-800">
+                                  <p className="font-semibold text-slate-800 text-sm sm:text-base">
                                     {format(new Date(appointment.date), 'dd/MM/yyyy', { locale: ptBR })}
                                   </p>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm text-slate-500 font-medium">Horário</p>
-                                  <p className="font-semibold text-slate-800">
+                                  <p className="font-semibold text-slate-800 text-sm sm:text-base">
                                     {format(new Date(appointment.date), 'HH:mm', { locale: ptBR })}
                                   </p>
                                 </div>
-                                <div className="flex flex-col gap-1">
+                                <div className="flex flex-col gap-1 items-end">
                                   <Badge className={getStatusColor(appointment.status)}>
                                     {getStatusLabel(appointment.status)}
                                   </Badge>
