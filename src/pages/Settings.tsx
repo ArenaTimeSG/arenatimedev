@@ -792,28 +792,12 @@ const Settings = () => {
                   </div>
                   
                   <Separator className="bg-slate-200" />
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-base font-medium text-slate-700">Notificações Push</Label>
-                      <p className="text-sm text-slate-600">
-                        Receba notificações no navegador
-                      </p>
-                    </div>
-                    <Switch 
-                      checked={notifications.push}
-                      onCheckedChange={(checked) => handleNotificationChange('push', checked)}
-                      className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                    />
-                  </div>
-
-                  <Separator className="bg-slate-200" />
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label className="text-base font-medium text-slate-700">Alertas de Agendamentos</Label>
+                      <Label className="text-base font-medium text-slate-700">Lembretes de Agendamentos (clientes)</Label>
                       <p className="text-sm text-slate-600">
-                        Receber alertas sobre novos agendamentos
+                        Enviar lembretes para clientes sobre novos agendamentos e atualizações
                       </p>
                     </div>
                     <Switch 
