@@ -506,39 +506,39 @@ const Appointments = () => {
                             onClick={() => handleAppointmentClick(appointment)}
                             whileHover={{ scale: 1.02 }}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div>
-                                  <p className="text-sm text-slate-600 font-medium">
-                                    {formatModalityWithCortesia(appointment)}
-                                  </p>
-                                  <div className="flex items-center gap-2 mt-2">
-                                    {appointment.recurrence_id ? (
-                                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
-                                        🔄 Recorrente
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-200 text-xs">
-                                        ⭐ Único
-                                      </Badge>
-                                    )}
-                                  </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div className="flex-1">
+                                <p className="text-sm text-slate-600 font-medium">
+                                  {formatModalityWithCortesia(appointment)}
+                                </p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  {appointment.recurrence_id ? (
+                                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
+                                      🔄 Recorrente
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-200 text-xs">
+                                      ⭐ Único
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
-                            <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-6 w-full sm:w-auto">
-                                <div className="text-right">
-                                  <p className="text-sm text-slate-500 font-medium">Data</p>
-                                <p className="font-semibold text-slate-800 text-sm sm:text-base">
-                                    {format(new Date(appointment.date), 'dd/MM/yyyy', { locale: ptBR })}
-                                  </p>
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                                <div className="flex items-center gap-4">
+                                  <div className="text-center sm:text-right">
+                                    <p className="text-xs sm:text-sm text-slate-500 font-medium">Data</p>
+                                    <p className="font-semibold text-slate-800 text-sm sm:text-base">
+                                      {format(new Date(appointment.date), 'dd/MM/yyyy', { locale: ptBR })}
+                                    </p>
+                                  </div>
+                                  <div className="text-center sm:text-right">
+                                    <p className="text-xs sm:text-sm text-slate-500 font-medium">Horário</p>
+                                    <p className="font-semibold text-slate-800 text-sm sm:text-base">
+                                      {format(new Date(appointment.date), 'HH:mm', { locale: ptBR })}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="text-right">
-                                  <p className="text-sm text-slate-500 font-medium">Horário</p>
-                                <p className="font-semibold text-slate-800 text-sm sm:text-base">
-                                    {format(new Date(appointment.date), 'HH:mm', { locale: ptBR })}
-                                  </p>
-                                </div>
-                              <div className="flex flex-col gap-1 items-end">
+                                <div className="flex flex-col sm:flex-row gap-1 sm:items-center">
                                   <Badge className={getStatusColor(appointment.status)}>
                                     {getStatusLabel(appointment.status)}
                                   </Badge>
@@ -616,39 +616,39 @@ const Appointments = () => {
                             onClick={() => handleAppointmentClick(appointment)}
                             whileHover={{ scale: 1.02 }}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div>
-                                  <p className="text-sm text-slate-600 font-medium">
-                                    {formatModalityWithCortesia(appointment)}
-                                  </p>
-                                  <div className="flex items-center gap-2 mt-2">
-                                    {appointment.recurrence_id ? (
-                                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
-                                        🔄 Recorrente
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-200 text-xs">
-                                        ⭐ Único
-                                      </Badge>
-                                    )}
-                                  </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div className="flex-1">
+                                <p className="text-sm text-slate-600 font-medium">
+                                  {formatModalityWithCortesia(appointment)}
+                                </p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  {appointment.recurrence_id ? (
+                                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
+                                      🔄 Recorrente
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-200 text-xs">
+                                      ⭐ Único
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
-                              <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-6 w-full sm:w-auto">
-                                <div className="text-right">
-                                  <p className="text-sm text-slate-500 font-medium">Data</p>
-                                  <p className="font-semibold text-slate-800 text-sm sm:text-base">
-                                    {format(new Date(appointment.date), 'dd/MM/yyyy', { locale: ptBR })}
-                                  </p>
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                                <div className="flex items-center gap-4">
+                                  <div className="text-center sm:text-right">
+                                    <p className="text-xs sm:text-sm text-slate-500 font-medium">Data</p>
+                                    <p className="font-semibold text-slate-800 text-sm sm:text-base">
+                                      {format(new Date(appointment.date), 'dd/MM/yyyy', { locale: ptBR })}
+                                    </p>
+                                  </div>
+                                  <div className="text-center sm:text-right">
+                                    <p className="text-xs sm:text-sm text-slate-500 font-medium">Horário</p>
+                                    <p className="font-semibold text-slate-800 text-sm sm:text-base">
+                                      {format(new Date(appointment.date), 'HH:mm', { locale: ptBR })}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="text-right">
-                                  <p className="text-sm text-slate-500 font-medium">Horário</p>
-                                  <p className="font-semibold text-slate-800 text-sm sm:text-base">
-                                    {format(new Date(appointment.date), 'HH:mm', { locale: ptBR })}
-                                  </p>
-                                </div>
-                                <div className="flex flex-col gap-1 items-end">
+                                <div className="flex flex-col sm:flex-row gap-1 sm:items-center">
                                   <Badge className={getStatusColor(appointment.status)}>
                                     {getStatusLabel(appointment.status)}
                                   </Badge>
