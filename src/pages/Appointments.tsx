@@ -235,38 +235,39 @@ const Appointments = () => {
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/dashboard')}
-                className="hover:bg-slate-100"
+                className="hover:bg-slate-100 px-2 sm:px-3"
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
+                <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Voltar</span>
               </Button>
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
-                  <Calendar className="h-6 w-6" />
-                  Agendamentos
+                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
+                  <Calendar className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span>Agendamentos</span>
                 </h1>
-                <p className="text-slate-600 text-sm font-medium">Gerenciamento completo de agendamentos</p>
+                <p className="text-slate-600 text-xs sm:text-sm font-medium hidden sm:block">Gerenciamento completo de agendamentos</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button
                   variant="default"
-                  size="lg"
+                  size="sm"
                   onClick={() => navigate('/appointments/new')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-xs sm:text-sm px-3 sm:px-4 py-2"
                 >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Novo Agendamento
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-2" />
+                  <span className="hidden sm:inline">Novo Agendamento</span>
+                  <span className="sm:hidden">Novo</span>
                 </Button>
               </motion.div>
             </div>
@@ -274,7 +275,7 @@ const Appointments = () => {
         </div>
       </motion.header>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Navegação por Mês */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -289,20 +290,20 @@ const Appointments = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handlePreviousMonth}
-                  className="hover:bg-slate-100 transition-colors px-4 py-2"
+                  className="hover:bg-slate-100 transition-colors px-3 py-2 order-2 sm:order-1"
                 >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  Mês Anterior
+                  <ChevronLeft className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Mês Anterior</span>
                 </Button>
                 
-                <div className="flex items-center gap-4">
-                  <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
-                    <h3 className="text-lg font-semibold text-blue-800">
+                <div className="flex items-center gap-2 sm:gap-4 order-1 sm:order-2 justify-between">
+                  <div className="px-3 sm:px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 className="text-base sm:text-lg font-semibold text-blue-800">
                       {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
                     </h3>
                   </div>
@@ -311,9 +312,10 @@ const Appointments = () => {
                       variant="outline"
                       size="sm"
                       onClick={handleCurrentMonth}
-                      className="border-slate-200 hover:bg-slate-50"
+                      className="border-slate-200 hover:bg-slate-50 px-3"
                     >
-                      Mês Atual
+                      <span className="hidden sm:inline">Mês Atual</span>
+                      <span className="sm:hidden">Hoje</span>
                     </Button>
                   )}
                 </div>
@@ -322,10 +324,10 @@ const Appointments = () => {
                   variant="ghost"
                   size="sm"
                   onClick={handleNextMonth}
-                  className="hover:bg-slate-100 transition-colors px-4 py-2"
+                  className="hover:bg-slate-100 transition-colors px-3 py-2 order-3"
                 >
-                  Próximo Mês
-                  <ChevronRight className="h-4 w-4 ml-2" />
+                  <span className="hidden sm:inline">Próximo Mês</span>
+                  <ChevronRight className="h-4 w-4 sm:ml-2" />
                 </Button>
               </div>
             </CardContent>
@@ -379,7 +381,7 @@ const Appointments = () => {
 
         {/* Estatísticas */}
         <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
@@ -450,13 +452,13 @@ const Appointments = () => {
           transition={{ duration: 0.5, delay: 0.4 }}
         >
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
-                  <Clock className="h-6 w-6 text-blue-600" />
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold text-slate-800">
+                  <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                   Agendamentos Futuros - {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
                 </CardTitle>
-                <div className="flex items-center gap-4 text-sm">
+                <div className="hidden sm:flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
                     <span className="text-slate-600">Recorrente</span>
@@ -468,7 +470,7 @@ const Appointments = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               {Object.keys(groupedFutureAppointments).length === 0 ? (
                 <div className="text-center py-12">
                   <Clock className="h-16 w-16 mx-auto text-slate-300 mb-4" />
@@ -523,7 +525,7 @@ const Appointments = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4 sm:gap-6">
                                 <div className="text-right">
                                   <p className="text-sm text-slate-500 font-medium">Data</p>
                                   <p className="font-semibold text-slate-800">
@@ -566,13 +568,13 @@ const Appointments = () => {
           transition={{ duration: 0.5, delay: 0.5 }}
         >
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-green-50 border-b border-slate-200/60 p-6">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-green-50 border-b border-slate-200/60 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold text-slate-800">
+                  <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                   Agendamentos Realizados - {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
                 </CardTitle>
-                <div className="flex items-center gap-4 text-sm">
+                <div className="hidden sm:flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
                     <span className="text-slate-600">Recorrente</span>
@@ -584,7 +586,7 @@ const Appointments = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               {Object.keys(groupedPastAppointments).length === 0 ? (
                 <div className="text-center py-12">
                   <CheckCircle className="h-16 w-16 mx-auto text-slate-300 mb-4" />
@@ -633,7 +635,7 @@ const Appointments = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-6">
+                              <div className="flex items-center gap-4 sm:gap-6">
                                 <div className="text-right">
                                   <p className="text-sm text-slate-500 font-medium">Data</p>
                                   <p className="font-semibold text-slate-800">

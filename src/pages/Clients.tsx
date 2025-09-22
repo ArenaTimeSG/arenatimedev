@@ -153,35 +153,36 @@ const Clients = () => {
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/dashboard')}
-                className="hover:bg-slate-100"
+                className="hover:bg-slate-100 px-2 sm:px-3"
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
+                <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Voltar</span>
               </Button>
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
-                  <Users className="h-6 w-6" />
-                  Clientes
+                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
+                  <Users className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span>Clientes</span>
                 </h1>
-                <p className="text-slate-600 text-sm font-medium">Gerencie seus clientes</p>
+                <p className="text-slate-600 text-xs sm:text-sm font-medium hidden sm:block">Gerencie seus clientes</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button 
                   onClick={() => navigate('/clients/new')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-xs sm:text-sm px-3 sm:px-4 py-2"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Cliente
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Novo Cliente</span>
+                  <span className="sm:hidden">Novo</span>
                 </Button>
               </motion.div>
             </div>
@@ -189,7 +190,7 @@ const Clients = () => {
         </div>
       </motion.header>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Filtros Responsivos */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -213,7 +214,7 @@ const Clients = () => {
 
         {/* Stats */}
         <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -272,12 +273,12 @@ const Clients = () => {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
-              <CardTitle className="text-xl font-bold text-slate-800">
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-4 sm:p-6">
+              <CardTitle className="text-lg sm:text-xl font-bold text-slate-800">
                 Lista de Clientes ({filteredClients.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               {filteredClients.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="h-16 w-16 mx-auto text-slate-300 mb-4" />
@@ -305,20 +306,20 @@ const Clients = () => {
                   {filteredClients.map((client, index) => (
                     <motion.div 
                       key={client.id} 
-                      className="border border-slate-200 rounded-xl p-6 bg-white/50 hover:bg-white/80 transition-all duration-300"
+                      className="border border-slate-200 rounded-xl p-4 sm:p-6 bg-white/50 hover:bg-white/80 transition-all duration-300"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                       whileHover={{ scale: 1.02 }}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-3">
-                          <h3 className="font-semibold text-slate-800 text-lg">{client.name}</h3>
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="space-y-3 w-full">
+                          <h3 className="font-semibold text-slate-800 text-base sm:text-lg break-words">{client.name}</h3>
+                          <div className="grid grid-cols-1 gap-2 text-sm">
                             {client.email && (
                               <div className="flex items-center gap-2 text-slate-600">
                                 <Mail className="h-4 w-4" />
-                                <span>{client.email}</span>
+                                <span className="truncate max-w-[220px] sm:max-w-none">{client.email}</span>
                               </div>
                             )}
                             {client.phone && (
@@ -333,16 +334,17 @@ const Clients = () => {
                             <span>Cadastrado em: {new Date(client.created_at).toLocaleDateString('pt-BR')}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-3 w-full sm:w-auto">
                           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                             <Button 
                               variant="outline" 
                               size="sm"
                               onClick={() => navigate(`/clients/${client.id}`)}
-                              className="border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                              className="border-slate-200 hover:bg-slate-50 hover:border-slate-300 w-full sm:w-auto text-[11px] sm:text-sm flex flex-col sm:flex-row items-center justify-center"
                             >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Ver Detalhes
+                              <Eye className="h-4 w-4 sm:mr-2 mb-0.5 sm:mb-0" />
+                              <span className="hidden sm:inline">Ver Detalhes</span>
+                              <span className="sm:hidden">Ver</span>
                             </Button>
                           </motion.div>
                           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -350,10 +352,11 @@ const Clients = () => {
                               variant="outline" 
                               size="sm"
                               onClick={() => navigate(`/clients/${client.id}?edit=true`)}
-                              className="border-blue-200 hover:bg-blue-50 hover:border-blue-300 text-blue-700"
+                              className="border-blue-200 hover:bg-blue-50 hover:border-blue-300 text-blue-700 w-full sm:w-auto text-[11px] sm:text-sm flex flex-col sm:flex-row items-center justify-center"
                             >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Editar
+                              <Edit className="h-4 w-4 sm:mr-2 mb-0.5 sm:mb-0" />
+                              <span className="hidden sm:inline">Editar</span>
+                              <span className="sm:hidden">Editar</span>
                             </Button>
                           </motion.div>
                           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -361,10 +364,11 @@ const Clients = () => {
                               variant="outline" 
                               size="sm"
                               onClick={() => setClientToDelete(client)}
-                              className="border-red-200 hover:bg-red-50 hover:border-red-300 text-red-700"
+                              className="border-red-200 hover:bg-red-50 hover:border-red-300 text-red-700 w-full sm:w-auto text-[11px] sm:text-sm flex flex-col sm:flex-row items-center justify-center"
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
+                              <Trash2 className="h-4 w-4 sm:mr-2 mb-0.5 sm:mb-0" />
+                              <span className="hidden sm:inline">Excluir</span>
+                              <span className="sm:hidden">Excluir</span>
                             </Button>
                           </motion.div>
                         </div>

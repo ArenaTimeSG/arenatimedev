@@ -70,11 +70,11 @@ const NewMonthlyEventModal: React.FC<NewMonthlyEventModalProps> = ({ isOpen, onC
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-800">Novo Evento • {dateKey}</h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">✕</button>
+          <h3 className="text-base sm:text-lg font-semibold text-slate-800">Novo Evento • {dateKey}</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-700 text-lg sm:text-xl">✕</button>
         </div>
 
         <div className="grid grid-cols-1 gap-4">
@@ -90,7 +90,7 @@ const NewMonthlyEventModal: React.FC<NewMonthlyEventModalProps> = ({ isOpen, onC
             <Label className="text-sm">Valor (R$)</Label>
             <Input value={amount} onChange={e => setAmount(e.target.value.replace(/[^0-9.,]/g,''))} placeholder="0,00" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-sm">Início</Label>
               <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
@@ -127,9 +127,9 @@ const NewMonthlyEventModal: React.FC<NewMonthlyEventModalProps> = ({ isOpen, onC
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" onClick={onClose} className="border-slate-200">Cancelar</Button>
-          <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">Salvar Evento</Button>
+        <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+          <Button variant="outline" onClick={onClose} className="border-slate-200 w-full sm:w-auto">Cancelar</Button>
+          <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">Salvar Evento</Button>
         </div>
       </div>
     </div>

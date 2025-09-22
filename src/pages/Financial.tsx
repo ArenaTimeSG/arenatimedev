@@ -569,37 +569,37 @@ const Financial = () => {
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/dashboard')}
-                className="hover:bg-slate-100"
+                className="hover:bg-slate-100 px-2 sm:px-3"
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
+                <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Voltar</span>
               </Button>
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
-                  <DollarSign className="h-6 w-6" />
-                  Área Financeira
+                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span>Área Financeira</span>
                 </h1>
-                <p className="text-slate-600 text-sm font-medium">Controle financeiro do ginásio</p>
+                <p className="text-slate-600 text-xs sm:text-sm font-medium hidden sm:block">Controle financeiro do ginásio</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={generatePDFReport}
-                  className="bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm"
+                  className="bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm text-xs sm:text-sm px-2 sm:px-3"
                 >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Gerar Relatório
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Gerar Relatório</span>
                 </Button>
               </motion.div>
             </div>
@@ -607,7 +607,7 @@ const Financial = () => {
         </div>
       </motion.header>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Navegação por Ano */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -615,14 +615,14 @@ const Financial = () => {
           transition={{ duration: 0.5, delay: 0.1 }}
         >
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
-              <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
-                <Calendar className="h-6 w-6 text-blue-600" />
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold text-slate-800">
+                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                 {activeTab === 'horarios' ? 'Navegação por Mês' : 'Navegação por Ano'}
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 {activeTab === 'horarios' ? (
                   // Navegação mensal para horários
                   <>
@@ -630,15 +630,15 @@ const Financial = () => {
                       variant="ghost"
                       size="sm"
                       onClick={handlePreviousMonth}
-                      className="hover:bg-slate-100 transition-colors px-4 py-2"
+                      className="hover:bg-slate-100 transition-colors px-3 py-2 order-2 sm:order-1"
                     >
-                      <ChevronLeft className="h-4 w-4 mr-2" />
-                      Mês Anterior
+                      <ChevronLeft className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Mês Anterior</span>
                     </Button>
                     
-                    <div className="flex items-center gap-4">
-                      <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
-                        <h3 className="text-lg font-semibold text-blue-800">
+                    <div className="flex items-center gap-2 sm:gap-4 order-1 sm:order-2 justify-between">
+                      <div className="px-3 sm:px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                        <h3 className="text-base sm:text-lg font-semibold text-blue-800">
                           {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}
                         </h3>
                       </div>
@@ -647,9 +647,10 @@ const Financial = () => {
                           variant="outline"
                           size="sm"
                           onClick={handleCurrentMonth}
-                          className="border-slate-200 hover:bg-slate-50"
+                          className="border-slate-200 hover:bg-slate-50 px-3"
                         >
-                          Mês Atual
+                          <span className="hidden sm:inline">Mês Atual</span>
+                          <span className="sm:hidden">Hoje</span>
                         </Button>
                       )}
                     </div>
@@ -658,10 +659,10 @@ const Financial = () => {
                       variant="ghost"
                       size="sm"
                       onClick={handleNextMonth}
-                      className="hover:bg-slate-100 transition-colors px-4 py-2"
+                      className="hover:bg-slate-100 transition-colors px-3 py-2 order-3"
                     >
-                      Próximo Mês
-                      <ChevronRight className="h-4 w-4 ml-2" />
+                      <span className="hidden sm:inline">Próximo Mês</span>
+                      <ChevronRight className="h-4 w-4 sm:ml-2" />
                     </Button>
                   </>
                 ) : (
@@ -671,15 +672,15 @@ const Financial = () => {
                       variant="ghost"
                       size="sm"
                       onClick={handlePreviousYear}
-                      className="hover:bg-slate-100 transition-colors px-4 py-2"
+                      className="hover:bg-slate-100 transition-colors px-3 py-2 order-2 sm:order-1"
                     >
-                      <ChevronLeft className="h-4 w-4 mr-2" />
-                      Ano Anterior
+                      <ChevronLeft className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Ano Anterior</span>
                     </Button>
                     
-                    <div className="flex items-center gap-4">
-                      <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
-                        <h3 className="text-lg font-semibold text-blue-800">
+                    <div className="flex items-center gap-2 sm:gap-4 order-1 sm:order-2 justify-between">
+                      <div className="px-3 sm:px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                        <h3 className="text-base sm:text-lg font-semibold text-blue-800">
                           {selectedYear.getFullYear()}
                         </h3>
                       </div>
@@ -688,9 +689,10 @@ const Financial = () => {
                           variant="outline"
                           size="sm"
                           onClick={handleCurrentYear}
-                          className="border-slate-200 hover:bg-slate-50"
+                          className="border-slate-200 hover:bg-slate-50 px-3"
                         >
-                          Ano Atual
+                          <span className="hidden sm:inline">Ano Atual</span>
+                          <span className="sm:hidden">Hoje</span>
                         </Button>
                       )}
                     </div>
@@ -699,10 +701,10 @@ const Financial = () => {
                       variant="ghost"
                       size="sm"
                       onClick={handleNextYear}
-                      className="hover:bg-slate-100 transition-colors px-4 py-2"
+                      className="hover:bg-slate-100 transition-colors px-3 py-2 order-3"
                     >
-                      Próximo Ano
-                      <ChevronRight className="h-4 w-4 ml-2" />
+                      <span className="hidden sm:inline">Próximo Ano</span>
+                      <ChevronRight className="h-4 w-4 sm:ml-2" />
                     </Button>
                   </>
                 )}
@@ -718,21 +720,23 @@ const Financial = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'horarios' | 'eventos')} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="horarios" className="flex items-center gap-2">
+            <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6">
+              <TabsTrigger value="horarios" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-2">
                 <Clock className="h-4 w-4" />
-                Agenda de Horários
+                <span className="hidden sm:inline">Agenda de Horários</span>
+                <span className="sm:hidden">Horários</span>
               </TabsTrigger>
-              <TabsTrigger value="eventos" className="flex items-center gap-2">
+              <TabsTrigger value="eventos" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-2">
                 <Calendar className="h-4 w-4" />
-                Agenda de Eventos
+                <span className="hidden sm:inline">Agenda de Eventos</span>
+                <span className="sm:hidden">Eventos</span>
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="horarios" className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <TabsContent value="horarios" className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">Valor Recebido</p>
@@ -751,7 +755,7 @@ const Financial = () => {
           </Card>
 
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">A Cobrar</p>
@@ -770,7 +774,7 @@ const Financial = () => {
           </Card>
 
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">A Receber</p>
@@ -790,7 +794,7 @@ const Financial = () => {
           </Card>
 
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">Cancelados</p>
@@ -810,10 +814,10 @@ const Financial = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="eventos" className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <TabsContent value="eventos" className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">Valor Recebido</p>
@@ -832,7 +836,7 @@ const Financial = () => {
                 </Card>
 
                 <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">A Cobrar</p>
@@ -851,7 +855,7 @@ const Financial = () => {
                 </Card>
 
                 <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">Total de Eventos</p>
@@ -870,7 +874,7 @@ const Financial = () => {
                 </Card>
 
                 <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-slate-600 tracking-wide uppercase">Cancelados</p>
@@ -899,28 +903,29 @@ const Financial = () => {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
-              <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
-                <FileText className="h-6 w-6 text-blue-600" />
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold text-slate-800">
+                <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                 Relatório Anual
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-2">
-                  <p className="text-sm text-slate-600 font-medium">
+                  <p className="text-xs sm:text-sm text-slate-600 font-medium">
                     Gere um relatório completo em PDF com todos os dados financeiros do ano selecionado.
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-[11px] sm:text-xs text-slate-500">
                     O relatório incluirá: lista de agendamentos, resumo por cliente, estatísticas financeiras e receita total.
                   </p>
                 </div>
                 <Button 
                   onClick={generatePDFReport}
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-xs sm:text-sm px-3 sm:px-4 py-2"
                 >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Gerar Relatório em PDF
+                  <FileText className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Gerar Relatório em PDF</span>
+                  <span className="sm:hidden">PDF</span>
                 </Button>
               </div>
             </CardContent>
@@ -934,13 +939,13 @@ const Financial = () => {
           transition={{ duration: 0.5, delay: 0.4 }}
         >
           <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
-              <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
-                <Users className="h-6 w-6 text-blue-600" />
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold text-slate-800">
+                <Users className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                 {activeTab === 'horarios' ? `Resumo por Cliente - ${format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}` : `Resumo por Evento - ${selectedYear.getFullYear()}`}
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               {activeTab === 'horarios' ? (
                 // Conteúdo para agendamentos de horários
                 clientsFinancial.length === 0 ? (
@@ -962,42 +967,43 @@ const Financial = () => {
                   {clientsFinancial.map((client) => (
                     <motion.div 
                       key={client.id} 
-                      className="border border-slate-200 rounded-xl p-6 bg-white/50 hover:bg-white/80 transition-all duration-300"
+                      className="border border-slate-200 rounded-xl p-4 sm:p-6 bg-white/50 hover:bg-white/80 transition-all duration-300"
                       whileHover={{ scale: 1.02 }}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
-                          <h3 className="font-semibold text-slate-800 text-lg">{client.name}</h3>
+                          <h3 className="font-semibold text-slate-800 text-base sm:text-lg break-words">{client.name}</h3>
                           <p className="text-sm text-slate-500 font-medium">
                             {client.total_agendamentos} agendamentos
                           </p>
                         </div>
-                        <div className="flex items-center gap-6">
+                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-6">
                           <div className="text-right">
                             <p className="text-sm text-slate-500 font-medium">Pago</p>
-                            <p className="font-bold text-green-600 text-lg">
+                            <p className="font-bold text-green-600 text-base sm:text-lg">
                               {formatCurrency(client.total_pago)}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm text-slate-500 font-medium">Pendente</p>
-                            <p className="font-bold text-orange-600 text-lg">
+                            <p className="font-bold text-orange-600 text-base sm:text-lg">
                               {formatCurrency(client.total_pendente)}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm text-slate-500 font-medium">Total</p>
-                            <p className="font-bold text-slate-800 text-lg">
+                            <p className="font-bold text-slate-800 text-base sm:text-lg">
                               {formatCurrency(client.total_pago + client.total_pendente)}
                             </p>
                           </div>
                           <Button
                             size="sm"
                             onClick={() => handleOpenPaymentModal(client)}
-                            className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 h-8"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-2 h-9 w-full sm:w-auto"
                           >
                             <CreditCard className="h-3 w-3 mr-1" />
-                            Pagamento
+                            <span className="hidden sm:inline">Pagamento</span>
+                            <span className="sm:hidden">Pagar</span>
                           </Button>
                         </div>
                       </div>

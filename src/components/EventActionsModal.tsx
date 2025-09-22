@@ -112,16 +112,16 @@ const EventActionsModal: React.FC<EventActionsModalProps> = ({ isOpen, onClose, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-200 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-200 p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-800">Ações do Evento</h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">✕</button>
+          <h3 className="text-base sm:text-lg font-semibold text-slate-800">Ações do Evento</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-700 text-lg sm:text-xl">✕</button>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm">Cliente</label>
                 <input className="w-full text-sm border border-slate-200 rounded-lg p-2"
@@ -133,7 +133,7 @@ const EventActionsModal: React.FC<EventActionsModalProps> = ({ isOpen, onClose, 
                        value={phone} onChange={e => setPhone(e.target.value.replace(/[^0-9+()-]/g,''))} placeholder="(11) 99999-9999" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm">Valor (R$)</label>
                 <input className="w-full text-sm border border-slate-200 rounded-lg p-2"
@@ -148,7 +148,7 @@ const EventActionsModal: React.FC<EventActionsModalProps> = ({ isOpen, onClose, 
                 </select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm">Início</label>
                 <input type="time" className="w-full text-sm border border-slate-200 rounded-lg p-2" value={startTime} onChange={e => setStartTime(e.target.value)} />
@@ -170,9 +170,9 @@ const EventActionsModal: React.FC<EventActionsModalProps> = ({ isOpen, onClose, 
           </div>
         </div>
 
-          <div className="flex justify-between gap-3 mt-6">
-          <Button variant="destructive" onClick={() => onDelete()} className="bg-red-600 hover:bg-red-700">Excluir</Button>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row justify-between gap-3 mt-6">
+          <Button variant="destructive" onClick={() => onDelete()} className="bg-red-600 hover:bg-red-700 w-full sm:w-auto">Excluir</Button>
+          <div className="flex flex-col sm:flex-row gap-3">
             {(() => {
               const disabled = !normalizePhoneForWhatsApp(phone);
               const href = buildWhatsAppLink() || '#';
@@ -183,13 +183,13 @@ const EventActionsModal: React.FC<EventActionsModalProps> = ({ isOpen, onClose, 
                   rel="noopener noreferrer"
                   onClick={(e) => { if (disabled) e.preventDefault(); }}
                   title={disabled ? 'Preencha o telefone para enviar no WhatsApp' : 'Abrir conversa no WhatsApp'}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-white ${disabled ? 'bg-green-400 cursor-not-allowed opacity-60' : 'bg-green-600 hover:bg-green-700'}`}
+                  className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white w-full sm:w-auto ${disabled ? 'bg-green-400 cursor-not-allowed opacity-60' : 'bg-green-600 hover:bg-green-700'}`}
                 >
                   <MessageCircle className="h-4 w-4" /> WhatsApp
                 </a>
               );
             })()}
-            <Button variant="outline" onClick={onClose} className="border-slate-200">Cancelar</Button>
+            <Button variant="outline" onClick={onClose} className="border-slate-200 w-full sm:w-auto">Cancelar</Button>
             <Button onClick={async () => {
               // Se onSave existir, salva dados completos; caso contrário, apenas o status
               if (onSave) {
@@ -209,7 +209,7 @@ const EventActionsModal: React.FC<EventActionsModalProps> = ({ isOpen, onClose, 
                 await onUpdateStatus(status);
               }
               onClose();
-            }} className="bg-blue-600 hover:bg-blue-700">Salvar</Button>
+            }} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">Salvar</Button>
           </div>
         </div>
       </div>

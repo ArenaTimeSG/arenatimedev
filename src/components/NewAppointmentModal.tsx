@@ -694,27 +694,27 @@ const NewAppointmentModal = ({
             </div>
           )}
 
-          <div className="flex justify-between items-center mt-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
             <div>
               {onBlockTime && (
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onBlockTime}
-                  className="border-orange-200 text-orange-600 hover:bg-orange-50"
+                  className="border-orange-200 text-orange-600 hover:bg-orange-50 w-full sm:w-auto"
                 >
                   Bloquear Horário
                 </Button>
               )}
             </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
                 Cancelar
               </Button>
               <Button 
                 type="submit" 
                 disabled={isLoading}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
               >
                 {isLoading ? 'Criando...' : 'Criar Agendamento'}
               </Button>

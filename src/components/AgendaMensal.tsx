@@ -83,14 +83,14 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
   return (
     <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-lg overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
+      <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-4 sm:p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Calendar className="h-6 w-6 text-blue-600" />
-            <h2 className="text-xl font-bold text-slate-800">Agenda</h2>
+            <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800">Agenda</h2>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2">
             <div className="flex items-center gap-1 px-2 py-1 bg-green-50 rounded-md">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
               <span className="text-green-700 text-sm font-medium">Pago</span>
@@ -108,23 +108,23 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
       </div>
 
       {/* Navigation */}
-      <div className="p-6">
-        <div className="flex items-center justify-between bg-slate-200/60 rounded-2xl p-4">
+      <div className="p-4 sm:p-6">
+        <div className="flex items-center justify-between bg-slate-200/60 rounded-2xl p-3 sm:p-4">
           <button
             onClick={handlePrev}
             className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-800 transition-colors"
             aria-label="Mês anterior"
           >
             <ChevronLeft className="w-4 h-4" />
-            <span className="text-sm font-medium">Anterior</span>
+            <span className="text-xs sm:text-sm font-medium hidden sm:inline">Anterior</span>
           </button>
 
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg sm:text-xl font-semibold text-slate-800 capitalize tracking-tight">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <h3 className="text-sm sm:text-lg lg:text-xl font-semibold text-slate-800 capitalize tracking-tight">
               {monthYearLabel}
             </h3>
             <select
-              className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm"
+              className="text-xs sm:text-sm bg-white border border-slate-200 rounded-lg px-1 sm:px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm"
               value={getYear(cursor)}
               onChange={handleYearChange}
             >
@@ -139,7 +139,7 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
             className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-800 transition-colors"
             aria-label="Próximo mês"
           >
-            <span className="text-sm font-medium">Próxima</span>
+            <span className="text-xs sm:text-sm font-medium hidden sm:inline">Próxima</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -183,7 +183,7 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
               key={dateKey + idx}
               onClick={handleCellClick}
               className={[
-                'min-h-[92px] sm:min-h-[104px] p-2 border text-left transition-all duration-200 rounded-xl',
+                'min-h-[80px] sm:min-h-[92px] lg:min-h-[104px] p-1 sm:p-2 border text-left transition-all duration-200 rounded-xl',
                 baseBgClass,
                 bgClass ? `${bgClass}` : '',
                 isToday ? 'relative ring-2 ring-blue-400 ring-offset-1 shadow-lg' : '',
@@ -191,21 +191,21 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
               ].join(' ')}
             >
               <div className="flex items-center justify-between">
-                <span className={['text-sm font-bold', isCurrentMonth ? 'text-slate-700' : 'text-slate-400'].join(' ')}>
+                <span className={['text-xs sm:text-sm font-bold', isCurrentMonth ? 'text-slate-700' : 'text-slate-400'].join(' ')}>
                   {format(day, 'd', { locale: ptBR })}
                 </span>
                 {isToday && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 shadow-sm">Hoje</span>
+                  <span className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 shadow-sm">Hoje</span>
                 )}
               </div>
 
               {/* Events preview area */}
-              <div className="mt-2 space-y-1 pointer-events-none">
-                {dayEvents.slice(0, 3).map(ev => (
+              <div className="mt-1 sm:mt-2 space-y-0.5 sm:space-y-1 pointer-events-none">
+                {dayEvents.slice(0, 2).map(ev => (
                   <div
                     key={ev.id}
                     className={[
-                      'text-[11px] sm:text-[12px] px-2 py-1.5 rounded-lg truncate shadow-lg font-semibold',
+                      'text-[9px] sm:text-[11px] lg:text-[12px] px-1 sm:px-2 py-0.5 sm:py-1.5 rounded-lg truncate shadow-lg font-semibold',
                       cellHasBg ? 'bg-white/95 text-slate-900 border-2 border-white/80 backdrop-blur-sm' : (ev.color || 'bg-blue-200 text-blue-900 border-2 border-blue-300')
                     ].join(' ')}
                     title={ev.title}
@@ -214,8 +214,8 @@ const AgendaMensal: React.FC<AgendaMensalProps> = ({ initialDate = new Date(), o
                     {ev.title || 'Evento'}
                   </div>
                 ))}
-                {dayEvents.length > 3 && (
-                  <div className="text-[9px] text-slate-500 font-medium">+{dayEvents.length - 3} mais</div>
+                {dayEvents.length > 2 && (
+                  <div className="text-[8px] sm:text-[9px] text-slate-500 font-medium">+{dayEvents.length - 2} mais</div>
                 )}
               </div>
             </button>

@@ -661,7 +661,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Modern Sidebar */}
       <motion.aside 
-        className="fixed left-0 top-0 h-full w-20 bg-white/80 backdrop-blur-xl border-r border-slate-200/60 shadow-xl z-40"
+        className="fixed left-0 top-0 h-full w-16 sm:w-20 bg-white/80 backdrop-blur-xl border-r border-slate-200/60 shadow-xl z-40"
         initial={{ x: -100 }}
         animate={{ x: 0 }}
         transition={{ duration: 0.5 }}
@@ -861,7 +861,7 @@ const Dashboard = () => {
       </motion.aside>
 
       {/* Main Content */}
-      <div className="ml-20">
+      <div className="ml-16 sm:ml-20">
         {/* Modern Header */}
         <motion.header 
           className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-30 shadow-sm"
@@ -869,26 +869,26 @@ const Dashboard = () => {
           animate={{ y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   ArenaTime
                 </h1>
-                <p className="text-slate-600 text-sm font-medium">Dashboard de Gestão</p>
+                <p className="text-slate-600 text-xs sm:text-sm font-medium hidden sm:block">Dashboard de Gestão</p>
               </div>
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 {viewMode === 'weekly' && (
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={generateAvailableHoursPDF}
-                      className="bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm"
+                      className="bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm text-xs sm:text-sm px-2 sm:px-3"
                     >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Horários Disponíveis
+                      <FileText className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Horários Disponíveis</span>
                     </Button>
                   </motion.div>
                 )}
@@ -898,9 +898,14 @@ const Dashboard = () => {
                     variant="default"
                     size="sm"
                     onClick={() => setViewMode(m => (m === 'weekly' ? 'monthly' : 'weekly'))}
-                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm text-xs sm:text-sm px-2 sm:px-3"
                   >
-                    {viewMode === 'weekly' ? 'Ver Agenda Mensal' : 'Ver Agenda Semanal'}
+                    <span className="hidden sm:inline">
+                      {viewMode === 'weekly' ? 'Ver Agenda Mensal' : 'Ver Agenda Semanal'}
+                    </span>
+                    <span className="sm:hidden">
+                      {viewMode === 'weekly' ? 'Mensal' : 'Semanal'}
+                    </span>
                   </Button>
                 </motion.div>
               </div>
@@ -909,7 +914,7 @@ const Dashboard = () => {
         </motion.header>
 
         {/* Main Content Area */}
-        <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
           {/* Stats Cards - Adapt to viewMode */}
           <motion.div 
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
