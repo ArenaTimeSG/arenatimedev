@@ -879,18 +879,19 @@ const Dashboard = () => {
               </div>
               
               <div className="flex items-center gap-4">
-                
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={generateAvailableHoursPDF}
-                    className="bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm"
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Horários Disponíveis
-                  </Button>
-                </motion.div>
+                {viewMode === 'weekly' && (
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={generateAvailableHoursPDF}
+                      className="bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Horários Disponíveis
+                    </Button>
+                  </motion.div>
+                )}
 
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
