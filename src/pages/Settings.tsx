@@ -742,25 +742,31 @@ const Settings = () => {
                  
                  <LinkCompartilhamento />
                  
-                 <PaymentPolicySettings 
-                   paymentPolicy={settings?.payment_policy || 'sem_pagamento'}
-                   onUpdate={handleUpdatePaymentPolicy}
-                 />
-                 
-                 <MercadoPagoSettings 
-                   mercadoPagoEnabled={settings?.mercado_pago_enabled || false}
-                   accessToken={settings?.mercado_pago_access_token || ''}
-                   publicKey={settings?.mercado_pago_public_key || ''}
-                   webhookUrl={settings?.mercado_pago_webhook_url || ''}
-                   onUpdate={async (mercadoPagoData) => {
-                     await handleUpdateMercadoPago({
-                       mercado_pago_enabled: mercadoPagoData.mercado_pago_enabled,
-                       mercado_pago_access_token: mercadoPagoData.mercado_pago_access_token,
-                       mercado_pago_public_key: mercadoPagoData.mercado_pago_public_key,
-                       mercado_pago_webhook_url: mercadoPagoData.mercado_pago_webhook_url
-                     });
-                   }}
-                 />
+                 {/* Configurações de pagamento desativadas (visual apenas) */}
+                 <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
+                   <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
+                     <CardTitle className="text-xl font-bold text-slate-800">Política de Pagamento</CardTitle>
+                   </CardHeader>
+                   <CardContent className="p-6">
+                     <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-slate-700">
+                       Em breve.
+                     </div>
+                     <p className="mt-3 text-sm text-slate-500">
+                       Padrão atual para agendamentos online: <span className="font-semibold">Sem pagamento</span>.
+                     </p>
+                   </CardContent>
+                 </Card>
+
+                 <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
+                   <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
+                     <CardTitle className="text-xl font-bold text-slate-800">Configurações do Mercado Pago</CardTitle>
+                   </CardHeader>
+                   <CardContent className="p-6">
+                     <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-slate-700">
+                       Em breve.
+                     </div>
+                   </CardContent>
+                 </Card>
                  
                  <ConfiguracoesRegras 
                    tempoMinimo={configuracaoAgendamento.tempoMinimoAntecedencia}
