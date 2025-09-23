@@ -164,17 +164,17 @@ export const useClientBookings = (adminUserId?: string) => {
         throw new Error('ID do cliente é obrigatório');
       }
       
-      // Verificar se já existe um agendamento neste horário (validação básica)
+      // Verificar se já existe um agendamento neste horário (validação precisa por data+hora)
       try {
-        const appointmentDate = new Date(bookingData.date);
-        const dateKey = appointmentDate.toISOString().split('T')[0];
-        
-        // Verificar se já existe um agendamento neste horário
+        // bookingData.date já deve estar no formato completo 'YYYY-MM-DDTHH:mm:ss'
+        const fullDateTime = bookingData.date;
+
+        // Verificar se já existe um agendamento exatamente neste horário
         const { data: existingAppointments, error: existingError } = await supabase
           .from('appointments')
           .select('id')
           .eq('user_id', bookingData.user_id)
-          .eq('date', dateKey)
+          .eq('date', fullDateTime)
           .not('status', 'eq', 'cancelado');
 
         if (existingError) {
@@ -183,7 +183,7 @@ export const useClientBookings = (adminUserId?: string) => {
         }
 
         if (existingAppointments && existingAppointments.length > 0) {
-          console.error('❌ Horário já ocupado:', { date: dateKey });
+          console.error('❌ Horário já ocupado:', { date: fullDateTime });
           throw new Error('Este horário já está ocupado');
         }
 
