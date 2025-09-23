@@ -23,7 +23,9 @@ import { LinkCompartilhamento } from '@/components/booking-settings/LinkComparti
 import { PaymentPolicySettings } from '@/components/booking-settings/PaymentPolicySettings';
 import { ConfiguracoesRegras } from '@/components/booking-settings/ConfiguracoesRegras';
 import { MercadoPagoSettings } from '@/components/booking-settings/MercadoPagoSettings';
+import StripeSubscriptionSettings from '@/components/billing/StripeSubscriptionSettings';
 import { TimeFormatToggle } from '@/components/settings/TimeFormatToggle';
+import RequireSubscription from '@/components/auth/RequireSubscription';
 
 
 const Settings = () => {
@@ -499,6 +501,7 @@ const Settings = () => {
   ];
 
   return (
+    <RequireSubscription>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Modern Header */}
       <motion.header 
@@ -547,7 +550,8 @@ const Settings = () => {
                 { value: "appointments", label: "Agendamentos", icon: <SettingsIcon className="h-4 w-4" /> },
                 { value: "online-booking", label: "Agendamento Online", icon: <Globe className="h-4 w-4" /> },
                 { value: "notifications", label: "Notificações", icon: <Bell className="h-4 w-4" /> },
-                { value: "security", label: "Segurança", icon: <Shield className="h-4 w-4" /> }
+                { value: "security", label: "Segurança", icon: <Shield className="h-4 w-4" /> },
+                { value: "subscription", label: "Assinatura", icon: <SettingsIcon className="h-4 w-4" /> }
               ]}
               value={activeTab}
               onValueChange={handleTabChange}
@@ -742,31 +746,10 @@ const Settings = () => {
                  
                  <LinkCompartilhamento />
                  
-                 {/* Configurações de pagamento desativadas (visual apenas) */}
-                 <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-                   <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
-                     <CardTitle className="text-xl font-bold text-slate-800">Política de Pagamento</CardTitle>
-                   </CardHeader>
-                   <CardContent className="p-6">
-                     <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-slate-700">
-                       Em breve.
-                     </div>
-                     <p className="mt-3 text-sm text-slate-500">
-                       Padrão atual para agendamentos online: <span className="font-semibold">Sem pagamento</span>.
-                     </p>
-                   </CardContent>
-                 </Card>
-
-                 <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden">
-                   <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60 p-6">
-                     <CardTitle className="text-xl font-bold text-slate-800">Configurações do Mercado Pago</CardTitle>
-                   </CardHeader>
-                   <CardContent className="p-6">
-                     <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-slate-700">
-                       Em breve.
-                     </div>
-                   </CardContent>
-                 </Card>
+                 {/* Removidos itens de pagamento desta aba */}
+                 
+                 {/* Assinatura da Plataforma (Stripe) - visual */}
+                 <StripeSubscriptionSettings />
                  
                  <ConfiguracoesRegras 
                    tempoMinimo={configuracaoAgendamento.tempoMinimoAntecedencia}
@@ -889,6 +872,14 @@ const Settings = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Aba Assinatura (Stripe) */}
+            <TabsContent value="subscription" className="space-y-6">
+              <div className="grid gap-6">
+                {/* Assinatura da Plataforma (Stripe) */}
+                <StripeSubscriptionSettings />
+              </div>
+            </TabsContent>
           </Tabs>
         </motion.div>
       </div>
@@ -899,6 +890,7 @@ const Settings = () => {
         onClose={() => setIsChangePasswordModalOpen(false)}
       />
     </div>
+    </RequireSubscription>
   );
 };
 

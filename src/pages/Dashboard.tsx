@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import RequireSubscription from '@/components/auth/RequireSubscription';
 import { useWorkingHours } from '@/hooks/useWorkingHours';
 import { useSettingsSync } from '@/hooks/useSettingsSync';
 import { useToast } from '@/hooks/use-toast';
@@ -658,6 +659,7 @@ const Dashboard = () => {
   }
 
   return (
+    <RequireSubscription>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Modern Sidebar */}
       <motion.aside 
@@ -1340,6 +1342,7 @@ const Dashboard = () => {
       )}
 
     </div>
+    </RequireSubscription>
   );
 };
 
