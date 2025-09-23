@@ -156,7 +156,6 @@ export const LinkCompartilhamento = () => {
             <li>• Compartilhe o link com seus clientes</li>
             <li>• Eles poderão escolher modalidades e horários</li>
             <li>• Os agendamentos serão salvos automaticamente</li>
-            <li>• Configure se quer confirmação automática ou manual</li>
           </ul>
         </motion.div>
       </CardContent>
