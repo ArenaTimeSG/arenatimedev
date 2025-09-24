@@ -137,13 +137,43 @@ const Settings = () => {
         });
       }
 
-      if (settings.personal_data) {
+      // CORREÇÃO: Usar dados do auth.user (mesma fonte do dropdown) se profile não existir
+      if (profile) {
+        console.log('🔍 Settings: usando dados do profile:', profile);
+        console.log('🔍 Settings: profile.name:', profile.name);
+        console.log('🔍 Settings: profile.email:', profile.email);
+        console.log('🔍 Settings: profile.phone:', profile.phone);
+        
+        setPersonalData({
+          name: profile.name || '',
+          email: profile.email || user?.email || '',
+          phone: profile.phone || ''
+        });
+        setHasProfileChanges(false);
+      } else if (user) {
+        console.log('🔍 Settings: usando dados do auth.user (mesma fonte do dropdown):', user);
+        console.log('🔍 Settings: user.email:', user.email);
+        console.log('🔍 Settings: user.user_metadata:', user.user_metadata);
+        
+        setPersonalData({
+          name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
+          email: user.email || '',
+          phone: user.user_metadata?.phone || ''
+        });
+        setHasProfileChanges(false);
+      } else if (settings.personal_data && Object.keys(settings.personal_data).length > 0) {
+        console.log('🔍 Settings: fallback para personal_data:', settings.personal_data);
         setPersonalData({
           name: settings.personal_data.name || '',
           email: settings.personal_data.email || '',
           phone: settings.personal_data.phone || ''
         });
-        setHasProfileChanges(false); // Reset das mudanças ao carregar
+        setHasProfileChanges(false);
+      } else {
+        console.log('❌ Settings: nenhuma fonte de dados encontrada');
+        console.log('🔍 Settings: settings completo:', settings);
+        console.log('🔍 Settings: profile:', profile);
+        console.log('🔍 Settings: user:', user);
       }
 
       // Carregar configurações de agendamento online
@@ -154,7 +184,7 @@ const Settings = () => {
         duracaoPadrao: settings.online_booking?.duracao_padrao ?? 60
       }));
     }
-  }, [settings]);
+  }, [settings, profile, user]);
 
   // Atualizar link do agendamento online quando o perfil carregar
   useEffect(() => {
