@@ -123,20 +123,31 @@ export const useClientBookings = (adminUserId?: string) => {
       if (!clientId && bookingData.client_data) {
         console.log('🔍 Processando cliente para agendamento online:', bookingData.client_data.email);
         
-        // Buscar cliente existente primeiro
+        // Buscar cliente existente primeiro - verificar por email E user_id
         const { data: existingClient } = await supabase
           .from('booking_clients')
-          .select('id')
+          .select('id, name, email, user_id')
           .eq('email', bookingData.client_data.email)
           .eq('user_id', bookingData.user_id)
           .maybeSingle();
 
+        console.log('🔍 useClientBookings: Buscando cliente existente:', {
+          email: bookingData.client_data.email,
+          user_id: bookingData.user_id,
+          found: !!existingClient
+        });
+
         if (existingClient) {
           clientId = existingClient.id;
-          console.log('✅ Cliente existente encontrado:', clientId);
+          console.log('✅ Cliente existente encontrado:', { clientId, email: bookingData.client_data.email, user_id: bookingData.user_id });
          } else {
            // Cliente não existe nesta conta, criar novo
-           console.log('🔍 Criando novo cliente para esta conta...');
+           console.log('🔍 Criando novo cliente para esta conta...', { 
+             name: bookingData.client_data.name,
+             email: bookingData.client_data.email,
+             phone: bookingData.client_data.phone,
+             user_id: bookingData.user_id
+           });
            
            const { data: newClient, error: clientError } = await supabase
              .from('booking_clients')
@@ -147,7 +158,7 @@ export const useClientBookings = (adminUserId?: string) => {
                password_hash: 'temp_hash',
                user_id: bookingData.user_id
              })
-             .select('id')
+             .select('id, name, email, user_id')
              .single();
 
            if (clientError) {
@@ -155,7 +166,12 @@ export const useClientBookings = (adminUserId?: string) => {
              throw new Error('Erro ao criar cliente: ' + clientError.message);
            } else {
              clientId = newClient.id;
-             console.log('✅ Cliente criado com sucesso:', clientId);
+             console.log('✅ Cliente criado com sucesso:', { 
+               clientId, 
+               name: newClient.name,
+               email: newClient.email,
+               user_id: newClient.user_id
+             });
            }
          }
       }
@@ -194,16 +210,27 @@ export const useClientBookings = (adminUserId?: string) => {
       
       // Determinar payment_status e status baseado na política de pagamento
       let paymentStatus: 'not_required' | 'pending' | 'failed' = 'not_required';
-      let appointmentStatus: 'a_cobrar' | 'agendado' = 'a_cobrar';
+      let appointmentStatus: 'a_cobrar' | 'agendado' = 'agendado'; // Padrão para agendamentos online
+      
+      console.log('🔍 useClientBookings: Determinando status do agendamento:', {
+        payment_policy: bookingData.payment_policy,
+        autoConfirmada: autoConfirmada,
+        status_inicial: appointmentStatus
+      });
       
       if (bookingData.payment_policy === 'opcional') {
         paymentStatus = 'not_required'; // Cliente pode escolher pagar depois
-        // Para pagamento opcional, usar auto_confirmada para determinar o status
-        appointmentStatus = autoConfirmada ? 'agendado' : 'a_cobrar';
+        // Para pagamento opcional, agendamentos online são sempre 'agendado'
+        appointmentStatus = 'agendado';
       } else {
-        // Para 'sem_pagamento', usar auto_confirmada para determinar o status
-        appointmentStatus = autoConfirmada ? 'agendado' : 'a_cobrar';
+        // Para 'sem_pagamento', agendamentos online são sempre 'agendado'
+        appointmentStatus = 'agendado';
       }
+      
+      console.log('✅ useClientBookings: Status final determinado:', {
+        paymentStatus,
+        appointmentStatus
+      });
 
 
       const appointmentData = {
@@ -211,6 +238,7 @@ export const useClientBookings = (adminUserId?: string) => {
         date: bookingData.date,
         status: appointmentStatus,
         modality: bookingData.modality,
+        modality_id: bookingData.modality_id, // Adicionar modality_id
         valor_total: bookingData.valor_total,
         payment_status: paymentStatus,
         booking_source: 'online' // Agendamentos online sempre têm source 'online'
@@ -218,6 +246,17 @@ export const useClientBookings = (adminUserId?: string) => {
 
       // Adicionar client_id ao agendamento
       appointmentData.client_id = clientId;
+
+      console.log('🔍 useClientBookings: Criando agendamento:', {
+        clientId: clientId,
+        adminUserId: bookingData.user_id,
+        date: bookingData.date,
+        status: appointmentStatus,
+        modality: bookingData.modality,
+        valor_total: bookingData.valor_total,
+        payment_status: paymentStatus,
+        booking_source: 'online'
+      });
 
       const { data: newBooking, error } = await supabase
         .from('appointments')
@@ -229,6 +268,14 @@ export const useClientBookings = (adminUserId?: string) => {
         console.error('❌ useClientBookings: Erro ao criar agendamento:', error);
         throw error;
       }
+
+      console.log('✅ useClientBookings: Agendamento criado com sucesso:', {
+        id: newBooking.id,
+        client_id: newBooking.client_id,
+        user_id: newBooking.user_id,
+        date: newBooking.date,
+        status: newBooking.status
+      });
 
       
 

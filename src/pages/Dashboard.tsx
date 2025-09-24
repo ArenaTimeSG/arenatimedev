@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import RequireSubscription from '@/components/auth/RequireSubscription';
 import { useWorkingHours } from '@/hooks/useWorkingHours';
 import { useSettingsSync } from '@/hooks/useSettingsSync';
 import { useToast } from '@/hooks/use-toast';
@@ -364,6 +363,11 @@ const Dashboard = () => {
       }
     }
     
+    // Se for cortesia (independente do status), sempre mostrar como cortesia
+    if (is_cortesia) {
+      effectiveStatus = 'cortesia';
+    }
+    
     if (recurrence_id) {
       switch (effectiveStatus) {
         case 'pago': return 'bg-green-100 text-green-800 border-green-200';
@@ -393,13 +397,13 @@ const Dashboard = () => {
       appointmentDate.setHours(0, 0, 0, 0);
       
       if (isBefore(appointmentDate, today) && status === 'agendado') {
-        return is_cortesia ? 'Cortesia' : 'A Cobrar';
+        return is_cortesia ? '🎁 Cortesia' : 'A Cobrar';
       }
     }
     
     if (status === 'cancelado') return 'Cancelado';
     if (status === 'pago') return 'Pago';
-    if (status === 'agendado') return 'Agendado';
+    if (status === 'agendado') return is_cortesia ? '🎁 Cortesia' : 'Agendado';
     if (status === 'a_cobrar') return 'A Cobrar';
     if (status === 'cortesia') return '🎁 Cortesia';
     
@@ -659,7 +663,6 @@ const Dashboard = () => {
   }
 
   return (
-    <RequireSubscription>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Modern Sidebar */}
       <motion.aside 
@@ -1342,7 +1345,6 @@ const Dashboard = () => {
       )}
 
     </div>
-    </RequireSubscription>
   );
 };
 

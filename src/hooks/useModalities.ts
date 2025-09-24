@@ -49,27 +49,18 @@ export const useModalities = (adminUserId?: string) => {
 
         console.log('🔍 useModalities: Buscando modalidades para userId:', userId);
 
-        // Usar fetch direto para contornar problemas de tipos
-        const url = `${(supabase as any).supabaseUrl}/rest/v1/modalities?user_id=eq.${userId}&select=*&order=name.asc`;
-        console.log('🔍 useModalities: URL da requisição:', url);
-        
-        const response = await fetch(url, {
-          headers: {
-            'apikey': (supabase as any).supabaseKey,
-            'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
-            'Content-Type': 'application/json',
-          }
-        });
+        // Usar o cliente Supabase diretamente para ter autenticação automática
+        const { data, error } = await supabase
+          .from('modalities')
+          .select('*')
+          .eq('user_id', userId)
+          .order('name');
 
-        console.log('🔍 useModalities: Status da resposta:', response.status);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ useModalities: Erro na resposta:', errorText);
-          throw new Error(`Erro HTTP: ${response.status} - ${errorText}`);
+        if (error) {
+          console.error('❌ useModalities: Erro ao buscar modalidades:', error);
+          throw new Error(error.message || 'Erro ao buscar modalidades');
         }
 
-        const data = await response.json();
         console.log('✅ useModalities: Modalidades encontradas:', data);
         console.log('✅ useModalities: Quantidade de modalidades:', data?.length || 0);
         return data || [];
@@ -90,28 +81,23 @@ export const useModalities = (adminUserId?: string) => {
         throw new Error('Usuário não autenticado');
       }
 
-      const response = await fetch(`${(supabase as any).supabaseUrl}/rest/v1/modalities`, {
-        method: 'POST',
-        headers: {
-          'apikey': (supabase as any).supabaseKey,
-          'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
+      // Usar o cliente Supabase diretamente para ter autenticação automática
+      const { data, error } = await supabase
+        .from('modalities')
+        .insert({
           name: modalityData.name,
           valor: modalityData.valor,
           user_id: user.id
         })
-      });
+        .select()
+        .single();
 
-      if (!response.ok) {
-        const error = await response.json();
+      if (error) {
+        console.error('❌ Erro ao criar modalidade:', error);
         throw new Error(error.message || 'Erro ao criar modalidade');
       }
 
-      const data = await response.json();
-      return data[0];
+      return data;
     },
     onSuccess: (newModality) => {
       toast({
@@ -138,24 +124,21 @@ export const useModalities = (adminUserId?: string) => {
         throw new Error('Usuário não autenticado');
       }
 
-      const response = await fetch(`${(supabase as any).supabaseUrl}/rest/v1/modalities?id=eq.${id}&user_id=eq.${user.id}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': (supabase as any).supabaseKey,
-          'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify(data)
-      });
+      // Usar o cliente Supabase diretamente para ter autenticação automática
+      const { data: updatedData, error } = await supabase
+        .from('modalities')
+        .update(data)
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
 
-      if (!response.ok) {
-        const error = await response.json();
+      if (error) {
+        console.error('❌ Erro ao atualizar modalidade:', error);
         throw new Error(error.message || 'Erro ao atualizar modalidade');
       }
 
-      const responseData = await response.json();
-      return responseData[0];
+      return updatedData;
     },
     onSuccess: (updatedModality) => {
       toast({
@@ -182,17 +165,15 @@ export const useModalities = (adminUserId?: string) => {
         throw new Error('Usuário não autenticado');
       }
 
-      const response = await fetch(`${(supabase as any).supabaseUrl}/rest/v1/modalities?id=eq.${id}&user_id=eq.${user.id}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': (supabase as any).supabaseKey,
-          'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Usar o cliente Supabase diretamente para ter autenticação automática
+      const { error } = await supabase
+        .from('modalities')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
 
-      if (!response.ok) {
-        const error = await response.json();
+      if (error) {
+        console.error('❌ Erro ao deletar modalidade:', error);
         throw new Error(error.message || 'Erro ao deletar modalidade');
       }
     },

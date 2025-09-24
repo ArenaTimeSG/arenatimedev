@@ -48,9 +48,10 @@ export const useOnlineBooking = () => {
 
         if (existingClient) {
           clientId = existingClient.id;
+          console.log('✅ Cliente existente encontrado:', { clientId, email: data.cliente_email });
           
           // Atualizar dados do cliente se necessário
-          await supabase
+          const { error: updateError } = await supabase
             .from('booking_clients')
             .update({
               name: data.cliente_nome,
@@ -58,7 +59,19 @@ export const useOnlineBooking = () => {
               email: data.cliente_email,
             })
             .eq('id', clientId);
+
+          if (updateError) {
+            console.error('❌ Erro ao atualizar cliente:', updateError);
+          } else {
+            console.log('✅ Cliente atualizado com sucesso');
+          }
         } else {
+          console.log('🆕 Criando novo cliente:', { 
+            name: data.cliente_nome, 
+            email: data.cliente_email, 
+            phone: data.cliente_telefone 
+          });
+          
           // Criar novo cliente
           const { data: newClient, error: clientError } = await supabase
             .from('booking_clients')
@@ -71,10 +84,12 @@ export const useOnlineBooking = () => {
             .single();
 
           if (clientError) {
+            console.error('❌ Erro ao criar cliente:', clientError);
             throw new Error(`Erro ao criar cliente: ${clientError.message}`);
           }
 
           clientId = newClient.id;
+          console.log('✅ Novo cliente criado:', { clientId, email: data.cliente_email });
         }
 
         // 2. Verificar se já existe agendamento para esta data e hora
@@ -105,31 +120,43 @@ export const useOnlineBooking = () => {
 
         // 3. Criar o agendamento real na tabela appointments
         console.log('🔍 Criando agendamento:', {
+          clientId: clientId,
           data: normalizedDate,
           hora: normalizedTime,
-          adminUserId: data.admin_user_id
+          adminUserId: data.admin_user_id,
+          modalidade: data.modalidade_name,
+          valor: data.valor,
+          auto_confirmada: data.auto_confirmada
         });
 
         // Determinar o status baseado na configuração de auto-agendamento
         // Se auto_confirmada é true, status é 'agendado', senão é 'a_cobrar' (pendente)
         const appointmentStatus = data.auto_confirmada ? 'agendado' : 'a_cobrar';
+        console.log('📊 Status do agendamento:', appointmentStatus);
+
+        const appointmentData = {
+          client_id: clientId,
+          date: `${normalizedDate}T${normalizedTime}:00`,
+          status: appointmentStatus,
+          modality: data.modalidade_name, // Usar o nome da modalidade
+          user_id: data.admin_user_id, // Vincular ao admin
+          valor_total: data.valor,
+        };
+
+        console.log('📝 Dados do agendamento:', appointmentData);
 
         const { data: appointment, error: appointmentError } = await supabase
           .from('appointments')
-          .insert({
-            client_id: clientId,
-            date: `${normalizedDate}T${normalizedTime}:00`,
-            status: appointmentStatus,
-            modality: data.modalidade_name, // Usar o nome da modalidade
-            user_id: data.admin_user_id, // Vincular ao admin
-            valor_total: data.valor,
-          })
+          .insert(appointmentData)
           .select()
           .single();
 
         if (appointmentError) {
+          console.error('❌ Erro ao criar agendamento:', appointmentError);
           throw new Error(`Erro ao criar agendamento: ${appointmentError.message}`);
         }
+
+        console.log('✅ Agendamento criado com sucesso:', appointment);
 
         // 3. Criar registro na tabela online_reservations para histórico
         const { data: reservation, error } = await supabase

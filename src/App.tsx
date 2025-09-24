@@ -27,7 +27,6 @@ import ClientDashboard from "./pages/ClientDashboard";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailure from "./pages/PaymentFailure";
 import PaymentPending from "./pages/PaymentPending";
-import Pricing from "./pages/Pricing";
 
 
 const AppContent = () => {
@@ -64,7 +63,6 @@ const AppContent = () => {
         <Route path="/payment/success" element={<PaymentSuccess />} />
         <Route path="/payment/failure" element={<PaymentFailure />} />
         <Route path="/payment/pending" element={<PaymentPending />} />
-        <Route path="/pricing" element={<Pricing />} />
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

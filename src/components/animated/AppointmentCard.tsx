@@ -70,6 +70,11 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       return 'bg-red-500 text-white border-red-600';
     }
     
+    // Se for cortesia (independente do status), sempre mostrar como cortesia
+    if (appointment.is_cortesia) {
+      return 'bg-pink-500 text-white border-pink-600';
+    }
+    
     // Status normal baseado no status principal
     switch (appointment.status) {
       case 'pago': return 'bg-green-500 text-white border-green-600';

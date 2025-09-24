@@ -38,27 +38,122 @@ const ClientDashboard = () => {
   // Buscar agendamentos do cliente
   const fetchAgendamentos = async () => {
     if (!client?.id || !adminData?.user?.user_id) {
-      console.log('❌ clientId ou adminUserId não fornecidos:', { clientId: client?.id, adminUserId: adminData?.user?.user_id });
+      console.log('❌ clientId ou adminUserId não fornecidos:', { 
+        clientId: client?.id, 
+        adminUserId: adminData?.user?.user_id,
+        client: client,
+        adminData: adminData
+      });
       return;
     }
     
     setLoading(true);
     try {
-      console.log('🔍 Buscando agendamentos para:', { clientId: client.id, adminUserId: adminData.user.user_id });
+      console.log('🔍 Buscando agendamentos para:', { 
+        clientId: client.id, 
+        adminUserId: adminData.user.user_id,
+        clientEmail: client.email,
+        clientName: client.name
+      });
+      
+      // Primeiro, verificar se o cliente existe na tabela booking_clients
+      const { data: clientCheck, error: clientError } = await supabase
+        .from('booking_clients')
+        .select('id, name, email, user_id')
+        .eq('id', client.id)
+        .single();
+
+      if (clientError) {
+        console.error('❌ Erro ao verificar cliente:', clientError);
+        return;
+      }
+
+      console.log('✅ Cliente verificado:', clientCheck);
+      
+      // Buscar agendamentos com JOIN para obter dados do cliente
+      console.log('🔍 Executando consulta SQL:', {
+        table: 'appointments',
+        filters: {
+          client_id: client.id,
+          user_id: adminData.user.user_id
+        }
+      });
       
       const { data, error } = await supabase
         .from('appointments')
-        .select('*')
+        .select(`
+          *,
+          client:booking_clients(name, email, phone)
+        `)
         .eq('client_id', client.id)
         .eq('user_id', adminData.user.user_id)
         .order('date', { ascending: true });
 
       if (error) {
         console.error('❌ Erro ao buscar agendamentos:', error);
+        console.error('❌ Detalhes do erro:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return;
       }
 
       console.log('✅ Agendamentos encontrados:', data);
+      console.log('📊 Total de agendamentos:', data?.length || 0);
+      
+      // Se não encontrou agendamentos, tentar consulta alternativa
+      if (!data || data.length === 0) {
+        console.log('🔍 Nenhum agendamento encontrado. Tentando consulta alternativa...');
+        
+        // Consulta alternativa: buscar por email
+        const { data: altData, error: altError } = await supabase
+          .from('appointments')
+          .select(`
+            *,
+            client:booking_clients(name, email, phone)
+          `)
+          .eq('user_id', adminData.user.user_id)
+          .order('date', { ascending: true });
+
+        if (altError) {
+          console.error('❌ Erro na consulta alternativa:', altError);
+        } else {
+          console.log('🔍 Consulta alternativa encontrou:', altData?.length || 0, 'agendamentos');
+          
+          // Filtrar apenas agendamentos do cliente atual por email
+          const clientAppointments = altData?.filter(apt => 
+            apt.client?.email === client.email
+          ) || [];
+          
+          console.log('🔍 Agendamentos filtrados por email:', clientAppointments.length);
+          console.log('🔍 Agendamentos do cliente:', clientAppointments);
+          
+          // Usar os agendamentos filtrados se encontrou algum
+          if (clientAppointments.length > 0) {
+            setAgendamentos(clientAppointments);
+            return;
+          }
+        }
+      }
+      
+      // Log detalhado de cada agendamento
+      if (data && data.length > 0) {
+        data.forEach((apt, index) => {
+          console.log(`📅 Agendamento ${index + 1}:`, {
+            id: apt.id,
+            date: apt.date,
+            status: apt.status,
+            modality: apt.modality,
+            valor_total: apt.valor_total,
+            booking_source: apt.booking_source,
+            client_name: apt.client?.name,
+            client_email: apt.client?.email
+          });
+        });
+      }
+      
       setAgendamentos(data || []);
     } catch (error) {
       console.error('❌ Erro inesperado ao buscar agendamentos:', error);
@@ -77,27 +172,60 @@ const ClientDashboard = () => {
     try {
       console.log('🔍 Tentando cancelar agendamento:', agendamentoId);
       
-      const { data: agendamento, error: fetchError } = await supabase
+      // Buscar agendamento usando a mesma lógica da consulta principal
+      let agendamento = null;
+      
+      // Primeiro, tentar buscar por client_id
+      const { data: dataByClientId, error: fetchError1 } = await supabase
         .from('appointments')
         .select('*')
         .eq('id', agendamentoId)
         .eq('client_id', client?.id)
         .single();
 
-      if (fetchError || !agendamento) {
-        console.error('❌ Erro ao buscar agendamento:', fetchError);
+      if (!fetchError1 && dataByClientId) {
+        agendamento = dataByClientId;
+        console.log('✅ Agendamento encontrado por client_id');
+      } else {
+        console.log('🔍 Não encontrado por client_id, tentando por email...');
+        
+        // Se não encontrou por client_id, buscar por user_id e filtrar por email
+        const { data: allAppointments, error: fetchError2 } = await supabase
+          .from('appointments')
+          .select(`
+            *,
+            client:booking_clients(name, email, phone)
+          `)
+          .eq('id', agendamentoId)
+          .eq('user_id', adminData?.user?.user_id);
+
+        if (!fetchError2 && allAppointments) {
+          // Verificar se o agendamento pertence ao cliente atual
+          const clientAppointment = allAppointments.filter(apt => 
+            apt.client?.email === client?.email
+          )[0];
+          
+          if (clientAppointment) {
+            agendamento = clientAppointment;
+            console.log('✅ Agendamento encontrado por email');
+          }
+        }
+      }
+
+      if (!agendamento) {
+        console.error('❌ Agendamento não encontrado ou não pertence ao cliente');
         alert('Erro ao verificar agendamento. Tente novamente.');
         return;
       }
 
+      // Cancelar o agendamento
       const { error: updateError } = await supabase
         .from('appointments')
         .update({ 
           status: 'cancelado',
           updated_at: new Date().toISOString()
         })
-        .eq('id', agendamentoId)
-        .eq('client_id', client?.id);
+        .eq('id', agendamentoId);
 
       if (updateError) {
         console.error('❌ Erro ao cancelar agendamento:', updateError);
@@ -189,7 +317,16 @@ const ClientDashboard = () => {
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, date?: string) => {
+    // Se for agendamento futuro, sempre mostrar como "Agendado"
+    if (date) {
+      const appointmentDate = new Date(date);
+      const now = new Date();
+      if (appointmentDate > now) {
+        return 'Agendado';
+      }
+    }
+    
     switch (status) {
       case 'agendado':
       case 'pago':
@@ -449,7 +586,7 @@ const ClientDashboard = () => {
                           <div className="flex items-center gap-3">
                             <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(agendamento.status)}`}>
                               {getStatusIcon(agendamento.status)}
-                              {getStatusText(agendamento.status)}
+                              {getStatusText(agendamento.status, agendamento.date)}
                             </span>
                             {agendamento.status !== 'cancelado' && (
                               <button
@@ -500,7 +637,7 @@ const ClientDashboard = () => {
                           <div className="flex items-center gap-3">
                             <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(agendamento.status)}`}>
                               {getStatusIcon(agendamento.status)}
-                              {getStatusText(agendamento.status)}
+                              {getStatusText(agendamento.status, agendamento.date)}
                             </span>
                           </div>
                         </div>

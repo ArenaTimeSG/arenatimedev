@@ -110,7 +110,12 @@ const Appointments = () => {
     setFilteredAppointments(filtered);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, is_cortesia?: boolean) => {
+    // Se for cortesia (independente do status), sempre mostrar como cortesia
+    if (is_cortesia) {
+      return 'bg-pink-100 text-pink-800 border-pink-200';
+    }
+    
     switch (status) {
       case 'pago': return 'bg-green-100 text-green-800 border-green-200';
       case 'a_cobrar': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -121,12 +126,12 @@ const Appointments = () => {
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string, is_cortesia?: boolean) => {
     switch (status) {
       case 'pago': return 'Pago';
       case 'a_cobrar': return 'A Cobrar';
       case 'cortesia': return '🎁 Cortesia';
-      case 'agendado': return 'Agendado';
+      case 'agendado': return is_cortesia ? '🎁 Cortesia' : 'Agendado';
       case 'cancelado': return 'Cancelado';
       default: return status;
     }
@@ -539,8 +544,8 @@ const Appointments = () => {
                                   </div>
                                 </div>
                                 <div className="flex flex-col sm:flex-row gap-1 sm:items-center">
-                                  <Badge className={getStatusColor(appointment.status)}>
-                                    {getStatusLabel(appointment.status)}
+                                  <Badge className={getStatusColor(appointment.status, appointment.is_cortesia)}>
+                                    {getStatusLabel(appointment.status, appointment.is_cortesia)}
                                   </Badge>
                                   {appointment.payment_status && appointment.payment_status !== 'not_required' && appointment.status !== 'pago' && (
                                     <Badge className={getPaymentStatusColor(appointment.payment_status)}>
@@ -649,8 +654,8 @@ const Appointments = () => {
                                   </div>
                                 </div>
                                 <div className="flex flex-col sm:flex-row gap-1 sm:items-center">
-                                  <Badge className={getStatusColor(appointment.status)}>
-                                    {getStatusLabel(appointment.status)}
+                                  <Badge className={getStatusColor(appointment.status, appointment.is_cortesia)}>
+                                    {getStatusLabel(appointment.status, appointment.is_cortesia)}
                                   </Badge>
                                   {appointment.payment_status && appointment.payment_status !== 'not_required' && appointment.status !== 'pago' && (
                                     <Badge className={getPaymentStatusColor(appointment.payment_status)}>

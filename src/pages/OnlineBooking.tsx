@@ -298,6 +298,7 @@ const OnlineBooking = () => {
         },
         date: dataHora.toISOString(),
         modality: reserva.modalidade.name,
+        modality_id: reserva.modalidade.id, // Adicionar modality_id
         valor_total: reserva.modalidade.valor,
         payment_policy: (adminData.settings as any)?.payment_policy || 'sem_pagamento',
         payment_status: paymentStatus,

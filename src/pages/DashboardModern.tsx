@@ -173,6 +173,11 @@ const Dashboard = () => {
       }
     }
     
+    // Se for cortesia (independente do status), sempre mostrar como cortesia
+    if (is_cortesia) {
+      effectiveStatus = 'cortesia';
+    }
+    
     if (recurrence_id) {
       switch (effectiveStatus) {
         case 'pago': return 'bg-green-100 text-green-800 border-green-200';
@@ -202,13 +207,13 @@ const Dashboard = () => {
       appointmentDate.setHours(0, 0, 0, 0);
       
       if (isBefore(appointmentDate, today) && status === 'agendado') {
-        return is_cortesia ? 'Cortesia' : 'A Cobrar';
+        return is_cortesia ? '🎁 Cortesia' : 'A Cobrar';
       }
     }
     
     if (status === 'cancelado') return 'Cancelado';
     if (status === 'pago') return 'Pago';
-    if (status === 'agendado') return 'Agendado';
+    if (status === 'agendado') return is_cortesia ? '🎁 Cortesia' : 'Agendado';
     if (status === 'a_cobrar') return 'A Cobrar';
     if (status === 'cortesia') return '🎁 Cortesia';
     

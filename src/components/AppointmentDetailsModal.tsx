@@ -71,7 +71,7 @@ const AppointmentDetailsModal = ({
   }, [isOpen]);
 
   // Funções auxiliares
-  const getStatusColor = (status: string, paymentStatus?: string) => {
+  const getStatusColor = (status: string, paymentStatus?: string, is_cortesia?: boolean) => {
     // Se o agendamento tem payment_status 'pending', mostrar como aguardando pagamento
     if (paymentStatus === 'pending') {
       return 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -80,6 +80,11 @@ const AppointmentDetailsModal = ({
     // Se o agendamento tem payment_status 'failed', mostrar como pagamento falhou
     if (paymentStatus === 'failed') {
       return 'bg-red-100 text-red-800 border-red-200';
+    }
+    
+    // Se for cortesia (independente do status), sempre mostrar como cortesia
+    if (is_cortesia) {
+      return 'bg-pink-100 text-pink-800 border-pink-200';
     }
     
     // Status normal baseado no status principal
@@ -93,7 +98,7 @@ const AppointmentDetailsModal = ({
     }
   };
 
-  const getStatusLabel = (status: string, paymentStatus?: string) => {
+  const getStatusLabel = (status: string, paymentStatus?: string, is_cortesia?: boolean) => {
     // Se o agendamento tem payment_status 'pending', mostrar como aguardando pagamento
     if (paymentStatus === 'pending') {
       return 'Aguardando Pagamento';
@@ -109,7 +114,7 @@ const AppointmentDetailsModal = ({
       case 'pago': return 'Pago';
       case 'a_cobrar': return 'A Cobrar';
       case 'cortesia': return '🎁 Cortesia';
-      case 'agendado': return 'Agendado';
+      case 'agendado': return is_cortesia ? '🎁 Cortesia' : 'Agendado';
       case 'cancelado': return 'Cancelado';
       default: return status;
     }
@@ -182,7 +187,7 @@ const AppointmentDetailsModal = ({
 
       toast({
         title: 'Status atualizado!',
-        description: `Agendamento marcado como ${getStatusLabel(newStatus)}.`,
+        description: `Agendamento marcado como ${getStatusLabel(newStatus, undefined, appointment.is_cortesia)}.`,
       });
 
       // Aguardar um pouco para garantir que a atualização foi processada
@@ -502,8 +507,8 @@ const AppointmentDetailsModal = ({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Badge className={getStatusColor(appointment.status, appointment.payment_status)}>
-                    {getStatusLabel(appointment.status, appointment.payment_status)}
+                  <Badge className={getStatusColor(appointment.status, appointment.payment_status, appointment.is_cortesia)}>
+                    {getStatusLabel(appointment.status, appointment.payment_status, appointment.is_cortesia)}
                   </Badge>
                   <p className="text-sm text-muted-foreground">Status atual</p>
                 </div>
