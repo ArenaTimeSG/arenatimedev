@@ -15,7 +15,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSettings } from '@/hooks/useSettings';
 import { useClientBookings } from '@/hooks/useClientBookings';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Clock, Bell, User, Shield, Settings as SettingsIcon, Palette, Save, AlertCircle, Calendar, Globe } from 'lucide-react';
+import { ArrowLeft, Clock, Bell, User, Shield, Settings as SettingsIcon, Palette, Save, AlertCircle, Calendar, Globe, Info } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { ToggleAgendamento } from '@/components/booking-settings/ToggleAgendamento';
@@ -107,6 +107,12 @@ const Settings = () => {
 
   // Carregar configurações quando disponíveis
   useEffect(() => {
+    console.log('🔍 Settings useEffect: executando...');
+    console.log('🔍 Settings useEffect: settings:', !!settings);
+    console.log('🔍 Settings useEffect: profile:', !!profile);
+    console.log('🔍 Settings useEffect: user:', !!user);
+    console.log('🔍 Settings useEffect: hasProfileChanges:', hasProfileChanges);
+    
     if (settings) {
       if (settings.working_hours) {
         const loadedHours = {
@@ -137,19 +143,21 @@ const Settings = () => {
         });
       }
 
-      // CORREÇÃO: Usar dados do auth.user (mesma fonte do dropdown) se profile não existir
-      if (profile) {
-        console.log('🔍 Settings: usando dados do profile:', profile);
-        console.log('🔍 Settings: profile.name:', profile.name);
-        console.log('🔍 Settings: profile.email:', profile.email);
-        console.log('🔍 Settings: profile.phone:', profile.phone);
+      // CORREÇÃO: Combinar dados do profile e auth.user para ter informações completas
+      if (profile && user) {
+        console.log('🔍 Settings: combinando dados do profile e auth.user');
+        console.log('🔍 Settings: profile:', profile);
+        console.log('🔍 Settings: user:', user);
         
-        setPersonalData({
-          name: profile.name || '',
-          email: profile.email || user?.email || '',
-          phone: profile.phone || ''
-        });
-        setHasProfileChanges(false);
+        const combinedData = {
+          name: profile.name || user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
+          email: user.email || profile.email || '',
+          phone: profile.phone || user.user_metadata?.phone || ''
+        };
+        
+        console.log('🔍 Settings: dados combinados:', combinedData);
+        setPersonalData(combinedData);
+        // NÃO resetar hasProfileChanges aqui - permitir edição
       } else if (user) {
         console.log('🔍 Settings: usando dados do auth.user (mesma fonte do dropdown):', user);
         console.log('🔍 Settings: user.email:', user.email);
@@ -160,7 +168,7 @@ const Settings = () => {
           email: user.email || '',
           phone: user.user_metadata?.phone || ''
         });
-        setHasProfileChanges(false);
+        // NÃO resetar hasProfileChanges aqui - permitir edição
       } else if (settings.personal_data && Object.keys(settings.personal_data).length > 0) {
         console.log('🔍 Settings: fallback para personal_data:', settings.personal_data);
         setPersonalData({
@@ -168,6 +176,7 @@ const Settings = () => {
           email: settings.personal_data.email || '',
           phone: settings.personal_data.phone || ''
         });
+        // Só resetar hasProfileChanges quando carregamos dados salvos (não editados)
         setHasProfileChanges(false);
       } else {
         console.log('❌ Settings: nenhuma fonte de dados encontrada');
@@ -312,12 +321,19 @@ const Settings = () => {
 
   // Função para atualizar dados pessoais (apenas no estado local)
   const handlePersonalDataChange = (field: string, value: string) => {
+    console.log('🔍 handlePersonalDataChange: campo:', field, 'valor:', value);
+    console.log('🔍 handlePersonalDataChange: personalData atual:', personalData);
+    
     const updatedData = {
       ...personalData,
       [field]: value
     };
+    
+    console.log('🔍 handlePersonalDataChange: dados atualizados:', updatedData);
     setPersonalData(updatedData);
     setHasProfileChanges(true); // Marcar que houve mudanças
+    
+    console.log('🔍 handlePersonalDataChange: hasProfileChanges setado para true');
   };
 
   // Função para salvar dados pessoais
@@ -604,9 +620,9 @@ const Settings = () => {
                       <Input 
                         id="name" 
                         value={personalData.name}
-                        onChange={(e) => handlePersonalDataChange('name', e.target.value)}
+                        disabled
+                        className="bg-slate-50 text-slate-500 border-slate-200"
                         placeholder="Seu nome completo"
-                        className="border-slate-200 focus:border-blue-300"
                       />
                     </div>
                     <div className="space-y-2">
@@ -615,9 +631,9 @@ const Settings = () => {
                         id="email" 
                         type="email" 
                         value={personalData.email}
-                        onChange={(e) => handlePersonalDataChange('email', e.target.value)}
+                        disabled
+                        className="bg-slate-50 text-slate-500 border-slate-200"
                         placeholder="seu@email.com"
-                        className="border-slate-200 focus:border-blue-300"
                       />
                     </div>
                     <div className="space-y-2">
@@ -625,9 +641,9 @@ const Settings = () => {
                       <Input 
                         id="phone" 
                         value={personalData.phone}
-                        onChange={(e) => handlePersonalDataChange('phone', e.target.value)}
+                        disabled
+                        className="bg-slate-50 text-slate-500 border-slate-200"
                         placeholder="(11) 99999-9999"
-                        className="border-slate-200 focus:border-blue-300"
                       />
                     </div>
                     <div className="space-y-2">
@@ -642,26 +658,6 @@ const Settings = () => {
                     </div>
                   </div>
                   
-                  {/* Botão de Salvar */}
-                  <div className="flex justify-end pt-6 border-t border-slate-200">
-                    <Button
-                      onClick={handleSavePersonalData}
-                      disabled={!hasProfileChanges || isSavingProfile}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all duration-300"
-                    >
-                      {isSavingProfile ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                          Salvando...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Salvar Alterações
-                        </>
-                      )}
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

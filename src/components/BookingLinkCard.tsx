@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSettings } from '@/hooks/useSettings';
+import { getBookingLink } from '@/utils/bookingDomain';
 import { 
   Link, 
   Copy, 
@@ -27,7 +28,7 @@ export const BookingLinkCard = () => {
   const { toast } = useToast();
 
   const bookingLink = profile?.username 
-    ? `${window.location.origin}/agendar/${profile.username}`
+    ? getBookingLink(profile.username)
     : null;
 
   const isOnlineBookingEnabled = settings?.online_booking?.ativo ?? false;

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { getBookingLink } from '@/utils/bookingDomain';
 import { Copy, Link, Check, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -23,7 +24,7 @@ export const LinkCompartilhamento = () => {
   }, [userProfile, user, refetchProfile]);
 
   const bookingUrl = userProfile?.username 
-    ? `${window.location.origin}/booking/${userProfile.username}`
+    ? getBookingLink(userProfile.username)
     : '';
 
   const handleCopyLink = async () => {
