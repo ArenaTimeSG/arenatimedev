@@ -109,7 +109,9 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
         break;
         
       case 'phone':
-        if (value) {
+        if (!value) {
+          newErrors.phone = 'Telefone é obrigatório';
+        } else {
           const cleanPhone = cleanPhoneNumber(value);
           if (cleanPhone.length < 10) {
             newErrors.phone = 'Telefone deve ter pelo menos 10 dígitos';
@@ -118,8 +120,6 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
           } else {
             delete newErrors.phone;
           }
-        } else {
-          delete newErrors.phone;
         }
         break;
     }
@@ -369,7 +369,7 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
           <div className="space-y-3">
             <Label htmlFor="phone" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
               <Phone className="h-4 w-4 text-blue-600" />
-              Telefone (opcional)
+              Telefone *
             </Label>
             <div className="relative">
               <Input
@@ -384,6 +384,7 @@ export const SignUpForm = ({ onSuccess, onSwitchToLogin }: SignUpFormProps) => {
                     : 'border-slate-200 focus:border-blue-500 focus:ring-blue-200'
                 } rounded-xl bg-white/80 backdrop-blur-sm`}
                 disabled={isSubmitting}
+                required
               />
               <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
               {formData.phone && (

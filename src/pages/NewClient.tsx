@@ -40,6 +40,15 @@ const NewClient = () => {
       return;
     }
 
+    if (!formData.phone.trim()) {
+      toast({
+        title: 'Erro no cadastro',
+        description: 'O telefone é obrigatório',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Validar email se não for cliente sem email
     if (!isClientWithoutEmail && !formData.email.trim()) {
       toast({
@@ -219,7 +228,7 @@ const NewClient = () => {
 
                 <div className="space-y-3">
                   <Label htmlFor="phone" className="text-sm font-semibold text-slate-700">
-                    Telefone
+                    Telefone *
                   </Label>
                   <Input
                     id="phone"
@@ -228,6 +237,7 @@ const NewClient = () => {
                     value={formData.phone}
                     onChange={(e) => handleChange('phone', e.target.value)}
                     className="h-12 text-base border-slate-200 focus:border-blue-300 focus:ring-blue-200 rounded-xl"
+                    required
                   />
                 </div>
 

@@ -40,7 +40,7 @@ const ClientRegister = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !email || !password || !confirmPassword || !phone) {
       toast({
         title: 'Erro',
         description: 'Por favor, preencha todos os campos obrigatórios.',
@@ -142,7 +142,7 @@ const ClientRegister = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
+                <Label htmlFor="phone">Telefone *</Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -150,6 +150,7 @@ const ClientRegister = () => {
                   value={phone}
                   onChange={handlePhoneChange}
                   className="w-full"
+                  required
                 />
               </div>
               

@@ -62,7 +62,9 @@ export const ClientSignUpForm = ({ onSuccess, onSwitchToLogin }: ClientSignUpFor
         break;
         
       case 'phone':
-        if (value && !/^\(\d{2}\) \d{5}-\d{4}$/.test(value)) {
+        if (!value) {
+          newErrors.phone = 'Telefone é obrigatório';
+        } else if (!/^\(\d{2}\) \d{5}-\d{4}$/.test(value)) {
           newErrors.phone = 'Telefone deve estar no formato (11) 99999-9999';
         } else {
           delete newErrors.phone;
@@ -255,7 +257,7 @@ export const ClientSignUpForm = ({ onSuccess, onSwitchToLogin }: ClientSignUpFor
             {/* Telefone */}
             <div className="space-y-2">
               <Label htmlFor="phone" className="text-sm font-medium text-slate-700">
-                Telefone (opcional)
+                Telefone *
               </Label>
               <Input
                 id="phone"
@@ -268,6 +270,7 @@ export const ClientSignUpForm = ({ onSuccess, onSwitchToLogin }: ClientSignUpFor
                     ? 'border-red-300 focus:border-red-500' 
                     : 'border-slate-200 focus:border-blue-500'
                 }`}
+                required
               />
               {errors.phone && (
                 <motion.p 
