@@ -799,7 +799,7 @@ export const useWorkingHours = () => {
           return {
             user_id: user.id,
             date: dateStr,
-            time_slot: timeSlot,
+            time_slot: `${timeSlot}:00`, // Adicionar segundos para formato TIME
             reason: blockadeInfo.reason,
             description: blockadeInfo.description || null,
             is_recurring: blockadeInfo.isRecurring || false,
@@ -855,7 +855,7 @@ export const useWorkingHours = () => {
           .insert({
             user_id: user.id,
             date: dateString,
-            time_slot: timeSlot,
+            time_slot: `${timeSlot}:00`, // Adicionar segundos para formato TIME
             reason: reason,
             description: options?.description || null,
             is_recurring: false,
