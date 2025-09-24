@@ -56,8 +56,20 @@ export const useClientAuth = () => {
         .eq('email', email)
         .single();
 
-      if (error || !data) {
-        console.log('Cliente não encontrado no banco, removendo do localStorage');
+      if (error) {
+        console.error('❌ Erro ao verificar cliente no banco:', error);
+        // Se for erro de RLS, remover do localStorage
+        if (error.code === '42501' || error.message.includes('row-level security')) {
+          console.log('❌ Erro de RLS detectado, removendo cliente do localStorage');
+          localStorage.removeItem('client');
+          setClient(null);
+          return false;
+        }
+        return false;
+      }
+
+      if (!data) {
+        console.log('❌ Cliente não encontrado no banco, removendo do localStorage');
         localStorage.removeItem('client');
         setClient(null);
         return false;
@@ -70,7 +82,7 @@ export const useClientAuth = () => {
 
       return true;
     } catch (error) {
-      console.error('Erro ao verificar cliente no banco:', error);
+      console.error('❌ Erro inesperado ao verificar cliente no banco:', error);
       return false;
     }
   };
@@ -131,14 +143,22 @@ export const useClientAuth = () => {
   // Mutation para registrar cliente
   const registerMutation = useMutation({
     mutationFn: async (data: CreateClientData) => {
-      const { data: existingClient } = await supabase
+      // Verificar se o email já existe (usando .maybeSingle() para evitar erro de múltiplos registros)
+      const { data: existingClient, error: checkError } = await supabase
         .from('booking_clients')
         .select('id')
         .eq('email', data.email)
-        .single();
+        .maybeSingle();
 
+      // Se encontrou um cliente com este email, erro
       if (existingClient) {
         throw new Error('Email já cadastrado');
+      }
+
+      // Se houve erro diferente de "não encontrado", pode ser problema de RLS
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ useClientAuth: Erro ao verificar email existente:', checkError);
+        throw new Error('Erro ao verificar email: ' + checkError.message);
       }
 
       const hashedPassword = hashPassword(data.password);
@@ -172,6 +192,8 @@ export const useClientAuth = () => {
   // Mutation para login
   const loginMutation = useMutation({
     mutationFn: async (data: LoginClientData & { user_id?: string }) => {
+      console.log('🔍 useClientAuth: Tentando fazer login:', { email: data.email, user_id: data.user_id });
+      
       // Buscar cliente por email e user_id (se fornecido)
       let query = supabase
         .from('booking_clients')
@@ -183,9 +205,17 @@ export const useClientAuth = () => {
         query = query.eq('user_id', data.user_id);
       }
       
-      const { data: client, error } = await query.single();
+      const { data: client, error } = await query.maybeSingle();
 
-      if (error || !client) {
+      if (error) {
+        console.error('❌ useClientAuth: Erro ao buscar cliente:', error);
+        if (error.code === 'PGRST116') {
+          throw new Error('Email ou senha incorretos');
+        }
+        throw new Error('Erro ao fazer login: ' + error.message);
+      }
+
+      if (!client) {
         throw new Error('Email ou senha incorretos');
       }
 
