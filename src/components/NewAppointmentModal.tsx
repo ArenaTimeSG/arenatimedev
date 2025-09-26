@@ -237,9 +237,15 @@ const NewAppointmentModal = ({
         return;
       }
 
+      // Obter o usuário atual primeiro
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
       // Verificar conflitos de agendamento
       if (formData.isRecurring) {
-        // Para agendamentos recorrentes, verificar todas as datas
+        // Para agendamentos recorrentes, verificar todas as datas para este usuário
         // Gerar um ID temporário para verificação de conflitos
         const tempRecurrenceId = `temp_${Date.now()}`;
         const recurringAppointments = generateRecurringAppointments(formData, appointmentDate, tempRecurrenceId);
@@ -248,6 +254,7 @@ const NewAppointmentModal = ({
         const { data: existingAppointments, error: checkError } = await supabase
           .from('appointments')
           .select('id, date')
+          .eq('user_id', user.id)
           .in('date', datesToCheck);
 
         if (checkError) throw checkError;
@@ -262,10 +269,11 @@ const NewAppointmentModal = ({
           return;
         }
       } else {
-        // Para agendamento único, verificar apenas a data específica
+        // Para agendamento único, verificar apenas a data específica para este usuário
         const { data: existingAppointment, error: checkError } = await supabase
           .from('appointments')
           .select('id')
+          .eq('user_id', user.id)
           .eq('date', appointmentDate.toISOString())
           .single();
 
@@ -281,12 +289,6 @@ const NewAppointmentModal = ({
           });
           return;
         }
-      }
-
-      // Obter o usuário atual
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Usuário não autenticado');
       }
 
       // Criar agendamentos (recorrente ou único)
