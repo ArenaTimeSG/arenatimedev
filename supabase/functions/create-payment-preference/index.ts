@@ -112,14 +112,29 @@ serve(async (req) => {
     if (bookingError || !booking) {
       console.log('⚠️ [CREATE-PREFERENCE] Agendamento não encontrado, criando temporário...')
       
+      // Verificar se temos dados suficientes para criar o agendamento
+      if (!client_id || !appointment_date) {
+        console.error('❌ [CREATE-PREFERENCE] Dados insuficientes para criar agendamento temporário')
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Dados insuficientes para criar agendamento'
+          } as CreatePreferenceResponse),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+      
       // Criar agendamento temporário com status pending_payment
       const { data: newBooking, error: createError } = await supabase
         .from('appointments')
         .insert({
           id: booking_id,
           user_id: owner_id,
-          client_id: client_id || '00000000-0000-0000-0000-000000000000', // UUID temporário
-          date: appointment_date || new Date().toISOString(),
+          client_id: client_id,
+          date: appointment_date,
           status: 'pending_payment',
           modality_id: modality_id,
           created_at: new Date().toISOString(),

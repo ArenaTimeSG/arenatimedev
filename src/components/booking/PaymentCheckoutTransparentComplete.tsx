@@ -27,6 +27,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
   const [paymentData, setPaymentData] = useState<any>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const formatCurrency = (value: number) => {
@@ -97,8 +98,9 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       const data = await response.json();
       console.log('✅ [FRONTEND] Preferência criada:', data);
 
-      if (data.success && data.checkout_url) {
-        setCheckoutUrl(data.checkout_url);
+      if (data.success && data.init_point) {
+        setCheckoutUrl(data.init_point);
+        setPreferenceId(data.preference_id);
         toast({
           title: "Preferência criada com sucesso!",
           description: "Clique no botão abaixo para abrir o checkout do Mercado Pago",
@@ -141,7 +143,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
 
   // Função para verificar status do pagamento
   const checkPaymentStatus = async () => {
-    if (!checkoutUrl) return;
+    if (!preferenceId) return;
 
     try {
       console.log('🔍 [FRONTEND] Verificando status do pagamento...');
@@ -153,7 +155,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
-          preference_id: checkoutUrl.split('pref_id=')[1]?.split('&')[0]
+          preference_id: preferenceId
         })
       });
 
@@ -178,11 +180,11 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
 
   // Verificar status do pagamento periodicamente
   useEffect(() => {
-    if (checkoutUrl && paymentStatus !== 'approved') {
+    if (preferenceId && paymentStatus !== 'approved') {
       const interval = setInterval(checkPaymentStatus, 5000); // Verificar a cada 5 segundos
       return () => clearInterval(interval);
     }
-  }, [checkoutUrl, paymentStatus]);
+  }, [preferenceId, paymentStatus]);
 
   if (paymentStatus === 'approved') {
     return (
