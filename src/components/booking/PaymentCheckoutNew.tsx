@@ -75,10 +75,12 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
       
       // Usar chave anon do ambiente
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       
       console.log('🔑 [FRONTEND] Chave anon:', anonKey ? 'Presente' : 'Ausente');
+      console.log('🔗 [FRONTEND] Supabase URL:', supabaseUrl);
 
-      const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/create-payment-preference', {
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-preference`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,7 +189,8 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
       }
       
       // Verificar status do pagamento na tabela payments
-      const response = await fetch(`https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-payment-status-simple`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/check-payment-status-simple`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -245,7 +248,8 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
     
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-payment-status-simple`, {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/check-payment-status-simple`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

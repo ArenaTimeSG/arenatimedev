@@ -71,7 +71,8 @@ const PaymentCheckout = ({
       console.log('🔍 Dados do pagamento para verificação:', paymentData);
 
       // Chamar função Edge para verificar status do pagamento
-      const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-payment-status', {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/check-payment-status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

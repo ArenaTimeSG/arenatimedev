@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Configuração - Mercado Pago</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.success { background-color: #28a745; color: white; }
+        .status.error { background-color: #dc3545; color: white; }
+        .status.pending { background-color: #ffc107; color: black; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste de Configuração - Mercado Pago</h1>
+        
+        <div class="test-section">
+            <h3>📋 Informações da Configuração</h3>
+            <p><strong>Supabase URL:</strong> <code id="supabase-url">Carregando...</code></p>
+            <p><strong>Anon Key:</strong> <span id="anon-key-status">Carregando...</span></p>
+            <p><strong>Status:</strong> <span id="config-status" class="status pending">Verificando...</span></p>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Testes Disponíveis</h3>
+            <button onclick="testPaymentConfiguration()" id="test-payment-btn">
+                Testar Criação de Preferência
+            </button>
+            <button onclick="testWebhook()" id="test-webhook-btn">
+                Testar Webhook
+            </button>
+            <button onclick="runAllTests()" id="test-all-btn">
+                Executar Todos os Testes
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Resultados</h3>
+            <div id="result">Clique em um dos botões acima para executar os testes...</div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração
+        const SUPABASE_URL = 'https://xjsovawofsibcolnrgxl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqc292YXdvZnNpYmNvbG5yZ3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3NjQ0MDksImV4cCI6MjA3NDM0MDQwOX0.7E4CcCqm7apbXMrFR-jYgyn3ZWtfMDubT2rK_UgFp1U';
+
+        // Inicializar interface
+        document.getElementById('supabase-url').textContent = SUPABASE_URL;
+        document.getElementById('anon-key-status').textContent = SUPABASE_ANON_KEY ? '✅ Presente' : '❌ Ausente';
+        
+        if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+            document.getElementById('config-status').textContent = '✅ Configurado';
+            document.getElementById('config-status').className = 'status success';
+        } else {
+            document.getElementById('config-status').textContent = '❌ Incompleto';
+            document.getElementById('config-status').className = 'status error';
+        }
+
+        function log(message, type = 'info') {
+            const result = document.getElementById('result');
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}\n`;
+            
+            result.textContent += logMessage;
+            result.className = type;
+            result.scrollTop = result.scrollHeight;
+        }
+
+        function setButtonLoading(buttonId, loading = true) {
+            const button = document.getElementById(buttonId);
+            if (loading) {
+                button.disabled = true;
+                button.textContent = '⏳ Executando...';
+            } else {
+                button.disabled = false;
+                button.textContent = buttonId === 'test-payment-btn' ? 'Testar Criação de Preferência' :
+                                   buttonId === 'test-webhook-btn' ? 'Testar Webhook' : 'Executar Todos os Testes';
+            }
+        }
+
+        async function testPaymentConfiguration() {
+            setButtonLoading('test-payment-btn', true);
+            log('🧪 Iniciando teste de criação de preferência...', 'info');
+            
+            try {
+                const testData = {
+                    owner_id: '49014464-6ed9-4fee-af45-06105f31698b',
+                    booking_id: 'test-booking-' + Date.now(),
+                    price: 10.00,
+                    items: [{
+                        title: 'Teste de Configuração',
+                        quantity: 1,
+                        unit_price: 10.00
+                    }],
+                    return_url: 'https://arenatimedev.vercel.app/payment/success'
+                };
+
+                log(`📤 Enviando dados: ${JSON.stringify(testData, null, 2)}`, 'info');
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/create-payment-preference`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                log(`📥 Status da resposta: ${response.status}`, 'info');
+                log(`📥 Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`, 'info');
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erro na resposta: ${errorText}`, 'error');
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+                log(`✅ Resultado recebido: ${JSON.stringify(result, null, 2)}`, 'success');
+                
+                if (result.success && result.init_point) {
+                    log('🎉 Configuração funcionando perfeitamente!', 'success');
+                    log(`🔗 URL do pagamento: ${result.init_point}`, 'success');
+                    log(`🆔 Preference ID: ${result.preference_id}`, 'success');
+                    
+                    // Abrir URL do pagamento
+                    log('🌐 Abrindo URL do pagamento...', 'info');
+                    window.open(result.init_point, '_blank');
+                    
+                    return result;
+                } else {
+                    throw new Error('URL de pagamento não foi retornada');
+                }
+                
+            } catch (error) {
+                log(`❌ Erro no teste: ${error.message}`, 'error');
+                throw error;
+            } finally {
+                setButtonLoading('test-payment-btn', false);
+            }
+        }
+
+        async function testWebhook() {
+            setButtonLoading('test-webhook-btn', true);
+            log('🔗 Iniciando teste do webhook...', 'info');
+            
+            try {
+                const webhookUrl = `${SUPABASE_URL}/functions/v1/notification-webhook`;
+                log(`📤 URL do webhook: ${webhookUrl}`, 'info');
+                
+                const testData = {
+                    type: 'payment',
+                    data: {
+                        id: 'test-payment-' + Date.now(),
+                        preference_id: 'test-preference-' + Date.now()
+                    }
+                };
+                
+                log(`📤 Dados do teste: ${JSON.stringify(testData, null, 2)}`, 'info');
+                
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                log(`📥 Status do webhook: ${response.status}`, 'info');
+                const result = await response.text();
+                log(`📥 Resposta do webhook: ${result}`, response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    log('✅ Webhook funcionando!', 'success');
+                } else {
+                    log('⚠️ Webhook retornou erro, mas isso pode ser esperado para dados de teste', 'error');
+                }
+                
+                return response.ok;
+            } catch (error) {
+                log(`❌ Erro no teste do webhook: ${error.message}`, 'error');
+                return false;
+            } finally {
+                setButtonLoading('test-webhook-btn', false);
+            }
+        }
+
+        async function runAllTests() {
+            setButtonLoading('test-all-btn', true);
+            log('🚀 Executando todos os testes...', 'info');
+            
+            try {
+                // Teste 1: Criação de preferência
+                log('=== TESTE 1: Criação de Preferência ===', 'info');
+                await testPaymentConfiguration();
+                
+                // Aguardar um pouco
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Teste 2: Webhook
+                log('=== TESTE 2: Webhook ===', 'info');
+                await testWebhook();
+                
+                log('🎉 Todos os testes concluídos com sucesso!', 'success');
+                
+            } catch (error) {
+                log(`❌ Alguns testes falharam: ${error.message}`, 'error');
+            } finally {
+                setButtonLoading('test-all-btn', false);
+            }
+        }
+
+        // Log inicial
+        log('🚀 Teste de configuração do Mercado Pago carregado!', 'success');
+        log(`🔗 Supabase URL: ${SUPABASE_URL}`, 'info');
+        log(`🔑 Anon Key: ${SUPABASE_ANON_KEY ? 'Presente' : 'Ausente'}`, 'info');
+    </script>
+</body>
+</html>
