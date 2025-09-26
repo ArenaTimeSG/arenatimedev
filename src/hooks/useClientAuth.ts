@@ -3,6 +3,21 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Client, CreateClientData, LoginClientData, UpdateClientData } from '@/types/client';
 
+// Função para gerar token de sessão único
+const generateSessionToken = (): string => {
+  return btoa(Date.now().toString() + Math.random().toString(36).substr(2, 9));
+};
+
+// Função para obter informações do dispositivo
+const getDeviceInfo = () => {
+  return {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    language: navigator.language,
+    timestamp: new Date().toISOString()
+  };
+};
+
 // Função para hash simples da senha (em produção, usar bcrypt)
 const hashPassword = (password: string): string => {
   return btoa(password); // Base64 para demo - NÃO usar em produção
@@ -17,27 +32,67 @@ export const useClientAuth = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Verificar se há cliente logado no localStorage
+  // Verificar se há cliente logado via sessão
   useEffect(() => {
     const checkSavedClient = async () => {
-      const savedClient = localStorage.getItem('client');
-      if (savedClient) {
+      const sessionToken = localStorage.getItem('client_session_token');
+      if (sessionToken) {
         try {
-          const parsedClient = JSON.parse(savedClient);
-          // Verificar se o cliente ainda é válido (tem id e email)
-          if (parsedClient && parsedClient.id && parsedClient.email) {
-            // Definir o cliente imediatamente para evitar flash de loading
-            setClient(parsedClient);
-            // Verificar se o cliente ainda existe no banco em background
-            verifyClientExists(parsedClient.id, parsedClient.email);
+          // Verificar se a sessão ainda é válida
+          const { data: session, error: sessionError } = await supabase
+            .from('client_sessions')
+            .select(`
+              id,
+              expires_at,
+              client_id,
+              booking_clients!inner (
+                id,
+                name,
+                email,
+                phone,
+                created_at
+              )
+            `)
+            .eq('session_token', sessionToken)
+            .gt('expires_at', new Date().toISOString())
+            .single();
+
+          if (sessionError || !session) {
+            console.log('❌ Sessão inválida ou expirada, removendo token');
+            localStorage.removeItem('client_session_token');
+            localStorage.removeItem('client');
+            setClient(null);
           } else {
+            console.log('✅ Sessão válida encontrada');
+            const clientData = session.booking_clients;
+            setClient(clientData);
+            // Salvar dados do cliente no localStorage para cache
+            localStorage.setItem('client', JSON.stringify(clientData));
+          }
+        } catch (error) {
+          console.error('Erro ao verificar sessão:', error);
+          localStorage.removeItem('client_session_token');
+          localStorage.removeItem('client');
+          setClient(null);
+        }
+      } else {
+        // Fallback para verificar localStorage antigo
+        const savedClient = localStorage.getItem('client');
+        if (savedClient) {
+          try {
+            const parsedClient = JSON.parse(savedClient);
+            if (parsedClient && parsedClient.id && parsedClient.email) {
+              setClient(parsedClient);
+              verifyClientExists(parsedClient.id, parsedClient.email);
+            } else {
+              localStorage.removeItem('client');
+              setClient(null);
+            }
+          } catch (error) {
+            console.error('Erro ao parsear cliente do localStorage:', error);
             localStorage.removeItem('client');
             setClient(null);
           }
-        } catch (error) {
-          console.error('Erro ao parsear cliente do localStorage:', error);
-          localStorage.removeItem('client');
-          setClient(null);
         }
       }
       setLoading(false);
@@ -49,11 +104,12 @@ export const useClientAuth = () => {
   // Verificar se o cliente ainda existe no banco
   const verifyClientExists = async (clientId: string, email: string) => {
     try {
+      const normalizedEmail = email.toLowerCase().trim();
       const { data, error } = await supabase
         .from('booking_clients')
         .select('id, name, email, phone')
         .eq('id', clientId)
-        .eq('email', email)
+        .ilike('email', normalizedEmail) // Usar ilike para case-insensitive
         .single();
 
       if (error) {
@@ -143,11 +199,14 @@ export const useClientAuth = () => {
   // Mutation para registrar cliente
   const registerMutation = useMutation({
     mutationFn: async (data: CreateClientData) => {
+      // Normalizar email para lowercase
+      const normalizedEmail = data.email.toLowerCase().trim();
+      
       // Verificar se o email já existe (usando .maybeSingle() para evitar erro de múltiplos registros)
       const { data: existingClient, error: checkError } = await supabase
         .from('booking_clients')
         .select('id')
-        .eq('email', data.email)
+        .ilike('email', normalizedEmail) // Usar ilike para case-insensitive
         .maybeSingle();
 
       // Se encontrou um cliente com este email, erro
@@ -163,13 +222,13 @@ export const useClientAuth = () => {
 
       const hashedPassword = hashPassword(data.password);
       
-      console.log('🔍 useClientAuth: Tentando registrar cliente:', { name: data.name, email: data.email, phone: data.phone });
+      console.log('🔍 useClientAuth: Tentando registrar cliente:', { name: data.name, email: normalizedEmail, phone: data.phone });
       
       const { data: newClient, error } = await supabase
         .from('booking_clients')
         .insert({
           name: data.name,
-          email: data.email,
+          email: normalizedEmail, // Salvar email normalizado
           password_hash: hashedPassword,
           phone: data.phone
         })
@@ -194,12 +253,16 @@ export const useClientAuth = () => {
     mutationFn: async (data: LoginClientData & { user_id?: string }) => {
       console.log('🔍 useClientAuth: Tentando fazer login:', { email: data.email, user_id: data.user_id });
       
+      // Normalizar email para lowercase para busca case-insensitive
+      const normalizedEmail = data.email.toLowerCase().trim();
+      console.log('🔍 useClientAuth: Email normalizado:', normalizedEmail);
+      
       // Primeiro, tentar buscar cliente com user_id específico (se fornecido)
       if (data.user_id) {
         const { data: clientWithUserId, error: errorWithUserId } = await supabase
           .from('booking_clients')
           .select('*')
-          .eq('email', data.email)
+          .ilike('email', normalizedEmail) // Usar ilike para case-insensitive
           .eq('user_id', data.user_id)
           .maybeSingle();
 
@@ -219,11 +282,11 @@ export const useClientAuth = () => {
         }
       }
       
-      // Se não encontrou com user_id específico, buscar por email apenas
+      // Se não encontrou com user_id específico, buscar por email apenas (case-insensitive)
       const { data: client, error } = await supabase
         .from('booking_clients')
         .select('*')
-        .eq('email', data.email)
+        .ilike('email', normalizedEmail) // Usar ilike para case-insensitive
         .maybeSingle();
 
       if (error) {
@@ -240,6 +303,28 @@ export const useClientAuth = () => {
 
       if (!verifyPassword(data.password, client.password_hash)) {
         throw new Error('Email ou senha incorretos');
+      }
+
+      // Criar sessão para o cliente
+      const sessionToken = generateSessionToken();
+      const deviceInfo = getDeviceInfo();
+      
+      const { error: sessionError } = await supabase
+        .from('client_sessions')
+        .insert({
+          client_id: client.id,
+          session_token: sessionToken,
+          device_info: deviceInfo,
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 dias
+        });
+
+      if (sessionError) {
+        console.error('❌ Erro ao criar sessão:', sessionError);
+        // Continuar mesmo com erro de sessão
+      } else {
+        console.log('✅ Sessão criada com sucesso');
+        // Salvar token da sessão no localStorage
+        localStorage.setItem('client_session_token', sessionToken);
       }
 
       return client;
@@ -270,8 +355,26 @@ export const useClientAuth = () => {
   });
 
   // Função para logout
-  const logout = () => {
-    removeClientFromStorage();
+  const logout = async () => {
+    const sessionToken = localStorage.getItem('client_session_token');
+    
+    if (sessionToken) {
+      try {
+        // Remover sessão do banco de dados
+        await supabase
+          .from('client_sessions')
+          .delete()
+          .eq('session_token', sessionToken);
+        console.log('✅ Sessão removida do banco');
+      } catch (error) {
+        console.error('❌ Erro ao remover sessão do banco:', error);
+      }
+    }
+    
+    // Limpar localStorage
+    localStorage.removeItem('client_session_token');
+    localStorage.removeItem('client');
+    setClient(null);
   };
 
   return {
