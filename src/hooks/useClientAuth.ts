@@ -205,9 +205,16 @@ export const useClientAuth = () => {
 
         if (clientWithUserId && !errorWithUserId) {
           console.log('✅ useClientAuth: Cliente encontrado com user_id específico');
+          console.log('🔍 useClientAuth: Verificando senha:', { 
+            password: data.password, 
+            hash: clientWithUserId.password_hash,
+            hashCalculado: hashPassword(data.password)
+          });
           if (!verifyPassword(data.password, clientWithUserId.password_hash)) {
+            console.log('❌ useClientAuth: Senha não confere');
             throw new Error('Email ou senha incorretos');
           }
+          console.log('✅ useClientAuth: Senha confere, login bem-sucedido');
           return clientWithUserId;
         }
       }
