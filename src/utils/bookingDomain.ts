@@ -12,9 +12,9 @@ export const getBookingDomain = (): string => {
     return 'https://arenatime.com';
   }
   
-  // Se estiver no Vercel (arenatime.vercel.app)
+  // Se estiver no Vercel (arenatimedev.vercel.app)
   if (window.location.hostname.includes('vercel.app')) {
-    return 'https://arenatime.vercel.app';
+    return 'https://arenatimedev.vercel.app';
   }
   
   // Fallback para o domínio atual
