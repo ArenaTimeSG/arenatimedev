@@ -232,8 +232,10 @@ const OnlineBooking = () => {
       const [horas, minutos] = reserva.horario.split(':');
       dataHora.setHours(parseInt(horas), parseInt(minutos), 0, 0);
       
-      // Gerar ID único para o agendamento
-      const appointmentId = `appointment_${Date.now()}_${adminData.user.user_id}`;
+      // Gerar ID único para o agendamento (máximo 64 caracteres para Mercado Pago)
+      const timestamp = Date.now().toString();
+      const userIdShort = adminData.user.user_id.replace(/-/g, '').substring(0, 8);
+      const appointmentId = `apt_${timestamp}_${userIdShort}`;
       
       // Preparar dados do pagamento (sem criar agendamento ainda)
       const paymentData = {

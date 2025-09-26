@@ -166,7 +166,7 @@ serve(async (req) => {
     // Criar preferência do Mercado Pago
     console.log('💳 [CREATE-PREFERENCE] Criando preferência no Mercado Pago...')
     
-    const baseUrl = Deno.env.get('SUPABASE_URL') || 'https://xjsovawofsibcolnrgxl.supabase.co'
+    const baseUrl = 'https://arenatimedev.vercel.app'; // HTTPS obrigatório desde maio 2025
     
     const preference = {
       items: items || [{ 

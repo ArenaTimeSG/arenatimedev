@@ -47,9 +47,10 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       // Verificar se appointmentId está vazio e gerar um se necessário
       let finalAppointmentId = appointmentId;
       if (!appointmentId || appointmentId === '') {
-        console.log('⚠️ [FRONTEND] appointmentId está vazio, gerando um único...');
-        finalAppointmentId = `appointment_${Date.now()}_${userId}`;
-        console.log('✅ [FRONTEND] appointmentId gerado:', finalAppointmentId);
+        // Gerar ID único para o agendamento (máximo 64 caracteres para Mercado Pago)
+        const timestamp = Date.now().toString();
+        const userIdShort = userId.replace(/-/g, '').substring(0, 8);
+        finalAppointmentId = `apt_${timestamp}_${userIdShort}`;
       }
 
       // Buscar dados do pagamento do sessionStorage
