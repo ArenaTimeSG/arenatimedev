@@ -79,8 +79,26 @@ const ResumoReserva = ({
       // Para política obrigatória, primeiro processar pagamento (armazenar dados)
       // Depois abrir o modal de pagamento
       console.log('🔒 Payment required - processing payment first');
-      onConfirmarComPagamento?.(); // ✅ Chama função que armazena dados
-      setShowPayment(true);        // ✅ Depois abre modal
+      try {
+        await onConfirmarComPagamento?.(); // ✅ Aguarda função que armazena dados
+        console.log('✅ Payment data processed, opening modal');
+        
+        // Aguardar um pouco para garantir que os dados foram salvos
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Verificar se os dados foram salvos
+        const storedData = sessionStorage.getItem('paymentData');
+        if (!storedData) {
+          console.error('❌ Payment data not found after processing');
+          throw new Error('Dados do pagamento não foram salvos');
+        }
+        
+        console.log('✅ Payment data verified, opening modal');
+        setShowPayment(true);        // ✅ Depois abre modal
+      } catch (error) {
+        console.error('❌ Error processing payment:', error);
+        // Não abrir modal se houver erro
+      }
     } else if (paymentPolicy === 'opcional') {
       setPaymentChoice('pay');
       setShowPayment(true);
