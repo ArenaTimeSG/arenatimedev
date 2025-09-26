@@ -75,21 +75,30 @@ const ResumoReserva = ({
   };
 
   const handleConfirmWithPayment = async () => {
+    console.log('🔍 [DEBUG] handleConfirmWithPayment called');
+    console.log('🔍 [DEBUG] paymentPolicy:', paymentPolicy);
+    console.log('🔍 [DEBUG] onConfirmarComPagamento available:', !!onConfirmarComPagamento);
+    
     if (paymentPolicy === 'obrigatorio') {
       // Para política obrigatória, primeiro processar pagamento (armazenar dados)
       // Depois abrir o modal de pagamento
       console.log('🔒 Payment required - processing payment first');
       try {
+        console.log('🔍 [DEBUG] Calling onConfirmarComPagamento...');
         await onConfirmarComPagamento?.(); // ✅ Aguarda função que armazena dados
         console.log('✅ Payment data processed, opening modal');
         
         // Aguardar um pouco para garantir que os dados foram salvos
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
         
         // Verificar se os dados foram salvos
         const storedData = sessionStorage.getItem('paymentData');
+        console.log('🔍 [DEBUG] Stored data check:', storedData ? 'Found' : 'Not found');
+        console.log('🔍 [DEBUG] SessionStorage keys:', Object.keys(sessionStorage));
+        
         if (!storedData) {
           console.error('❌ Payment data not found after processing');
+          console.error('❌ Available sessionStorage keys:', Object.keys(sessionStorage));
           throw new Error('Dados do pagamento não foram salvos');
         }
         
@@ -97,12 +106,15 @@ const ResumoReserva = ({
         setShowPayment(true);        // ✅ Depois abre modal
       } catch (error) {
         console.error('❌ Error processing payment:', error);
+        console.error('❌ Error details:', error.message);
         // Não abrir modal se houver erro
       }
     } else if (paymentPolicy === 'opcional') {
+      console.log('🔍 [DEBUG] Optional payment policy - opening modal directly');
       setPaymentChoice('pay');
       setShowPayment(true);
     } else {
+      console.log('🔍 [DEBUG] No payment policy - calling onConfirmar');
       onConfirmar();
     }
   };

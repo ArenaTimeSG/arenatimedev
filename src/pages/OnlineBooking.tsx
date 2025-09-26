@@ -219,6 +219,13 @@ const OnlineBooking = () => {
   // Função para processar pagamento - criar agendamento primeiro
   const handleProcessPayment = useCallback(async () => {
     console.log('🔍 OnlineBooking: Processando pagamento - criando agendamento primeiro');
+    console.log('🔍 OnlineBooking: Dados disponíveis:', { 
+      adminData: !!adminData, 
+      modalidade: !!reserva.modalidade, 
+      data: !!reserva.data, 
+      horario: !!reserva.horario, 
+      client: !!client 
+    });
     
     if (!adminData || !reserva.modalidade || !reserva.data || !reserva.horario || !client) {
       console.error('❌ OnlineBooking: Dados insuficientes para processar pagamento');
@@ -236,6 +243,8 @@ const OnlineBooking = () => {
       const timestamp = Date.now().toString();
       const userIdShort = adminData.user.user_id.replace(/-/g, '').substring(0, 8);
       const appointmentId = `apt_${timestamp}_${userIdShort}`;
+      
+      console.log('🔍 OnlineBooking: Appointment ID gerado:', appointmentId);
       
       // Preparar dados do pagamento (sem criar agendamento ainda)
       const paymentData = {
@@ -258,7 +267,6 @@ const OnlineBooking = () => {
       };
       
       console.log('🔍 OnlineBooking: Dados do pagamento:', paymentData);
-      console.log('🔍 OnlineBooking: Appointment ID gerado:', appointmentId);
       
       // Armazenar dados do pagamento para uso no checkout
       sessionStorage.setItem('paymentData', JSON.stringify(paymentData));
