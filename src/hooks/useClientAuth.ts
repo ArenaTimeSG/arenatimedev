@@ -44,14 +44,7 @@ export const useClientAuth = () => {
             .select(`
               id,
               expires_at,
-              client_id,
-              booking_clients!inner (
-                id,
-                name,
-                email,
-                phone,
-                created_at
-              )
+              client_id
             `)
             .eq('session_token', sessionToken)
             .gt('expires_at', new Date().toISOString())
@@ -64,10 +57,24 @@ export const useClientAuth = () => {
             setClient(null);
           } else {
             console.log('✅ Sessão válida encontrada');
-            const clientData = session.booking_clients;
-            setClient(clientData);
-            // Salvar dados do cliente no localStorage para cache
-            localStorage.setItem('client', JSON.stringify(clientData));
+            
+            // Buscar dados do cliente separadamente
+            const { data: clientData, error: clientError } = await supabase
+              .from('booking_clients')
+              .select('id, name, email, phone, created_at')
+              .eq('id', session.client_id)
+              .single();
+
+            if (clientError || !clientData) {
+              console.log('❌ Cliente não encontrado, removendo sessão');
+              localStorage.removeItem('client_session_token');
+              localStorage.removeItem('client');
+              setClient(null);
+            } else {
+              setClient(clientData);
+              // Salvar dados do cliente no localStorage para cache
+              localStorage.setItem('client', JSON.stringify(clientData));
+            }
           }
         } catch (error) {
           console.error('Erro ao verificar sessão:', error);
