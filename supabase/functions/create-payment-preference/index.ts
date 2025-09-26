@@ -15,6 +15,9 @@ interface CreatePreferenceRequest {
     unit_price: number
   }>
   return_url?: string
+  client_id?: string
+  appointment_date?: string
+  modality_id?: string
 }
 
 interface CreatePreferenceResponse {
@@ -33,7 +36,7 @@ serve(async (req) => {
   try {
     console.log('🚀 [CREATE-PREFERENCE] Iniciando criação de preferência')
     
-    const { owner_id, booking_id, price, items, return_url }: CreatePreferenceRequest = await req.json()
+    const { owner_id, booking_id, price, items, return_url, client_id, appointment_date, modality_id }: CreatePreferenceRequest = await req.json()
 
     // Validar campos obrigatórios
     if (!owner_id || !booking_id || !price) {
@@ -115,7 +118,10 @@ serve(async (req) => {
         .insert({
           id: booking_id,
           user_id: owner_id,
+          client_id: client_id || '00000000-0000-0000-0000-000000000000', // UUID temporário
+          date: appointment_date || new Date().toISOString(),
           status: 'pending_payment',
+          modality_id: modality_id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -145,7 +151,7 @@ serve(async (req) => {
     // Criar preferência do Mercado Pago
     console.log('💳 [CREATE-PREFERENCE] Criando preferência no Mercado Pago...')
     
-    const baseUrl = Deno.env.get('BASE_API_URL') || 'https://your-project.supabase.co'
+    const baseUrl = Deno.env.get('SUPABASE_URL') || 'https://xjsovawofsibcolnrgxl.supabase.co'
     
     const preference = {
       items: items || [{ 

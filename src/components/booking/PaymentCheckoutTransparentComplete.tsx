@@ -72,7 +72,10 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
           quantity: 1,
           unit_price: amount
         }],
-        return_url: window.location.origin + '/payment/success'
+        return_url: window.location.origin + '/payment/success',
+        client_id: appointmentData.appointment_data?.client_id,
+        appointment_date: appointmentData.appointment_data?.date,
+        modality_id: appointmentData.appointment_data?.modality_id
       };
 
       console.log('📤 [FRONTEND] Dados sendo enviados:', requestData);

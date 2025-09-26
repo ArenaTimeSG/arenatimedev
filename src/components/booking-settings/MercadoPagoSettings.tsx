@@ -32,7 +32,7 @@ const MercadoPagoSettings = ({
   const [isEnabled, setIsEnabled] = useState(mercadoPagoEnabled);
   const [token, setToken] = useState(accessToken);
   const [key, setKey] = useState(publicKey);
-  const [webhook, setWebhook] = useState(webhookUrl);
+  const [webhook, setWebhook] = useState(webhookUrl || 'https://xjsovawofsibcolnrgxl.supabase.co/functions/v1/notification-webhook');
   const [showToken, setShowToken] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -47,7 +47,7 @@ const MercadoPagoSettings = ({
     setIsEnabled(mercadoPagoEnabled);
     setToken(accessToken);
     setKey(publicKey);
-    setWebhook(webhookUrl);
+    setWebhook(webhookUrl || 'https://xjsovawofsibcolnrgxl.supabase.co/functions/v1/notification-webhook');
   }, [mercadoPagoEnabled, accessToken, publicKey, webhookUrl]);
 
   const handleSalvar = async () => {
@@ -234,7 +234,7 @@ const MercadoPagoSettings = ({
                 type="text"
                 value={webhook}
                 onChange={(e) => setWebhook(e.target.value)}
-                placeholder="https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/mercado-pago-webhook"
+                placeholder="https://xjsovawofsibcolnrgxl.supabase.co/functions/v1/notification-webhook"
                 className="border-gray-200 focus:border-blue-300"
               />
               <p className="text-sm text-gray-600">
@@ -252,7 +252,7 @@ const MercadoPagoSettings = ({
                     No painel do Mercado Pago, configure o webhook para:
                   </p>
                   <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• URL: <code className="bg-blue-100 px-1 rounded">{webhook || 'URL do webhook'}</code></li>
+                    <li>• URL: <code className="bg-blue-100 px-1 rounded">{webhook || 'https://xjsovawofsibcolnrgxl.supabase.co/functions/v1/notification-webhook'}</code></li>
                     <li>• Eventos: <code className="bg-blue-100 px-1 rounded">payment</code></li>
                   </ul>
                 </div>

@@ -766,12 +766,23 @@ const Settings = () => {
                    onToggle={handleToggleAgendamento}
                  />
                  
-                 <LinkCompartilhamento />
-                 
-                 {/* Removidos itens de pagamento desta aba */}
-                 
-                 
-                 <ConfiguracoesRegras 
+                <LinkCompartilhamento />
+                
+                {/* Configurações de Pagamento */}
+                <PaymentPolicySettings 
+                  paymentPolicy={settings?.payment_policy || 'sem_pagamento'}
+                  onUpdate={handleUpdatePaymentPolicy}
+                />
+                
+                <MercadoPagoSettings
+                  mercadoPagoEnabled={settings?.mercado_pago_enabled || false}
+                  accessToken={settings?.mercado_pago_access_token || ''}
+                  publicKey={settings?.mercado_pago_public_key || ''}
+                  webhookUrl={settings?.mercado_pago_webhook_url || ''}
+                  onUpdate={handleUpdateMercadoPago}
+                />
+                
+                <ConfiguracoesRegras
                    tempoMinimo={configuracaoAgendamento.tempoMinimoAntecedencia}
                    duracaoPadrao={configuracaoAgendamento.duracaoPadrao}
                    onUpdate={handleUpdateRegras}

@@ -99,17 +99,17 @@ serve(async (req) => {
       )
     }
 
-    // Buscar chaves do admin
-    const { data: adminKeys, error: keysError } = await supabase
-      .from('admin_mercado_pago_keys')
+    // Buscar configurações do admin na tabela settings
+    const { data: adminSettings, error: settingsError } = await supabase
+      .from('settings')
       .select('*')
-      .eq('owner_id', ownerId)
+      .eq('user_id', ownerId)
       .single()
 
-    if (keysError || !adminKeys) {
-      console.error('❌ [WEBHOOK] Chaves do admin não encontradas')
+    if (settingsError || !adminSettings || !adminSettings.mercado_pago_access_token) {
+      console.error('❌ [WEBHOOK] Configurações do Mercado Pago não encontradas')
       return new Response(
-        JSON.stringify({ success: false, message: 'Chaves do admin não encontradas' }),
+        JSON.stringify({ success: false, message: 'Configurações do Mercado Pago não encontradas' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -137,21 +137,17 @@ serve(async (req) => {
 
     // Validar assinatura (opcional - log apenas se inválida)
     const signature = req.headers.get('x-signature')
-    if (signature && adminKeys.webhook_secret) {
+    if (signature && adminSettings.mercado_pago_webhook_url) {
       const payload = JSON.stringify(body)
-      const computed = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(adminKeys.webhook_secret + payload))
-      const computedHex = Array.from(new Uint8Array(computed)).map(b => b.toString(16).padStart(2, '0')).join('')
-      
-      if (signature !== computedHex) {
-        console.warn('⚠️ [WEBHOOK] Assinatura inválida para pagamento:', paymentId)
-        // Continuar processamento mesmo com assinatura inválida
-      }
+      // Nota: A validação de assinatura do Mercado Pago é mais complexa
+      // Por enquanto, apenas logamos se a assinatura estiver presente
+      console.log('🔐 [WEBHOOK] Assinatura recebida:', signature)
     }
 
     // Buscar detalhes do pagamento
     const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { 
-        'Authorization': `Bearer ${adminKeys.prod_access_token}`,
+        'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
         'Content-Type': 'application/json'
       }
     })
@@ -222,7 +218,6 @@ serve(async (req) => {
         .select('id')
         .eq('user_id', booking.user_id)
         .eq('date', booking.date)
-        .eq('time', booking.time)
         .eq('status', 'confirmed')
         .neq('id', paymentRecord.booking_id)
         .single()

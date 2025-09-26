@@ -245,6 +245,7 @@ const OnlineBooking = () => {
           client_id: client.id,
           date: dataHora.toISOString(),
           modality: reserva.modalidade.name,
+          modality_id: reserva.modalidade.id,
           valor_total: reserva.modalidade.valor,
           payment_status: 'pending',
           status: 'a_cobrar'
