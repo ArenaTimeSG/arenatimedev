@@ -115,9 +115,13 @@ const OnlineBooking = () => {
   // Verificar se o cliente está logado e redirecionar se necessário
   useEffect(() => {
     if (!clientLoading && !client) {
-      navigate(`/cliente/login?redirect=${encodeURIComponent(`/agendar/${username}`)}`);
+      const adminUserId = adminData?.user?.user_id;
+      const redirectUrl = adminUserId 
+        ? `/cliente/login?redirect=${encodeURIComponent(`/agendar/${username}`)}&adminUserId=${adminUserId}`
+        : `/cliente/login?redirect=${encodeURIComponent(`/agendar/${username}`)}`;
+      navigate(redirectUrl);
     }
-  }, [client, clientLoading, navigate, username]);
+  }, [client, clientLoading, navigate, username, adminData]);
 
   // Verificar se o agendamento online está habilitado
   useEffect(() => {

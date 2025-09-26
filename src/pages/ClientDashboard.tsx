@@ -385,7 +385,11 @@ const ClientDashboard = () => {
 
   const handleLogout = () => {
     logout();
-    navigate(`/cliente/login?redirect=${encodeURIComponent(`/cliente/dashboard/${username}`)}`);
+    const adminUserId = adminData?.user?.user_id;
+    const redirectUrl = adminUserId 
+      ? `/cliente/login?redirect=${encodeURIComponent(`/cliente/dashboard/${username}`)}&adminUserId=${adminUserId}`
+      : `/cliente/login?redirect=${encodeURIComponent(`/cliente/dashboard/${username}`)}`;
+    navigate(redirectUrl);
   };
 
   const handleNovoAgendamento = () => {

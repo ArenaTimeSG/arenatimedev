@@ -194,13 +194,13 @@ export const useClientAuth = () => {
     mutationFn: async (data: LoginClientData & { user_id?: string }) => {
       console.log('🔍 useClientAuth: Tentando fazer login:', { email: data.email, user_id: data.user_id });
       
-      // Buscar cliente por email e user_id (se fornecido)
+      // Buscar cliente por email (sem filtrar por user_id para permitir login após logout)
       let query = supabase
         .from('booking_clients')
         .select('*')
         .eq('email', data.email);
       
-      // Se user_id foi fornecido, filtrar por ele também
+      // Se user_id foi fornecido, filtrar por ele também (para compatibilidade)
       if (data.user_id) {
         query = query.eq('user_id', data.user_id);
       }
