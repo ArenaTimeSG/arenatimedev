@@ -80,6 +80,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       };
 
       console.log('📤 [FRONTEND] Dados sendo enviados:', requestData);
+      console.log('📤 [FRONTEND] URL da função:', `${supabaseUrl}/functions/v1/create-payment-preference`);
 
       const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-preference`, {
         method: 'POST',
@@ -90,8 +91,12 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
         body: JSON.stringify(requestData)
       });
 
+      console.log('📤 [FRONTEND] Status da resposta:', response.status);
+      console.log('📤 [FRONTEND] Headers da resposta:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ [FRONTEND] Erro na resposta:', errorData);
         throw new Error(errorData.error || 'Erro ao criar preferência de pagamento');
       }
 

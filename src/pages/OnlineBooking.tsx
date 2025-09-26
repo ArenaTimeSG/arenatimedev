@@ -232,6 +232,9 @@ const OnlineBooking = () => {
       const [horas, minutos] = reserva.horario.split(':');
       dataHora.setHours(parseInt(horas), parseInt(minutos), 0, 0);
       
+      // Gerar ID único para o agendamento
+      const appointmentId = `appointment_${Date.now()}_${adminData.user.user_id}`;
+      
       // Preparar dados do pagamento (sem criar agendamento ainda)
       const paymentData = {
         user_id: adminData.user.user_id,
@@ -253,9 +256,11 @@ const OnlineBooking = () => {
       };
       
       console.log('🔍 OnlineBooking: Dados do pagamento:', paymentData);
+      console.log('🔍 OnlineBooking: Appointment ID gerado:', appointmentId);
       
       // Armazenar dados do pagamento para uso no checkout
       sessionStorage.setItem('paymentData', JSON.stringify(paymentData));
+      sessionStorage.setItem('lastAppointmentId', appointmentId);
       console.log('✅ Payment data stored in sessionStorage:', paymentData);
       
       // Verificar se foi salvo corretamente
