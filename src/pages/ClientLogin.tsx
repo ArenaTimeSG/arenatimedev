@@ -19,6 +19,7 @@ const ClientLogin = () => {
   const { login, isLoggingIn, loginError } = useClientAuth();
 
   const redirectTo = searchParams.get('redirect') || '/';
+  const adminUserId = searchParams.get('adminUserId');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +34,7 @@ const ClientLogin = () => {
     }
 
     login(
-      { email, password },
+      { email, password, user_id: adminUserId },
       {
         onSuccess: () => {
           toast({

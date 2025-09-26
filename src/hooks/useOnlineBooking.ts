@@ -44,7 +44,7 @@ export const useOnlineBooking = () => {
           .from('booking_clients')
           .select('id')
           .or(`email.eq.${data.cliente_email},phone.eq.${data.cliente_telefone}`)
-          .single();
+          .maybeSingle();
 
         if (existingClient) {
           clientId = existingClient.id;
@@ -79,6 +79,8 @@ export const useOnlineBooking = () => {
               name: data.cliente_nome,
               phone: data.cliente_telefone,
               email: data.cliente_email,
+              password_hash: 'temp_hash', // Hash temporário para clientes criados online
+              user_id: data.admin_user_id // Associar ao admin
             })
             .select('id')
             .single();

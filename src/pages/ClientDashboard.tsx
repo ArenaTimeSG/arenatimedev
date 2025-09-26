@@ -61,14 +61,46 @@ const ClientDashboard = () => {
         .from('booking_clients')
         .select('id, name, email, user_id')
         .eq('id', client.id)
-        .single();
+        .eq('user_id', adminData.user.user_id) // Verificar se o cliente pertence ao admin correto
+        .maybeSingle();
 
       if (clientError) {
         console.error('❌ Erro ao verificar cliente:', clientError);
         return;
       }
 
-      console.log('✅ Cliente verificado:', clientCheck);
+      if (!clientCheck) {
+        console.error('❌ Cliente não encontrado na tabela booking_clients para este admin:', {
+          clientId: client.id,
+          adminUserId: adminData.user.user_id,
+          clientEmail: client.email
+        });
+        
+        // Tentar buscar cliente por email para este admin
+        console.log('🔍 Tentando buscar cliente por email...');
+        const { data: clientByEmail, error: emailError } = await supabase
+          .from('booking_clients')
+          .select('id, name, email, user_id')
+          .eq('email', client.email)
+          .eq('user_id', adminData.user.user_id)
+          .maybeSingle();
+          
+        if (emailError) {
+          console.error('❌ Erro ao buscar cliente por email:', emailError);
+          return;
+        }
+        
+        if (clientByEmail) {
+          console.log('✅ Cliente encontrado por email:', clientByEmail);
+          // Atualizar o client.id para o ID correto
+          client.id = clientByEmail.id;
+        } else {
+          console.error('❌ Cliente não encontrado nem por ID nem por email para este admin');
+          return;
+        }
+      } else {
+        console.log('✅ Cliente verificado:', clientCheck);
+      }
       
       // Buscar agendamentos com JOIN para obter dados do cliente
       console.log('🔍 Executando consulta SQL:', {
@@ -181,7 +213,7 @@ const ClientDashboard = () => {
         .select('*')
         .eq('id', agendamentoId)
         .eq('client_id', client?.id)
-        .single();
+        .maybeSingle();
 
       if (!fetchError1 && dataByClientId) {
         agendamento = dataByClientId;
@@ -197,16 +229,13 @@ const ClientDashboard = () => {
             client:booking_clients(name, email, phone)
           `)
           .eq('id', agendamentoId)
-          .eq('user_id', adminData?.user?.user_id);
+          .eq('user_id', adminData?.user?.user_id)
+          .maybeSingle();
 
         if (!fetchError2 && allAppointments) {
           // Verificar se o agendamento pertence ao cliente atual
-          const clientAppointment = allAppointments.filter(apt => 
-            apt.client?.email === client?.email
-          )[0];
-          
-          if (clientAppointment) {
-            agendamento = clientAppointment;
+          if (allAppointments.client?.email === client?.email) {
+            agendamento = allAppointments;
             console.log('✅ Agendamento encontrado por email');
           }
         }
