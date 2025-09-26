@@ -194,18 +194,30 @@ export const useClientAuth = () => {
     mutationFn: async (data: LoginClientData & { user_id?: string }) => {
       console.log('🔍 useClientAuth: Tentando fazer login:', { email: data.email, user_id: data.user_id });
       
-      // Buscar cliente por email (sem filtrar por user_id para permitir login após logout)
-      let query = supabase
-        .from('booking_clients')
-        .select('*')
-        .eq('email', data.email);
-      
-      // Se user_id foi fornecido, filtrar por ele também (para compatibilidade)
+      // Primeiro, tentar buscar cliente com user_id específico (se fornecido)
       if (data.user_id) {
-        query = query.eq('user_id', data.user_id);
+        const { data: clientWithUserId, error: errorWithUserId } = await supabase
+          .from('booking_clients')
+          .select('*')
+          .eq('email', data.email)
+          .eq('user_id', data.user_id)
+          .maybeSingle();
+
+        if (clientWithUserId && !errorWithUserId) {
+          console.log('✅ useClientAuth: Cliente encontrado com user_id específico');
+          if (!verifyPassword(data.password, clientWithUserId.password_hash)) {
+            throw new Error('Email ou senha incorretos');
+          }
+          return clientWithUserId;
+        }
       }
       
-      const { data: client, error } = await query.maybeSingle();
+      // Se não encontrou com user_id específico, buscar por email apenas
+      const { data: client, error } = await supabase
+        .from('booking_clients')
+        .select('*')
+        .eq('email', data.email)
+        .maybeSingle();
 
       if (error) {
         console.error('❌ useClientAuth: Erro ao buscar cliente:', error);
