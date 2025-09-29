@@ -122,7 +122,7 @@ const PaymentCheckout = ({
         .from('appointments')
         .select('*')
         .eq('user_id', userId)
-        .eq('status', 'agendado')
+        .eq('status', 'confirmed')
         .eq('payment_status', 'approved')
         .gte('created_at', tenMinutesAgo)
         .order('created_at', { ascending: false })
@@ -173,7 +173,7 @@ const PaymentCheckout = ({
           const now = new Date();
           const diffMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60);
           
-          if (diffMinutes <= 10 && payload.new.status === 'agendado' && payload.new.payment_status === 'approved') {
+          if (diffMinutes <= 10 && payload.new.status === 'confirmed' && payload.new.payment_status === 'approved') {
             console.log('✅ Agendamento confirmado via Realtime!', payload.new);
             toast({
               title: 'Pagamento Aprovado!',

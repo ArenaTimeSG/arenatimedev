@@ -97,7 +97,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
     }
   };
 
-  // Função para criar preferência de pagamento
+  // Função para usar preferência já criada
   const createPaymentPreference = async () => {
     if (isProcessing) {
       console.log('⚠️ [FRONTEND] Pagamento já sendo processado, ignorando duplo clique');
@@ -107,95 +107,46 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
     try {
       setIsProcessing(true);
       setIsLoading(true);
-      console.log('💳 [FRONTEND] Criando preferência de pagamento transparente...');
-      console.log('🔍 [FRONTEND] Props recebidas:', { appointmentId, userId, amount, modalityName });
+      console.log('💳 [FRONTEND] Usando preferência já criada...');
 
-      // Verificar se appointmentId está vazio e gerar um se necessário
-      let finalAppointmentId = appointmentId;
-      if (!appointmentId || appointmentId === '') {
-        // Gerar ID único para o agendamento (máximo 64 caracteres para Mercado Pago)
-        const timestamp = Date.now().toString();
-        const userIdShort = userId.replace(/-/g, '').substring(0, 8);
-        finalAppointmentId = `apt_${timestamp}_${userIdShort}`;
+      // Buscar preference_id do sessionStorage (já criado pelo OnlineBooking)
+      const preferenceId = sessionStorage.getItem('lastPaymentPreferenceId');
+      if (!preferenceId) {
+        throw new Error('Preferência de pagamento não encontrada');
       }
 
-      // Buscar dados do pagamento do sessionStorage
-      const storedPaymentData = sessionStorage.getItem('paymentData');
-      if (!storedPaymentData) {
-        console.error('❌ Payment data not found in sessionStorage');
-        console.error('❌ Available sessionStorage keys:', Object.keys(sessionStorage));
-        
-        // Tentar buscar dados alternativos
-        const alternativeData = sessionStorage.getItem('bookingData') || sessionStorage.getItem('appointmentData');
-        if (!alternativeData) {
-          throw new Error('Dados do pagamento não encontrados. Por favor, refaça o agendamento.');
-        }
-        
-        console.log('✅ Found alternative data:', alternativeData);
-        const appointmentData = JSON.parse(alternativeData);
-        return createPaymentWithAlternativeData(appointmentData);
+      console.log('💳 Preference ID encontrado:', preferenceId);
+
+      // Buscar URL de pagamento da preferência criada
+      const { data: paymentRecord } = await supabase
+        .from('payment_records')
+        .select('*')
+        .eq('preference_id', preferenceId)
+        .single();
+
+      if (!paymentRecord) {
+        throw new Error('Registro de pagamento não encontrado');
       }
 
-      const appointmentData = JSON.parse(storedPaymentData);
-      console.log('🔍 [FRONTEND] Dados do agendamento:', appointmentData);
+      const url = paymentRecord.init_point;
+      if (!url) {
+        throw new Error('URL de pagamento não encontrada');
+      }
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      setCheckoutUrl(url);
+      setPreferenceId(preferenceId);
 
-      const requestData = {
-        owner_id: userId,
-        booking_id: finalAppointmentId,
-        price: amount,
-        items: [{
-          title: `Agendamento de ${modalityName}`,
-          quantity: 1,
-          unit_price: amount
-        }],
-        return_url: window.location.origin + '/payment/success',
-        client_id: appointmentData.appointment_data?.client_id,
-        appointment_date: appointmentData.appointment_data?.date,
-        modality_id: appointmentData.appointment_data?.modality_id
-      };
-
-      console.log('📤 [FRONTEND] Dados sendo enviados:', requestData);
-      console.log('📤 [FRONTEND] URL da função:', `${supabaseUrl}/functions/v1/create-payment-preference`);
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-preference`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify(requestData)
+      console.log('🔗 Payment URL:', url);
+      
+      toast({
+        title: "Preferência encontrada!",
+        description: "Clique no botão abaixo para abrir o checkout do Mercado Pago",
       });
 
-      console.log('📤 [FRONTEND] Status da resposta:', response.status);
-      console.log('📤 [FRONTEND] Headers da resposta:', Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ [FRONTEND] Erro na resposta:', errorData);
-        throw new Error(errorData.error || 'Erro ao criar preferência de pagamento');
-      }
-
-      const data = await response.json();
-      console.log('✅ [FRONTEND] Preferência criada:', data);
-
-      if (data.success && data.init_point) {
-        setCheckoutUrl(data.init_point);
-        setPreferenceId(data.preference_id);
-        toast({
-          title: "Preferência criada com sucesso!",
-          description: "Clique no botão abaixo para abrir o checkout do Mercado Pago",
-        });
-      } else {
-        throw new Error('Erro ao criar preferência de pagamento');
-      }
-
     } catch (error) {
-      console.error('❌ [FRONTEND] Erro ao criar preferência:', error);
+      console.error('❌ [FRONTEND] Erro ao buscar preferência:', error);
       toast({
-        title: "Erro ao criar pagamento",
+        title: "Erro ao buscar pagamento",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive"
       });
