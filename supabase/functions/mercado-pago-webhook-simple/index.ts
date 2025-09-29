@@ -52,39 +52,47 @@ serve(async (req) => {
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
       try {
-        // Buscar o pagamento na API do Mercado Pago para obter detalhes
-        // Primeiro, precisamos encontrar o owner_id através do preference_id
-        const preferenceId = body.data.preference_id;
-        if (!preferenceId) {
-          console.log('⚠️ Preference ID não encontrado na notificação');
+        // Primeiro, buscar todos os registros de pagamento para encontrar o que corresponde ao payment_id
+        // Como não temos o preference_id diretamente, vamos buscar por external_reference
+        const { data: allPaymentRecords, error: allRecordsError } = await supabase
+          .from('payment_records')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (allRecordsError) {
+          console.error('❌ Erro ao buscar registros de pagamento:', allRecordsError);
           return new Response('ok', { status: 200, headers: corsHeaders });
         }
 
-        // Buscar registro de pagamento
-        const { data: paymentRecord, error: recordError } = await supabase
-          .from('payment_records')
-          .select('*')
-          .eq('preference_id', preferenceId)
-          .single();
+        console.log('🔍 Buscando registro correspondente ao payment_id:', paymentId);
+        console.log('🔍 Registros encontrados:', allPaymentRecords?.length || 0);
 
-        if (recordError || !paymentRecord) {
-          console.error('❌ Registro de pagamento não encontrado:', recordError);
+        // Buscar configurações do admin (vamos tentar com o primeiro user_id encontrado)
+        let adminSettings = null;
+        let paymentRecord = null;
+
+        for (const record of allPaymentRecords || []) {
+          const { data: settings, error: settingsError } = await supabase
+            .from('settings')
+            .select('mercado_pago_access_token')
+            .eq('user_id', record.owner_id)
+            .single();
+
+          if (!settingsError && settings?.mercado_pago_access_token) {
+            adminSettings = settings;
+            paymentRecord = record;
+            console.log('✅ Configurações encontradas para user_id:', record.owner_id);
+            break;
+          }
+        }
+
+        if (!adminSettings || !paymentRecord) {
+          console.error('❌ Configurações do admin não encontradas');
           return new Response('ok', { status: 200, headers: corsHeaders });
         }
 
         console.log('✅ Registro de pagamento encontrado:', paymentRecord.id);
-
-        // Buscar configurações do admin
-        const { data: adminSettings, error: settingsError } = await supabase
-          .from('settings')
-          .select('mercado_pago_access_token')
-          .eq('user_id', paymentRecord.owner_id)
-          .single();
-
-        if (settingsError || !adminSettings?.mercado_pago_access_token) {
-          console.error('❌ Configurações do admin não encontradas:', settingsError);
-          return new Response('ok', { status: 200, headers: corsHeaders });
-        }
 
         // Buscar detalhes do pagamento na API do Mercado Pago
         const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
@@ -101,6 +109,8 @@ serve(async (req) => {
 
         const paymentDetails = await mpResponse.json();
         console.log('💳 Detalhes do pagamento:', paymentDetails.status);
+        console.log('💳 External reference:', paymentDetails.external_reference);
+        console.log('💳 Preference ID:', paymentDetails.preference_id);
 
         // Se o pagamento foi aprovado, confirmar o agendamento
         if (paymentDetails.status === 'approved') {
@@ -135,7 +145,7 @@ serve(async (req) => {
           .from('webhook_notifications')
           .insert({
             payment_id: paymentId,
-            preference_id: preferenceId,
+            preference_id: paymentDetails.preference_id,
             owner_id: paymentRecord.owner_id,
             booking_id: paymentRecord.booking_id,
             status: paymentDetails.status,
