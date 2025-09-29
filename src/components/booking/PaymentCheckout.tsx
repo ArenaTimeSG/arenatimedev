@@ -259,16 +259,51 @@ const PaymentCheckout = ({
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // Buscar dados da preferência criada
-      const { data: paymentRecord } = await supabase
-        .from('payment_records')
-        .select('*')
-        .eq('preference_id', preferenceId)
-        .single();
+            // Buscar dados da preferência criada
+            console.log('🔍 [DEBUG] Buscando payment_record com preference_id:', preferenceId);
+            
+            // Primeiro tentar buscar com single()
+            let { data: paymentRecord, error: paymentRecordError } = await supabase
+              .from('payment_records')
+              .select('*')
+              .eq('preference_id', preferenceId)
+              .single();
 
-      if (!paymentRecord) {
-        throw new Error('Registro de pagamento não encontrado');
-      }
+            console.log('🔍 [DEBUG] Resultado da busca payment_record (single):', { paymentRecord, paymentRecordError });
+
+            // Se der erro de "multiple rows", buscar todos e pegar o primeiro
+            if (paymentRecordError && paymentRecordError.code === 'PGRST116') {
+              console.log('⚠️ [DEBUG] Múltiplos registros encontrados, buscando todos...');
+              const { data: allRecords, error: allRecordsError } = await supabase
+                .from('payment_records')
+                .select('*')
+                .eq('preference_id', preferenceId)
+                .order('created_at', { ascending: false });
+
+              console.log('🔍 [DEBUG] Todos os registros encontrados:', allRecords);
+
+              if (allRecordsError) {
+                console.error('❌ [DEBUG] Erro ao buscar todos os registros:', allRecordsError);
+                throw new Error(`Erro ao buscar registro de pagamento: ${allRecordsError.message}`);
+              }
+
+              if (allRecords && allRecords.length > 0) {
+                paymentRecord = allRecords[0]; // Pegar o mais recente
+                paymentRecordError = null;
+                console.log('✅ [DEBUG] Usando o primeiro registro encontrado:', paymentRecord);
+              } else {
+                paymentRecord = null;
+              }
+            }
+
+            if (paymentRecordError && paymentRecordError.code !== 'PGRST116') {
+              console.error('❌ [DEBUG] Erro ao buscar payment_record:', paymentRecordError);
+              throw new Error(`Erro ao buscar registro de pagamento: ${paymentRecordError.message}`);
+            }
+
+            if (!paymentRecord) {
+              throw new Error('Registro de pagamento não encontrado');
+            }
 
       const url = paymentRecord.init_point;
       if (!url) {
