@@ -28,6 +28,8 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
   const [paymentData, setPaymentData] = useState<any>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
   const formatCurrency = (value: number) => {
@@ -96,7 +98,13 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
 
   // Função para criar preferência de pagamento
   const createPaymentPreference = async () => {
+    if (isProcessing) {
+      console.log('⚠️ [FRONTEND] Pagamento já sendo processado, ignorando duplo clique');
+      return;
+    }
+
     try {
+      setIsProcessing(true);
       setIsLoading(true);
       console.log('💳 [FRONTEND] Criando preferência de pagamento transparente...');
       console.log('🔍 [FRONTEND] Props recebidas:', { appointmentId, userId, amount, modalityName });
@@ -192,11 +200,17 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       });
     } finally {
       setIsLoading(false);
+      setIsProcessing(false);
     }
   };
 
-  // Função para abrir checkout
+  // Função para abrir checkout (com proteção contra duplo clique)
   const openCheckout = () => {
+    if (isCheckoutOpen) {
+      console.log('⚠️ [FRONTEND] Checkout já está aberto, ignorando duplo clique');
+      return;
+    }
+
     if (!checkoutUrl) {
       toast({
         title: "Erro",
@@ -207,10 +221,11 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
     }
 
     console.log('🔗 [FRONTEND] Abrindo checkout do Mercado Pago...');
+    setIsCheckoutOpen(true);
     
     try {
-      // Tentar abrir em nova aba
-      const newWindow = window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+      // Tentar abrir em nova aba com nome específico para evitar duplicação
+      const newWindow = window.open(checkoutUrl, 'MercadoPagoCheckout', 'width=800,height=600,scrollbars=yes,resizable=yes,noopener,noreferrer');
       
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
         // Popup bloqueado, redirecionar na mesma aba
@@ -222,10 +237,18 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
         });
       } else {
         // Popup aberto com sucesso
+        console.log('✅ [FRONTEND] Checkout aberto com sucesso');
         toast({
           title: "Checkout aberto!",
           description: "Complete o pagamento no Mercado Pago. O agendamento será confirmado automaticamente.",
         });
+        
+        // Iniciar verificação de status após 10 segundos
+        setTimeout(() => {
+          if (preferenceId) {
+            checkPaymentStatus();
+          }
+        }, 10000);
       }
     } catch (error) {
       console.error('❌ Erro ao abrir checkout:', error);
@@ -268,6 +291,13 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
             description: "Seu agendamento foi confirmado com sucesso.",
           });
           onPaymentSuccess();
+        } else if (result.success && result.payment_status === 'rejected') {
+          setPaymentStatus('rejected');
+          toast({
+            title: "Pagamento Rejeitado",
+            description: "O pagamento foi rejeitado. Tente novamente.",
+            variant: "destructive"
+          });
         }
       }
     } catch (error) {
@@ -275,13 +305,21 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
     }
   };
 
-  // Verificar status do pagamento periodicamente
+  // Verificar status do pagamento periodicamente (apenas se checkout estiver aberto)
   useEffect(() => {
-    if (preferenceId && paymentStatus !== 'approved') {
-      const interval = setInterval(checkPaymentStatus, 5000); // Verificar a cada 5 segundos
+    if (preferenceId && paymentStatus !== 'approved' && isCheckoutOpen) {
+      const interval = setInterval(checkPaymentStatus, 10000); // Verificar a cada 10 segundos
       return () => clearInterval(interval);
     }
-  }, [preferenceId, paymentStatus]);
+  }, [preferenceId, paymentStatus, isCheckoutOpen]);
+
+  // Reset do estado quando componente é desmontado
+  useEffect(() => {
+    return () => {
+      setIsCheckoutOpen(false);
+      setIsProcessing(false);
+    };
+  }, []);
 
   if (paymentStatus === 'approved') {
     return (
@@ -324,6 +362,35 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
     );
   }
 
+  if (paymentStatus === 'rejected') {
+    return (
+      <div className="space-y-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertCircle className="h-6 w-6 text-red-600" />
+            <h3 className="text-lg font-semibold text-red-800">Pagamento Rejeitado</h3>
+          </div>
+          
+          <p className="text-red-700 mb-4">
+            O pagamento foi rejeitado. Tente novamente ou escolha outro método de pagamento.
+          </p>
+
+          <Button
+            onClick={() => {
+              setPaymentStatus(null);
+              setCheckoutUrl(null);
+              setPreferenceId(null);
+              setIsCheckoutOpen(false);
+            }}
+            className="w-full bg-red-600 hover:bg-red-700 text-white"
+          >
+            Tentar Novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (checkoutUrl) {
     return (
       <div className="space-y-4">
@@ -357,11 +424,14 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
 
           <Button
             onClick={openCheckout}
-            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+            disabled={isCheckoutOpen}
+            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
             size="lg"
           >
             <ExternalLink className="mr-3 h-5 w-5" />
-            <span className="text-lg">Abrir Checkout do Mercado Pago</span>
+            <span className="text-lg">
+              {isCheckoutOpen ? 'Checkout Aberto' : 'Abrir Checkout do Mercado Pago'}
+            </span>
           </Button>
           
           <p className="text-xs text-gray-500 text-center mt-2">
@@ -429,8 +499,8 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       {/* Botão Principal */}
       <Button
         onClick={createPaymentPreference}
-        disabled={isLoading}
-        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+        disabled={isLoading || isProcessing}
+        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
         size="lg"
       >
         {isLoading ? (
