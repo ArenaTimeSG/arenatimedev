@@ -339,6 +339,9 @@ const PaymentCheckout = ({
           description: 'Por favor, permita pop-ups para este site ou use o link direto abaixo.',
           variant: 'destructive',
         });
+        
+        // Mostrar link direto como alternativa
+        setPaymentCreated(true);
       }
       
     } catch (error) {

@@ -162,7 +162,7 @@ serve(async (req) => {
         pending: return_url || `${baseUrl}/payment/pending` 
       },
       auto_return: 'approved',
-      notification_url: `${supabaseUrl}/functions/v1/mercado-pago-webhook-simple`,
+      notification_url: `${supabaseUrl}/functions/v1/notification-webhook`,
       metadata: { owner_id, booking_id: finalBookingId }
     }
 
@@ -202,7 +202,7 @@ serve(async (req) => {
     const { data: paymentRecord, error: paymentError } = await supabase
       .from('payment_records')
       .insert({
-        booking_id: finalBookingId,
+        booking_id: null, // Não há agendamento ainda - será criado pelo webhook
         owner_id,
         preference_id: mpPreference.id,
         init_point: mpPreference.init_point,
@@ -222,19 +222,34 @@ serve(async (req) => {
       console.log('✅ [CREATE-PREFERENCE] Registro de pagamento criado:', paymentRecord.id)
     }
 
-    // Atualizar agendamento com status pending_payment
-    const { error: updateError } = await supabase
-      .from('appointments')
-      .update({
-        status: 'pending_payment',
-        updated_at: new Date().toISOString()
+    // Criar registro na tabela payments com dados do agendamento
+    const { data: paymentData, error: paymentDataError } = await supabase
+      .from('payments')
+      .insert({
+        appointment_id: null, // Será preenchido pelo webhook
+        amount: parseFloat(price.toString()),
+        currency: 'BRL',
+        status: 'pending',
+        mercado_pago_preference_id: mpPreference.id,
+        appointment_data: {
+          user_id: owner_id,
+          client_id: client_id,
+          date: appointment_date,
+          modality: items?.[0]?.title || 'Agendamento',
+          modality_id: modality_id,
+          valor_total: parseFloat(price.toString()),
+          payment_status: 'pending',
+          status: 'a_cobrar',
+          booking_source: 'online'
+        }
       })
-      .eq('id', finalBookingId)
+      .select()
+      .single()
 
-    if (updateError) {
-      console.error('⚠️ [CREATE-PREFERENCE] Erro ao atualizar agendamento:', updateError)
+    if (paymentDataError) {
+      console.error('❌ [CREATE-PREFERENCE] Erro ao criar dados do agendamento:', paymentDataError)
     } else {
-      console.log('✅ [CREATE-PREFERENCE] Agendamento atualizado com status pending_payment')
+      console.log('✅ [CREATE-PREFERENCE] Dados do agendamento criados:', paymentData.id)
     }
 
     const responseData: CreatePreferenceResponse = {
