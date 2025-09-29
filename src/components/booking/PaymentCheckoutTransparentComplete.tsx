@@ -30,6 +30,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [popupBlocked, setPopupBlocked] = useState(false);
   const { toast } = useToast();
 
   const formatCurrency = (value: number) => {
@@ -204,7 +205,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
     }
   };
 
-  // Função para abrir checkout (com proteção contra duplo clique)
+  // Função para abrir checkout (sem redirecionamento)
   const openCheckout = () => {
     if (isCheckoutOpen) {
       console.log('⚠️ [FRONTEND] Checkout já está aberto, ignorando duplo clique');
@@ -227,17 +228,21 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       // Tentar abrir em nova aba com nome específico para evitar duplicação
       const newWindow = window.open(checkoutUrl, 'MercadoPagoCheckout', 'width=800,height=600,scrollbars=yes,resizable=yes,noopener,noreferrer');
       
+      // Verificar se o popup foi bloqueado
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-        // Popup bloqueado, redirecionar na mesma aba
-        console.warn('⚠️ Popup bloqueado, redirecionando na mesma aba');
-        window.location.href = checkoutUrl;
+        // Popup bloqueado - mostrar mensagem e link manual
+        console.warn('⚠️ Popup bloqueado pelo navegador');
+        setPopupBlocked(true);
+        setIsCheckoutOpen(false);
         toast({
-          title: "Redirecionando...",
-          description: "Você será redirecionado para o Mercado Pago.",
+          title: "Popup Bloqueado",
+          description: "Permita pop-ups para este site ou use o link abaixo.",
+          variant: "destructive"
         });
       } else {
         // Popup aberto com sucesso
         console.log('✅ [FRONTEND] Checkout aberto com sucesso');
+        setPopupBlocked(false);
         toast({
           title: "Checkout aberto!",
           description: "Complete o pagamento no Mercado Pago. O agendamento será confirmado automaticamente.",
@@ -252,11 +257,12 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       }
     } catch (error) {
       console.error('❌ Erro ao abrir checkout:', error);
-      // Fallback: redirecionar na mesma aba
-      window.location.href = checkoutUrl;
+      setPopupBlocked(true);
+      setIsCheckoutOpen(false);
       toast({
-        title: "Redirecionando...",
-        description: "Você será redirecionado para o Mercado Pago.",
+        title: "Erro ao abrir checkout",
+        description: "Use o link abaixo para acessar o pagamento.",
+        variant: "destructive"
       });
     }
   };
@@ -381,6 +387,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
               setCheckoutUrl(null);
               setPreferenceId(null);
               setIsCheckoutOpen(false);
+              setPopupBlocked(false);
             }}
             className="w-full bg-red-600 hover:bg-red-700 text-white"
           >
@@ -401,7 +408,10 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
           </div>
           
           <p className="text-blue-700 mb-4">
-            Clique no botão abaixo para abrir o checkout do Mercado Pago
+            {popupBlocked 
+              ? "Popup foi bloqueado. Use o link abaixo para acessar o pagamento:"
+              : "Clique no botão abaixo para abrir o checkout do Mercado Pago"
+            }
           </p>
 
           <div className="bg-white rounded-lg p-4 mb-4">
@@ -422,17 +432,43 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
             </div>
           </div>
 
-          <Button
-            onClick={openCheckout}
-            disabled={isCheckoutOpen}
-            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-            size="lg"
-          >
-            <ExternalLink className="mr-3 h-5 w-5" />
-            <span className="text-lg">
-              {isCheckoutOpen ? 'Checkout Aberto' : 'Abrir Checkout do Mercado Pago'}
-            </span>
-          </Button>
+          {popupBlocked ? (
+            <div className="space-y-3">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-yellow-800 text-sm mb-3">
+                  <strong>Popup bloqueado:</strong> Clique no link abaixo para acessar o pagamento:
+                </p>
+                <a 
+                  href={checkoutUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg text-center transition-colors"
+                >
+                  <ExternalLink className="inline mr-2 h-4 w-4" />
+                  Abrir Pagamento no Mercado Pago
+                </a>
+              </div>
+              <Button
+                onClick={() => setPopupBlocked(false)}
+                variant="outline"
+                className="w-full"
+              >
+                Tentar Abrir Popup Novamente
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={openCheckout}
+              disabled={isCheckoutOpen}
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+              size="lg"
+            >
+              <ExternalLink className="mr-3 h-5 w-5" />
+              <span className="text-lg">
+                {isCheckoutOpen ? 'Checkout Aberto' : 'Abrir Checkout do Mercado Pago'}
+              </span>
+            </Button>
+          )}
           
           <p className="text-xs text-gray-500 text-center mt-2">
             O agendamento será confirmado automaticamente após o pagamento
