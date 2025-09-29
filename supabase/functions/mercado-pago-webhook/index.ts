@@ -27,8 +27,14 @@ serve(async (req) => {
     }
 
     // Obter o corpo da requisição
-    const body = await req.json();
-    console.log('🔔 Webhook recebido:', JSON.stringify(body, null, 2));
+    let body;
+    try {
+      body = await req.json();
+      console.log('🔔 Webhook recebido:', JSON.stringify(body, null, 2));
+    } catch (error) {
+      console.log('⚠️ Erro ao parsear JSON, retornando 200 OK');
+      return new Response('ok', { status: 200, headers: corsHeaders });
+    }
 
     // Verificar se é um evento de pagamento
     if (body.type !== 'payment') {

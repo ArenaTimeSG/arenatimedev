@@ -22,7 +22,7 @@ O webhook não está sendo chamado pelo Mercado Pago porque **não está configu
 
 #### **URL do Webhook:**
 ```
-https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/mercado-pago-webhook
+https://xjsovawofsibcolnrgxl.supabase.co/functions/v1/mercado-pago-webhook
 ```
 
 #### **Eventos para Escutar:**
