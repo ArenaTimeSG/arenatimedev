@@ -111,21 +111,41 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
 
       // Buscar preference_id do sessionStorage (já criado pelo OnlineBooking)
       const preferenceId = sessionStorage.getItem('lastPaymentPreferenceId');
+      console.log('🔍 [DEBUG] SessionStorage keys:', Object.keys(sessionStorage));
+      console.log('🔍 [DEBUG] Preference ID no sessionStorage:', preferenceId);
+      
       if (!preferenceId) {
-        throw new Error('Preferência de pagamento não encontrada');
+        throw new Error('Preferência de pagamento não encontrada no sessionStorage');
       }
 
       console.log('💳 Preference ID encontrado:', preferenceId);
 
       // Buscar URL de pagamento da preferência criada
-      const { data: paymentRecord } = await supabase
+      console.log('🔍 [DEBUG] Buscando payment_record com preference_id:', preferenceId);
+      const { data: paymentRecord, error: paymentRecordError } = await supabase
         .from('payment_records')
         .select('*')
         .eq('preference_id', preferenceId)
         .single();
 
+      console.log('🔍 [DEBUG] Resultado da busca payment_record:', { paymentRecord, paymentRecordError });
+
+      if (paymentRecordError) {
+        console.error('❌ [DEBUG] Erro ao buscar payment_record:', paymentRecordError);
+        throw new Error(`Erro ao buscar registro de pagamento: ${paymentRecordError.message}`);
+      }
+
       if (!paymentRecord) {
-        throw new Error('Registro de pagamento não encontrado');
+        // Tentar buscar todos os registros recentes para debug
+        console.log('🔍 [DEBUG] Buscando todos os payment_records recentes...');
+        const { data: allRecords } = await supabase
+          .from('payment_records')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        console.log('🔍 [DEBUG] Últimos 5 payment_records:', allRecords);
+        
+        throw new Error(`Registro de pagamento não encontrado para preference_id: ${preferenceId}`);
       }
 
       const url = paymentRecord.init_point;

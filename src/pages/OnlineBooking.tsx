@@ -325,6 +325,10 @@ const OnlineBooking = () => {
       if (result.preference_id) {
         sessionStorage.setItem('lastPaymentPreferenceId', result.preference_id);
         console.log('💾 Preference ID salvo:', result.preference_id);
+        console.log('🔍 [DEBUG] SessionStorage após salvar:', Object.keys(sessionStorage));
+        console.log('🔍 [DEBUG] Valor salvo:', sessionStorage.getItem('lastPaymentPreferenceId'));
+      } else {
+        console.error('❌ [DEBUG] result.preference_id não encontrado:', result);
       }
       
       console.log('✅ OnlineBooking: Pagamento processado com sucesso!');

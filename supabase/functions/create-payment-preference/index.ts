@@ -199,6 +199,17 @@ serve(async (req) => {
     console.log('🆔 [CREATE-PREFERENCE] Preference ID:', mpPreference.id)
 
     // Criar registro de pagamento no banco
+    console.log('🔍 [CREATE-PREFERENCE] Criando payment_record com dados:', {
+      booking_id: null,
+      owner_id,
+      preference_id: mpPreference.id,
+      init_point: mpPreference.init_point,
+      external_reference: finalBookingId,
+      amount: parseFloat(price.toString()),
+      currency: 'BRL',
+      status: 'pending_payment'
+    });
+
     const { data: paymentRecord, error: paymentError } = await supabase
       .from('payment_records')
       .insert({
@@ -217,9 +228,11 @@ serve(async (req) => {
 
     if (paymentError) {
       console.error('❌ [CREATE-PREFERENCE] Erro ao criar registro de pagamento:', paymentError)
+      console.error('❌ [CREATE-PREFERENCE] Detalhes do erro:', JSON.stringify(paymentError, null, 2))
       // Continuar mesmo com erro no registro de pagamento
     } else {
       console.log('✅ [CREATE-PREFERENCE] Registro de pagamento criado:', paymentRecord.id)
+      console.log('🔍 [CREATE-PREFERENCE] Dados do payment_record criado:', JSON.stringify(paymentRecord, null, 2))
     }
 
     // Criar registro na tabela payments com dados do agendamento

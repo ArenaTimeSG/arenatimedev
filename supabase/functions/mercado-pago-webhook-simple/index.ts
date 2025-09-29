@@ -35,10 +35,46 @@ serve(async (req) => {
       return new Response('ok', { status: 200, headers: corsHeaders });
     }
 
-    // Verificar se é uma notificação de pagamento
-    if (body.type === 'payment' && body.data && body.data.id) {
-      const paymentId = body.data.id;
-      console.log('💳 Notificação de pagamento recebida:', paymentId);
+    // Verificar se é uma notificação de pagamento ou merchant_order
+    if ((body.type === 'payment' && body.data && body.data.id) || 
+        (body.topic === 'merchant_order' && body.resource)) {
+      
+      let paymentId = null;
+      
+      if (body.type === 'payment' && body.data && body.data.id) {
+        paymentId = body.data.id;
+        console.log('💳 Notificação de pagamento recebida:', paymentId);
+      } else if (body.topic === 'merchant_order' && body.resource) {
+        console.log('💳 Notificação de merchant_order recebida:', body.resource);
+        
+        // Buscar detalhes do merchant_order para obter payment_id
+        try {
+          const mpResponse = await fetch(body.resource, {
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (mpResponse.ok) {
+            const merchantOrder = await mpResponse.json();
+            console.log('💳 Merchant order details:', merchantOrder);
+            
+            // Buscar o payment_id do merchant_order
+            if (merchantOrder.payments && merchantOrder.payments.length > 0) {
+              paymentId = merchantOrder.payments[0].id;
+              console.log('💳 Payment ID encontrado:', paymentId);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Erro ao buscar merchant_order:', error);
+        }
+      }
+      
+      if (!paymentId) {
+        console.log('⚠️ Payment ID não encontrado');
+        return new Response('ok', { status: 200, headers: corsHeaders });
+      }
 
       // Redirecionar para o webhook correto
       console.log('🔄 Redirecionando para notification-webhook...');
