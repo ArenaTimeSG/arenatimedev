@@ -218,7 +218,7 @@ const OnlineBooking = () => {
 
   // Função para processar pagamento - criar agendamento primeiro
   const handleProcessPayment = useCallback(async () => {
-    console.log('🔍 OnlineBooking: Processando pagamento - criando agendamento primeiro');
+    console.log('🔍 OnlineBooking: Processando pagamento - armazenando dados para pagamento');
     console.log('🔍 OnlineBooking: Dados disponíveis:', { 
       adminData: !!adminData, 
       modalidade: !!reserva.modalidade, 
@@ -239,13 +239,6 @@ const OnlineBooking = () => {
       const [horas, minutos] = reserva.horario.split(':');
       dataHora.setHours(parseInt(horas), parseInt(minutos), 0, 0);
       
-      // Gerar ID único para o agendamento (máximo 64 caracteres para Mercado Pago)
-      const timestamp = Date.now().toString();
-      const userIdShort = adminData.user.user_id.replace(/-/g, '').substring(0, 8);
-      const appointmentId = `apt_${timestamp}_${userIdShort}`;
-      
-      console.log('🔍 OnlineBooking: Appointment ID gerado:', appointmentId);
-      
       // Preparar dados do pagamento (sem criar agendamento ainda)
       const paymentData = {
         user_id: adminData.user.user_id,
@@ -262,7 +255,8 @@ const OnlineBooking = () => {
           modality_id: reserva.modalidade.id,
           valor_total: reserva.modalidade.valor,
           payment_status: 'pending',
-          status: 'a_cobrar'
+          status: 'a_cobrar',
+          booking_source: 'online'
         }
       };
       
@@ -270,7 +264,6 @@ const OnlineBooking = () => {
       
       // Armazenar dados do pagamento para uso no checkout
       sessionStorage.setItem('paymentData', JSON.stringify(paymentData));
-      sessionStorage.setItem('lastAppointmentId', appointmentId);
       console.log('✅ Payment data stored in sessionStorage:', paymentData);
       
       // Verificar se foi salvo corretamente

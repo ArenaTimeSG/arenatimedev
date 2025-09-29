@@ -181,7 +181,7 @@ serve(async (req) => {
 
     // Processar baseado no status
     if (payment.status === 'approved') {
-      console.log('✅ [WEBHOOK] Pagamento aprovado - Confirmando agendamento')
+      console.log('✅ [WEBHOOK] Pagamento aprovado - Criando/confirmando agendamento')
       
       if (!paymentRecord) {
         console.error('❌ [WEBHOOK] Registro de pagamento não encontrado')
@@ -194,111 +194,177 @@ serve(async (req) => {
         )
       }
 
-      // Verificar se o horário ainda está disponível
-      const { data: booking } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('id', paymentRecord.booking_id)
-        .single()
+      let bookingId = paymentRecord.booking_id
+      let booking = null
 
-      if (!booking) {
-        console.error('❌ [WEBHOOK] Agendamento não encontrado')
-        return new Response(
-          JSON.stringify({ success: false, message: 'Agendamento não encontrado' }),
-          { 
-            status: 404, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-
-      // Verificar se já existe outro agendamento no mesmo horário
-      const { data: conflictingBooking } = await supabase
-        .from('appointments')
-        .select('id')
-        .eq('user_id', booking.user_id)
-        .eq('date', booking.date)
-        .eq('status', 'confirmed')
-        .neq('id', paymentRecord.booking_id)
-        .single()
-
-      if (conflictingBooking) {
-        console.warn('⚠️ [WEBHOOK] Conflito de horário detectado')
+      // Se não há booking_id, criar novo agendamento
+      if (!bookingId) {
+        console.log('🔍 [WEBHOOK] Criando novo agendamento a partir dos dados do pagamento')
         
-        // Atualizar status para conflict_payment
-        await supabase
-          .from('payment_records')
-          .update({ 
-            status: 'conflict_payment',
-            updated_at: new Date().toISOString()
-          })
-          .eq('booking_id', paymentRecord.booking_id)
-
-        await supabase
+        // Buscar dados do agendamento na tabela payments pela preferência
+        const { data: paymentData } = await supabase
+          .from('payments')
+          .select('appointment_data')
+          .eq('mercado_pago_preference_id', payment.preference_id)
+          .single()
+        
+        if (paymentData && paymentData.appointment_data) {
+          // Criar o agendamento com os dados armazenados
+          const { data: newAppointment, error: createError } = await supabase
+            .from('appointments')
+            .insert({
+              ...paymentData.appointment_data,
+              status: 'agendado',
+              payment_status: 'approved',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single()
+          
+          if (createError || !newAppointment) {
+            console.error('❌ [WEBHOOK] Erro ao criar agendamento:', createError)
+            return new Response(
+              JSON.stringify({ success: false, message: 'Erro ao criar agendamento' }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
+          
+          bookingId = newAppointment.id
+          booking = newAppointment
+          console.log('✅ [WEBHOOK] Agendamento criado com sucesso:', bookingId)
+          
+          // Atualizar o registro de pagamento com o ID do agendamento
+          await supabase
+            .from('payment_records')
+            .update({ 
+              booking_id: bookingId,
+              status: 'confirmed',
+              updated_at: new Date().toISOString()
+            })
+            .eq('preference_id', payment.preference_id)
+        } else {
+          console.error('❌ [WEBHOOK] Dados do agendamento não encontrados na tabela payments')
+          return new Response(
+            JSON.stringify({ success: false, message: 'Dados do agendamento não encontrados' }),
+            { 
+              status: 400, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+      } else {
+        // Se há booking_id, confirmar agendamento existente
+        const { data: existingBooking } = await supabase
           .from('appointments')
-          .update({ 
-            status: 'conflict_payment',
+          .select('*')
+          .eq('id', bookingId)
+          .single()
+
+        if (!existingBooking) {
+          console.error('❌ [WEBHOOK] Agendamento não encontrado')
+          return new Response(
+            JSON.stringify({ success: false, message: 'Agendamento não encontrado' }),
+            { 
+              status: 404, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+
+        booking = existingBooking
+
+        // Verificar se já existe outro agendamento no mesmo horário
+        const { data: conflictingBooking } = await supabase
+          .from('appointments')
+          .select('id')
+          .eq('user_id', booking.user_id)
+          .eq('date', booking.date)
+          .eq('status', 'confirmed')
+          .neq('id', bookingId)
+          .single()
+
+        if (conflictingBooking) {
+          console.warn('⚠️ [WEBHOOK] Conflito de horário detectado')
+          
+          // Atualizar status para conflict_payment
+          await supabase
+            .from('payment_records')
+            .update({ 
+              status: 'conflict_payment',
+              updated_at: new Date().toISOString()
+            })
+            .eq('booking_id', bookingId)
+
+          await supabase
+            .from('appointments')
+            .update({ 
+              status: 'conflict_payment',
+              payment_data: payment,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', bookingId)
+
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              message: 'Conflito de horário - pagamento não pode ser confirmado',
+              data: {
+                booking_id: bookingId,
+                payment_id: paymentId,
+                status: 'conflict_payment'
+              }
+            }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+
+        // Confirmar o agendamento existente
+        const { error: updateError } = await supabase
+          .from('appointments')
+          .update({
+            status: 'confirmed',
+            payment_status: 'approved',
             payment_data: payment,
             updated_at: new Date().toISOString()
           })
-          .eq('id', paymentRecord.booking_id)
+          .eq('id', bookingId)
 
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            message: 'Conflito de horário - pagamento não pode ser confirmado',
-            data: {
-              booking_id: paymentRecord.booking_id,
-              payment_id: paymentId,
-              status: 'conflict_payment'
+        if (updateError) {
+          console.error('❌ [WEBHOOK] Erro ao confirmar agendamento:', updateError)
+          return new Response(
+            JSON.stringify({ success: false, message: 'Erro ao confirmar agendamento' }),
+            { 
+              status: 500, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
             }
-          }),
-          { 
-            status: 200, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
+          )
+        }
+
+        // Atualizar status do registro de pagamento
+        await supabase
+          .from('payment_records')
+          .update({ 
+            status: 'confirmed',
+            updated_at: new Date().toISOString()
+          })
+          .eq('booking_id', bookingId)
+
+        console.log('✅ [WEBHOOK] Agendamento confirmado com sucesso:', bookingId)
       }
-
-      // Confirmar o agendamento
-      const { error: updateError } = await supabase
-        .from('appointments')
-        .update({
-          status: 'confirmed',
-          payment_status: 'approved',
-          payment_data: payment,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', paymentRecord.booking_id)
-
-      if (updateError) {
-        console.error('❌ [WEBHOOK] Erro ao confirmar agendamento:', updateError)
-        return new Response(
-          JSON.stringify({ success: false, message: 'Erro ao confirmar agendamento' }),
-          { 
-            status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-
-      // Atualizar status do registro de pagamento
-      await supabase
-        .from('payment_records')
-        .update({ 
-          status: 'confirmed',
-          updated_at: new Date().toISOString()
-        })
-        .eq('booking_id', paymentRecord.booking_id)
-
-      console.log('✅ [WEBHOOK] Agendamento confirmado com sucesso:', paymentRecord.booking_id)
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: 'Pagamento aprovado e agendamento confirmado',
           data: {
-            booking_id: paymentRecord.booking_id,
+            booking_id: bookingId,
             payment_id: paymentId,
             status: 'approved'
           }

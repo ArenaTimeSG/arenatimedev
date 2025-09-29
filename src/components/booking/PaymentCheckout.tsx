@@ -316,6 +316,22 @@ const PaymentCheckout = ({
           description: 'Estamos processando seu pagamento. Seu agendamento será confirmado automaticamente assim que o pagamento for aprovado.',
           variant: 'default',
         });
+
+        // Monitorar fechamento da janela
+        const checkClosed = setInterval(() => {
+          if (paymentWindow.closed) {
+            clearInterval(checkClosed);
+            console.log('🔒 Payment window was closed');
+            // Não chamar onPaymentSuccess - o webhook processará o pagamento
+            // Apenas mostrar mensagem de processamento
+            console.log('⏳ Aguardando processamento do pagamento pelo webhook...');
+          }
+        }, 1000);
+
+        // Parar verificação após 5 minutos
+        setTimeout(() => {
+          clearInterval(checkClosed);
+        }, 5 * 60 * 1000);
       } else {
         console.warn('⚠️ Could not open payment window - popup blocker detected');
         toast({
