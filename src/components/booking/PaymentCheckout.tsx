@@ -249,13 +249,18 @@ const PaymentCheckout = ({
 
       // Criar preferência de pagamento sem appointment_id
       const paymentPreferenceData = {
-        user_id: paymentData.user_id,
-        amount: paymentData.amount,
-        description: paymentData.description,
-        client_name: paymentData.client_name,
-        client_email: paymentData.client_email,
-        // Não passar appointment_id - o agendamento será criado pelo webhook
-        appointment_data: paymentData.appointment_data
+        owner_id: paymentData.user_id,
+        booking_id: null, // Não há agendamento ainda - será criado pelo webhook
+        price: paymentData.amount,
+        items: [{
+          title: paymentData.description || 'Agendamento',
+          quantity: 1,
+          unit_price: paymentData.amount
+        }],
+        return_url: window.location.origin + '/payment/success',
+        client_id: paymentData.appointment_data?.client_id,
+        appointment_date: paymentData.appointment_data?.date,
+        modality_id: paymentData.appointment_data?.modality_id
       };
 
       console.log('💳 Payment preference data:', paymentPreferenceData);
