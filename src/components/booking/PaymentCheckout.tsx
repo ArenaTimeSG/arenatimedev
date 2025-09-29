@@ -247,44 +247,42 @@ const PaymentCheckout = ({
       const paymentData = JSON.parse(storedPaymentData);
       console.log('💳 Payment data from storage:', paymentData);
 
-      // Criar preferência de pagamento sem appointment_id
-      const paymentPreferenceData = {
-        owner_id: paymentData.user_id,
-        booking_id: null, // Não há agendamento ainda - será criado pelo webhook
-        price: paymentData.amount,
-        items: [{
-          title: paymentData.description || 'Agendamento',
-          quantity: 1,
-          unit_price: paymentData.amount
-        }],
-        return_url: window.location.origin + '/payment/success',
-        client_id: paymentData.appointment_data?.client_id,
-        appointment_date: paymentData.appointment_data?.date,
-        modality_id: paymentData.appointment_data?.modality_id
-      };
-
-      console.log('💳 Payment preference data:', paymentPreferenceData);
-
-      const result = await createPaymentPreference(paymentPreferenceData);
-
-      console.log('💳 Payment result:', result);
-
-      if (!result || (!result.init_point && !result.sandbox_init_point)) {
-        throw new Error('URL de pagamento não foi retornada');
+      // Buscar preference_id do sessionStorage (já criado pelo OnlineBooking)
+      const preferenceId = sessionStorage.getItem('lastPaymentPreferenceId');
+      if (!preferenceId) {
+        throw new Error('Preferência de pagamento não encontrada');
       }
 
-      // FORCE PRODUCTION URL - never use sandbox
-      const url = result.init_point || result.sandbox_init_point;
+      console.log('💳 Preference ID encontrado:', preferenceId);
+
+      // Buscar URL de pagamento da preferência criada
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      // Buscar dados da preferência criada
+      const { data: paymentRecord } = await supabase
+        .from('payment_records')
+        .select('*')
+        .eq('preference_id', preferenceId)
+        .single();
+
+      if (!paymentRecord) {
+        throw new Error('Registro de pagamento não encontrado');
+      }
+
+      const url = paymentRecord.init_point;
+      if (!url) {
+        throw new Error('URL de pagamento não encontrada');
+      }
+
       setPaymentUrl(url);
       setPaymentCreated(true);
 
       console.log('🔗 Payment URL:', url);
       
       // Salvar o preference_id no sessionStorage para verificação posterior
-      if (result.preference_id) {
-        sessionStorage.setItem('lastPaymentPreferenceId', result.preference_id);
-        console.log('💾 Preference ID salvo:', result.preference_id);
-      }
+      sessionStorage.setItem('lastPaymentPreferenceId', preferenceId);
+      console.log('💾 Preference ID salvo:', preferenceId);
 
       // Log the URL type for debugging
       if (url.includes('sandbox')) {

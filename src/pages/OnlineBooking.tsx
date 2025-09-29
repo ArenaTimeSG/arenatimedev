@@ -218,7 +218,7 @@ const OnlineBooking = () => {
 
   // Função para processar pagamento - criar agendamento primeiro
   const handleProcessPayment = useCallback(async () => {
-    console.log('🔍 OnlineBooking: Processando pagamento - armazenando dados para pagamento');
+    console.log('🔍 OnlineBooking: Processando pagamento - criando preferência de pagamento');
     console.log('🔍 OnlineBooking: Dados disponíveis:', { 
       adminData: !!adminData, 
       modalidade: !!reserva.modalidade, 
@@ -273,6 +273,61 @@ const OnlineBooking = () => {
       }
       
       console.log('✅ Payment data verified in sessionStorage');
+      
+      // CRIAR PREFERÊNCIA DE PAGAMENTO AGORA
+      console.log('🚀 OnlineBooking: Criando preferência de pagamento...');
+      
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      const paymentPreferenceData = {
+        owner_id: adminData.user.user_id,
+        booking_id: null, // Será criado pelo webhook
+        price: reserva.modalidade.valor,
+        items: [{
+          title: `Agendamento - ${reserva.modalidade.name}`,
+          quantity: 1,
+          unit_price: reserva.modalidade.valor
+        }],
+        return_url: window.location.origin + '/payment/success',
+        client_id: client.id,
+        appointment_date: dataHora.toISOString(),
+        modality_id: reserva.modalidade.id
+      };
+      
+      console.log('💳 OnlineBooking: Dados da preferência:', paymentPreferenceData);
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-preference`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify(paymentPreferenceData)
+      });
+      
+      console.log('📤 OnlineBooking: Status da resposta:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ OnlineBooking: Erro na resposta:', errorData);
+        throw new Error(errorData.error || 'Erro ao criar preferência de pagamento');
+      }
+      
+      const result = await response.json();
+      console.log('✅ OnlineBooking: Preferência criada:', result);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Falha ao criar preferência de pagamento');
+      }
+      
+      // Salvar preference_id no sessionStorage
+      if (result.preference_id) {
+        sessionStorage.setItem('lastPaymentPreferenceId', result.preference_id);
+        console.log('💾 Preference ID salvo:', result.preference_id);
+      }
+      
+      console.log('✅ OnlineBooking: Pagamento processado com sucesso!');
       
     } catch (error) {
       console.error('❌ OnlineBooking: Erro ao processar pagamento:', error);
