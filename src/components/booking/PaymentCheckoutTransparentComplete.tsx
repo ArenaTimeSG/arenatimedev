@@ -266,11 +266,11 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
 
           <Button
             onClick={openCheckout}
-            className="w-full bg-blue-600 hover:bg-blue-700"
+            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
             size="lg"
           >
-            <ExternalLink className="mr-2 h-4 w-4" />
-            Abrir Checkout do Mercado Pago
+            <ExternalLink className="mr-3 h-5 w-5" />
+            <span className="text-lg">Abrir Checkout do Mercado Pago</span>
           </Button>
           
           <p className="text-xs text-gray-500 text-center mt-2">
@@ -282,49 +282,93 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
   }
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-lg p-6 shadow-sm border">
-        <div className="flex items-center gap-3 mb-4">
-          <CreditCard className="h-6 w-6 text-blue-600" />
-          <h3 className="text-lg font-semibold">Checkout Transparente</h3>
+    <div className="space-y-6">
+      {/* Header com ícone e título */}
+      <div className="text-center">
+        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CreditCard className="h-8 w-8 text-white" />
         </div>
+        <h3 className="text-xl font-bold text-gray-800 mb-2">Pagamento Seguro</h3>
+        <p className="text-gray-600">Processado pelo Mercado Pago</p>
+      </div>
+
+      {/* Resumo do Pagamento */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
+        <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+          Resumo do Pagamento
+        </h4>
         
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Modalidade:</span>
-            <span className="font-medium">{modalityName}</span>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center py-2 border-b border-blue-100">
+            <span className="text-gray-600 font-medium">Modalidade:</span>
+            <span className="font-semibold text-gray-800">{modalityName}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Cliente:</span>
-            <span className="font-medium">{clientName}</span>
+          <div className="flex justify-between items-center py-2 border-b border-blue-100">
+            <span className="text-gray-600 font-medium">Cliente:</span>
+            <span className="font-semibold text-gray-800">{clientName}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Total:</span>
-            <span className="font-bold text-lg text-green-600">
+          <div className="flex justify-between items-center py-3 bg-white rounded-lg px-4">
+            <span className="text-gray-600 font-medium">Total:</span>
+            <span className="font-bold text-2xl text-green-600">
               {formatCurrency(amount)}
             </span>
           </div>
         </div>
       </div>
 
+      {/* Métodos de Pagamento */}
+      <div className="bg-gray-50 rounded-2xl p-4">
+        <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          Métodos Aceitos
+        </h4>
+        <div className="flex gap-3">
+          <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm">
+            <CreditCard className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-medium text-gray-700">Cartão</span>
+          </div>
+          <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm">
+            <div className="w-4 h-4 bg-green-600 rounded text-white text-xs flex items-center justify-center font-bold">P</div>
+            <span className="text-sm font-medium text-gray-700">PIX</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Botão Principal */}
       <Button
         onClick={createPaymentPreference}
         disabled={isLoading}
-        className="w-full"
+        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
         size="lg"
       >
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Criando Checkout...
+            <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+            <span className="text-lg">Criando Checkout...</span>
           </>
         ) : (
           <>
-            <CreditCard className="mr-2 h-4 w-4" />
-            Criar Checkout Transparente
+            <CreditCard className="mr-3 h-5 w-5" />
+            <span className="text-lg">Pagar com Mercado Pago</span>
           </>
         )}
       </Button>
+
+      {/* Informações de Segurança */}
+      <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+        <div className="flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <h4 className="font-semibold text-green-800 mb-1">Pagamento Seguro</h4>
+            <ul className="text-sm text-green-700 space-y-1">
+              <li>• Dados protegidos com criptografia SSL</li>
+              <li>• Processado pelo Mercado Pago</li>
+              <li>• Agendamento confirmado automaticamente</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
