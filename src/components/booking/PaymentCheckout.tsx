@@ -115,15 +115,16 @@ const PaymentCheckout = ({
     try {
       console.log('🔍 Verificando agendamentos recentes...');
       
-      // Buscar agendamentos dos últimos 5 minutos
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      // Buscar agendamentos dos últimos 10 minutos com status agendado E payment_status approved
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
       
       const { data: appointments, error } = await supabase
         .from('appointments')
         .select('*')
         .eq('user_id', userId)
         .eq('status', 'agendado')
-        .gte('created_at', fiveMinutesAgo)
+        .eq('payment_status', 'approved')
+        .gte('created_at', tenMinutesAgo)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -172,7 +173,7 @@ const PaymentCheckout = ({
           const now = new Date();
           const diffMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60);
           
-          if (diffMinutes <= 5 && payload.new.status === 'agendado') {
+          if (diffMinutes <= 10 && payload.new.status === 'agendado' && payload.new.payment_status === 'approved') {
             console.log('✅ Agendamento confirmado via Realtime!', payload.new);
             toast({
               title: 'Pagamento Aprovado!',
@@ -207,7 +208,7 @@ const PaymentCheckout = ({
       // Tentar verificar agendamentos primeiro
       let found = await checkForNewAppointments();
       
-      // Se não encontrou e há erro de conexão, tentar verificação direta do Mercado Pago
+      // Se não encontrou, tentar verificação direta do Mercado Pago
       if (!found) {
         console.log('🔄 Tentando verificação direta do Mercado Pago...');
         found = await checkPaymentStatusDirectly();
@@ -217,13 +218,13 @@ const PaymentCheckout = ({
         clearInterval(pollInterval);
         console.log('✅ Polling finalizado - pagamento confirmado');
       }
-    }, 3000); // Verificar a cada 3 segundos
+    }, 2000); // Verificar a cada 2 segundos
 
-    // Parar polling após 5 minutos
+    // Parar polling após 10 minutos
     setTimeout(() => {
       clearInterval(pollInterval);
       console.log('⏰ Polling finalizado por timeout');
-    }, 5 * 60 * 1000);
+    }, 10 * 60 * 1000);
 
     return pollInterval;
   };
