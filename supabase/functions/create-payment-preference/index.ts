@@ -210,10 +210,13 @@ serve(async (req) => {
       status: 'pending_payment'
     });
 
+    // Criar um UUID temporário para booking_id (será atualizado pelo webhook)
+    const tempBookingId = crypto.randomUUID();
+    
     const { data: paymentRecord, error: paymentError } = await supabase
       .from('payment_records')
       .insert({
-        booking_id: null, // Não há agendamento ainda - será criado pelo webhook
+        booking_id: tempBookingId, // UUID temporário - será atualizado pelo webhook
         owner_id,
         preference_id: mpPreference.id,
         init_point: mpPreference.init_point,
