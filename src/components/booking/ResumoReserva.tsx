@@ -110,9 +110,32 @@ const ResumoReserva = ({
         // Não abrir modal se houver erro
       }
     } else if (paymentPolicy === 'opcional') {
-      console.log('🔍 [DEBUG] Optional payment policy - opening modal directly');
-      setPaymentChoice('pay');
-      setShowPayment(true);
+      console.log('🔍 [DEBUG] Optional payment policy - processing payment first');
+      try {
+        console.log('🔍 [DEBUG] Calling onConfirmarComPagamento...');
+        await onConfirmarComPagamento?.(); // ✅ Chama função que armazena dados
+        console.log('✅ Payment data processed, opening modal');
+        
+        // Aguardar um pouco para garantir que os dados foram salvos
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Verificar se os dados foram salvos
+        const storedData = sessionStorage.getItem('paymentData');
+        console.log('🔍 [DEBUG] Stored data check:', storedData ? 'Found' : 'Not found');
+        
+        if (!storedData) {
+          console.error('❌ Payment data not found after processing');
+          throw new Error('Dados do pagamento não foram salvos');
+        }
+        
+        console.log('✅ Payment data verified, opening modal');
+        setPaymentChoice('pay');
+        setShowPayment(true); // ✅ Depois abre modal
+      } catch (error) {
+        console.error('❌ Error processing payment:', error);
+        console.error('❌ Error details:', error.message);
+        // Não abrir modal se houver erro
+      }
     } else {
       console.log('🔍 [DEBUG] No payment policy - calling onConfirmar');
       onConfirmar();
