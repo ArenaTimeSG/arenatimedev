@@ -1,6 +1,7 @@
 export const config = { auth: false };
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,8 +40,112 @@ serve(async (req) => {
       const paymentId = body.data.id;
       console.log('💳 Notificação de pagamento recebida:', paymentId);
 
-      // Por enquanto, apenas logar que recebemos a notificação
-      console.log('✅ Webhook funcionando! Pagamento recebido:', paymentId);
+      // Inicializar Supabase
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (!supabaseUrl || !supabaseServiceKey) {
+        console.error('❌ Variáveis de ambiente não configuradas');
+        return new Response('ok', { status: 200, headers: corsHeaders });
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      try {
+        // Buscar o pagamento na API do Mercado Pago para obter detalhes
+        // Primeiro, precisamos encontrar o owner_id através do preference_id
+        const preferenceId = body.data.preference_id;
+        if (!preferenceId) {
+          console.log('⚠️ Preference ID não encontrado na notificação');
+          return new Response('ok', { status: 200, headers: corsHeaders });
+        }
+
+        // Buscar registro de pagamento
+        const { data: paymentRecord, error: recordError } = await supabase
+          .from('payment_records')
+          .select('*')
+          .eq('preference_id', preferenceId)
+          .single();
+
+        if (recordError || !paymentRecord) {
+          console.error('❌ Registro de pagamento não encontrado:', recordError);
+          return new Response('ok', { status: 200, headers: corsHeaders });
+        }
+
+        console.log('✅ Registro de pagamento encontrado:', paymentRecord.id);
+
+        // Buscar configurações do admin
+        const { data: adminSettings, error: settingsError } = await supabase
+          .from('settings')
+          .select('mercado_pago_access_token')
+          .eq('user_id', paymentRecord.owner_id)
+          .single();
+
+        if (settingsError || !adminSettings?.mercado_pago_access_token) {
+          console.error('❌ Configurações do admin não encontradas:', settingsError);
+          return new Response('ok', { status: 200, headers: corsHeaders });
+        }
+
+        // Buscar detalhes do pagamento na API do Mercado Pago
+        const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+          headers: {
+            'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!mpResponse.ok) {
+          console.error('❌ Erro ao buscar detalhes do pagamento:', mpResponse.status);
+          return new Response('ok', { status: 200, headers: corsHeaders });
+        }
+
+        const paymentDetails = await mpResponse.json();
+        console.log('💳 Detalhes do pagamento:', paymentDetails.status);
+
+        // Se o pagamento foi aprovado, confirmar o agendamento
+        if (paymentDetails.status === 'approved') {
+          console.log('✅ Pagamento aprovado - confirmando agendamento');
+
+          // Atualizar status do registro de pagamento
+          await supabase
+            .from('payment_records')
+            .update({
+              status: 'confirmed',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', paymentRecord.id);
+
+          // Confirmar agendamento
+          await supabase
+            .from('appointments')
+            .update({
+              status: 'confirmed',
+              payment_status: 'approved',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', paymentRecord.booking_id);
+
+          console.log('✅ Agendamento confirmado:', paymentRecord.booking_id);
+        } else {
+          console.log('ℹ️ Status do pagamento:', paymentDetails.status);
+        }
+
+        // Salvar notificação para histórico
+        await supabase
+          .from('webhook_notifications')
+          .insert({
+            payment_id: paymentId,
+            preference_id: preferenceId,
+            owner_id: paymentRecord.owner_id,
+            booking_id: paymentRecord.booking_id,
+            status: paymentDetails.status,
+            raw_data: paymentDetails,
+            processed_at: new Date().toISOString()
+          });
+
+      } catch (error) {
+        console.error('❌ Erro ao processar pagamento:', error);
+      }
 
       // Sempre retornar 200 OK para o Mercado Pago
       return new Response(
