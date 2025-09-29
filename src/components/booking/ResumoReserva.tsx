@@ -4,6 +4,7 @@ import { Calendar, Clock, User, Mail, Phone, DollarSign, CheckCircle, CreditCard
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PaymentCheckoutTransparentComplete from './PaymentCheckoutTransparentComplete';
+import PaymentDebug from './PaymentDebug';
 
 interface Modalidade {
   id: string;
@@ -387,10 +388,13 @@ const ResumoReserva = ({
               if (!paymentData) {
                 console.log('⏳ Aguardando dados do pagamento...');
                 return (
-                  <div className="flex items-center justify-center p-8">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <p className="text-gray-600">Preparando pagamento...</p>
+                  <div className="p-4">
+                    <PaymentDebug />
+                    <div className="flex items-center justify-center p-8">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <p className="text-gray-600">Preparando pagamento...</p>
+                      </div>
                     </div>
                   </div>
                 );
