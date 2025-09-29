@@ -30,6 +30,13 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
   // Função auxiliar para criar pagamento com dados alternativos
   const createPaymentWithAlternativeData = async (appointmentData: any) => {
     try {
