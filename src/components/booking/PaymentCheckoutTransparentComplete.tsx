@@ -30,11 +30,61 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+  // Função auxiliar para criar pagamento com dados alternativos
+  const createPaymentWithAlternativeData = async (appointmentData: any) => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const requestData = {
+        owner_id: userId,
+        booking_id: appointmentId || `apt_${Date.now()}_${userId.substring(0, 8)}`,
+        price: amount,
+        items: [{
+          title: `Agendamento de ${modalityName}`,
+          quantity: 1,
+          unit_price: amount
+        }],
+        return_url: window.location.origin + '/payment/success',
+        client_id: appointmentData.client_id || appointmentData.clientId,
+        appointment_date: appointmentData.date || appointmentData.appointment_date,
+        modality_id: appointmentData.modality_id || appointmentData.modalityId
+      };
+
+      console.log('📤 [FRONTEND] Dados alternativos sendo enviados:', requestData);
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-preference`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [FRONTEND] Erro na resposta:', errorData);
+        throw new Error(errorData.error || 'Erro ao criar preferência de pagamento');
+      }
+
+      const data = await response.json();
+      console.log('✅ [FRONTEND] Preferência criada com dados alternativos:', data);
+
+      if (data.success && data.init_point) {
+        setCheckoutUrl(data.init_point);
+        setPreferenceId(data.preference_id);
+        toast({
+          title: "Preferência criada com sucesso!",
+          description: "Clique no botão abaixo para abrir o checkout do Mercado Pago",
+        });
+      } else {
+        throw new Error('Erro ao criar preferência de pagamento');
+      }
+    } catch (error) {
+      console.error('❌ [FRONTEND] Erro ao criar preferência com dados alternativos:', error);
+      throw error;
+    }
   };
 
   // Função para criar preferência de pagamento
@@ -56,7 +106,18 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       // Buscar dados do pagamento do sessionStorage
       const storedPaymentData = sessionStorage.getItem('paymentData');
       if (!storedPaymentData) {
-        throw new Error('Dados do pagamento não encontrados');
+        console.error('❌ Payment data not found in sessionStorage');
+        console.error('❌ Available sessionStorage keys:', Object.keys(sessionStorage));
+        
+        // Tentar buscar dados alternativos
+        const alternativeData = sessionStorage.getItem('bookingData') || sessionStorage.getItem('appointmentData');
+        if (!alternativeData) {
+          throw new Error('Dados do pagamento não encontrados. Por favor, refaça o agendamento.');
+        }
+        
+        console.log('✅ Found alternative data:', alternativeData);
+        const appointmentData = JSON.parse(alternativeData);
+        return createPaymentWithAlternativeData(appointmentData);
       }
 
       const appointmentData = JSON.parse(storedPaymentData);
@@ -139,12 +200,35 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
     }
 
     console.log('🔗 [FRONTEND] Abrindo checkout do Mercado Pago...');
-    window.open(checkoutUrl, '_blank');
     
-    toast({
-      title: "Checkout aberto!",
-      description: "Complete o pagamento no Mercado Pago. O agendamento será confirmado automaticamente.",
-    });
+    try {
+      // Tentar abrir em nova aba
+      const newWindow = window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+      
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        // Popup bloqueado, redirecionar na mesma aba
+        console.warn('⚠️ Popup bloqueado, redirecionando na mesma aba');
+        window.location.href = checkoutUrl;
+        toast({
+          title: "Redirecionando...",
+          description: "Você será redirecionado para o Mercado Pago.",
+        });
+      } else {
+        // Popup aberto com sucesso
+        toast({
+          title: "Checkout aberto!",
+          description: "Complete o pagamento no Mercado Pago. O agendamento será confirmado automaticamente.",
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao abrir checkout:', error);
+      // Fallback: redirecionar na mesma aba
+      window.location.href = checkoutUrl;
+      toast({
+        title: "Redirecionando...",
+        description: "Você será redirecionado para o Mercado Pago.",
+      });
+    }
   };
 
   // Função para verificar status do pagamento

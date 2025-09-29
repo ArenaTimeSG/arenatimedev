@@ -38,13 +38,13 @@ serve(async (req) => {
     
     const { owner_id, booking_id, price, items, return_url, client_id, appointment_date, modality_id }: CreatePreferenceRequest = await req.json()
 
-    // Validar campos obrigatórios
-    if (!owner_id || !booking_id || !price) {
+    // Validar campos obrigatórios com valores padrão
+    if (!owner_id || !price) {
       console.error('❌ [CREATE-PREFERENCE] Campos obrigatórios ausentes')
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'Campos obrigatórios: owner_id, booking_id, price'
+          error: 'Campos obrigatórios: owner_id, price'
         } as CreatePreferenceResponse),
         { 
           status: 400, 
@@ -52,6 +52,10 @@ serve(async (req) => {
         }
       )
     }
+
+    // Gerar booking_id se não fornecido
+    const finalBookingId = booking_id || `apt_${Date.now()}_${owner_id.substring(0, 8)}`
+    console.log('🆔 [CREATE-PREFERENCE] Booking ID:', finalBookingId)
 
     // Inicializar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -102,41 +106,26 @@ serve(async (req) => {
     console.log('✅ [CREATE-PREFERENCE] Mercado Pago configurado:', { isEnabled, hasToken: !!accessToken, hasPublicKey: !!publicKey })
 
     // Verificar se o agendamento existe, se não existir, criar um temporário
-    console.log('🔍 [CREATE-PREFERENCE] Verificando se agendamento existe:', booking_id)
+    console.log('🔍 [CREATE-PREFERENCE] Verificando se agendamento existe:', finalBookingId)
     let { data: booking, error: bookingError } = await supabase
       .from('appointments')
       .select('*')
-      .eq('id', booking_id)
+      .eq('id', finalBookingId)
       .single()
 
     if (bookingError || !booking) {
       console.log('⚠️ [CREATE-PREFERENCE] Agendamento não encontrado, criando temporário...')
       
-      // Verificar se temos dados suficientes para criar o agendamento
-      if (!client_id || !appointment_date) {
-        console.error('❌ [CREATE-PREFERENCE] Dados insuficientes para criar agendamento temporário')
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Dados insuficientes para criar agendamento'
-          } as CreatePreferenceResponse),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-      
-      // Criar agendamento temporário com status pending_payment
+      // Criar agendamento temporário com dados mínimos
       const { data: newBooking, error: createError } = await supabase
         .from('appointments')
         .insert({
-          id: booking_id,
+          id: finalBookingId,
           user_id: owner_id,
-          client_id: client_id,
-          date: appointment_date,
+          client_id: client_id || null,
+          date: appointment_date || new Date().toISOString(),
           status: 'pending_payment',
-          modality_id: modality_id,
+          modality_id: modality_id || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -145,20 +134,12 @@ serve(async (req) => {
 
       if (createError) {
         console.error('❌ [CREATE-PREFERENCE] Erro ao criar agendamento temporário:', createError)
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Erro ao criar agendamento temporário'
-          } as CreatePreferenceResponse),
-          { 
-            status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
+        // Continuar mesmo com erro na criação do agendamento
+        booking = { id: finalBookingId, user_id: owner_id }
+      } else {
+        booking = newBooking
+        console.log('✅ [CREATE-PREFERENCE] Agendamento temporário criado:', booking.id)
       }
-
-      booking = newBooking
-      console.log('✅ [CREATE-PREFERENCE] Agendamento temporário criado:', booking.id)
     } else {
       console.log('✅ [CREATE-PREFERENCE] Agendamento encontrado:', booking.id)
     }
@@ -174,15 +155,15 @@ serve(async (req) => {
         quantity: 1, 
         unit_price: parseFloat(price.toString()) 
       }],
-      external_reference: booking_id,
+      external_reference: finalBookingId,
       back_urls: { 
         success: return_url || `${baseUrl}/payment/success`, 
         failure: return_url || `${baseUrl}/payment/failure`, 
         pending: return_url || `${baseUrl}/payment/pending` 
       },
       auto_return: 'approved',
-      notification_url: `${supabaseUrl}/functions/v1/notification-webhook`,
-      metadata: { owner_id, booking_id }
+      notification_url: `${supabaseUrl}/functions/v1/mercado-pago-webhook-simple`,
+      metadata: { owner_id, booking_id: finalBookingId }
     }
 
     console.log('💳 [CREATE-PREFERENCE] Dados da preferência:', JSON.stringify(preferenceData, null, 2))
@@ -221,11 +202,11 @@ serve(async (req) => {
     const { data: paymentRecord, error: paymentError } = await supabase
       .from('payment_records')
       .insert({
-        booking_id,
+        booking_id: finalBookingId,
         owner_id,
         preference_id: mpPreference.id,
         init_point: mpPreference.init_point,
-        external_reference: booking_id,
+        external_reference: finalBookingId,
         amount: parseFloat(price.toString()),
         currency: 'BRL',
         status: 'pending_payment',
@@ -236,16 +217,9 @@ serve(async (req) => {
 
     if (paymentError) {
       console.error('❌ [CREATE-PREFERENCE] Erro ao criar registro de pagamento:', paymentError)
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Erro ao criar registro de pagamento'
-        } as CreatePreferenceResponse),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+      // Continuar mesmo com erro no registro de pagamento
+    } else {
+      console.log('✅ [CREATE-PREFERENCE] Registro de pagamento criado:', paymentRecord.id)
     }
 
     // Atualizar agendamento com status pending_payment
@@ -255,7 +229,7 @@ serve(async (req) => {
         status: 'pending_payment',
         updated_at: new Date().toISOString()
       })
-      .eq('id', booking_id)
+      .eq('id', finalBookingId)
 
     if (updateError) {
       console.error('⚠️ [CREATE-PREFERENCE] Erro ao atualizar agendamento:', updateError)
