@@ -1,8 +1,4 @@
-// Webhook simples que funciona sem autenticação
-// @ts-ignore
-export const config = {
-  verifyJWT: false,
-};
+export const config = { auth: false };
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -24,12 +20,19 @@ serve(async (req) => {
 
   try {
     if (req.method !== 'POST') {
-      console.log('⚠️ Non-POST request, returning 405');
-      return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+      console.log('⚠️ Non-POST request, returning 200');
+      return new Response('ok', { status: 200, headers: corsHeaders });
     }
 
-    const body = await req.json();
-    console.log('🔔 Dados recebidos do Mercado Pago:', body);
+    // Obter o corpo da requisição
+    let body;
+    try {
+      body = await req.json();
+      console.log('🔔 Dados recebidos do Mercado Pago:', body);
+    } catch (error) {
+      console.log('⚠️ Erro ao parsear JSON, retornando 200 OK');
+      return new Response('ok', { status: 200, headers: corsHeaders });
+    }
 
     // Verificar se é uma notificação de pagamento
     if (body.type === 'payment' && body.data && body.data.id) {
@@ -55,7 +58,7 @@ serve(async (req) => {
       console.log('⚠️ Notificação não é de pagamento ou dados inválidos');
       return new Response(
         JSON.stringify({ error: 'Tipo de notificação não suportado' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
