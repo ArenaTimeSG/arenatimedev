@@ -60,6 +60,11 @@ serve(async (req) => {
     // Inicializar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    
+    console.log('🔑 [CREATE-PREFERENCE] Supabase URL:', supabaseUrl)
+    console.log('🔑 [CREATE-PREFERENCE] Service Key existe:', !!supabaseServiceKey)
+    console.log('🔑 [CREATE-PREFERENCE] Service Key length:', supabaseServiceKey?.length)
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Buscar configurações do admin (incluindo chaves do Mercado Pago)
@@ -210,6 +215,19 @@ serve(async (req) => {
       status: 'pending_payment'
     });
 
+    console.log('🔍 [CREATE-PREFERENCE] Tentando inserir payment_record...')
+    console.log('🔍 [CREATE-PREFERENCE] Dados para inserção:', {
+      booking_id: null,
+      owner_id,
+      preference_id: mpPreference.id,
+      init_point: mpPreference.init_point,
+      external_reference: finalBookingId,
+      amount: parseFloat(price.toString()),
+      currency: 'BRL',
+      status: 'pending_payment',
+      expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+    })
+    
     const { data: paymentRecord, error: paymentError } = await supabase
       .from('payment_records')
       .insert({
@@ -225,6 +243,8 @@ serve(async (req) => {
       })
       .select()
       .single()
+      
+    console.log('🔍 [CREATE-PREFERENCE] Resultado da inserção:', { paymentRecord, paymentError })
 
     if (paymentError) {
       console.error('❌ [CREATE-PREFERENCE] Erro ao criar registro de pagamento:', paymentError)
