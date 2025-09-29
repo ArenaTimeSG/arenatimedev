@@ -57,11 +57,11 @@ serve(async (req) => {
     // Criar cliente Supabase
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Buscar dados do pagamento na tabela payments
+    // Buscar dados do pagamento na tabela payment_records
     const { data: paymentRecord, error: paymentError } = await supabase
-      .from('payments')
+      .from('payment_records')
       .select('*')
-      .eq('mercado_pago_preference_id', preference_id)
+      .eq('preference_id', preference_id)
       .single();
 
     if (paymentError) {
@@ -89,34 +89,104 @@ serve(async (req) => {
     console.log('✅ Pagamento encontrado:', {
       id: paymentRecord.id,
       status: paymentRecord.status,
-      appointment_id: paymentRecord.appointment_id,
-      preference_id: paymentRecord.mercado_pago_preference_id
+      booking_id: paymentRecord.booking_id,
+      preference_id: paymentRecord.preference_id
     });
 
-    // Se o pagamento foi aprovado e tem appointment_id, buscar dados do agendamento
+    // Buscar dados do agendamento
     let appointmentData = null;
-    if (paymentRecord.status === 'approved' && paymentRecord.appointment_id) {
+    if (paymentRecord.booking_id) {
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .select('*')
-        .eq('id', paymentRecord.appointment_id)
+        .eq('id', paymentRecord.booking_id)
         .single();
 
       if (!appointmentError && appointment) {
         appointmentData = {
           id: appointment.id,
           status: appointment.status,
-          payment_status: appointment.payment_status,
+          date: appointment.date,
+          time: appointment.time,
+          modality_id: appointment.modality_id,
+          client_id: appointment.client_id,
           created_at: appointment.created_at
         };
         console.log('✅ Agendamento encontrado:', appointmentData);
       }
     }
 
+    // Verificar se o pagamento foi aprovado via API do Mercado Pago
+    let paymentStatus = paymentRecord.status;
+    let mercadoPagoStatus = null;
+
+    if (paymentRecord.owner_id) {
+      try {
+        // Buscar configurações do admin
+        const { data: adminSettings, error: settingsError } = await supabase
+          .from('settings')
+          .select('mercado_pago_access_token')
+          .eq('user_id', paymentRecord.owner_id)
+          .single();
+
+        if (!settingsError && adminSettings?.mercado_pago_access_token) {
+          // Consultar API do Mercado Pago
+          const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/search?external_reference=${paymentRecord.booking_id}`, {
+            headers: {
+              'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (mpResponse.ok) {
+            const mpData = await mpResponse.json();
+            if (mpData.results && mpData.results.length > 0) {
+              const latestPayment = mpData.results[0];
+              mercadoPagoStatus = latestPayment.status;
+              console.log('🔍 Status do Mercado Pago:', mercadoPagoStatus);
+
+              // Se o pagamento foi aprovado no MP mas não confirmado localmente
+              if (mercadoPagoStatus === 'approved' && paymentRecord.status !== 'confirmed') {
+                console.log('✅ Pagamento aprovado no MP - confirmando agendamento');
+                
+                // Atualizar status do pagamento
+                await supabase
+                  .from('payment_records')
+                  .update({ 
+                    status: 'confirmed',
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', paymentRecord.id);
+
+                // Confirmar agendamento
+                if (appointmentData) {
+                  await supabase
+                    .from('appointments')
+                    .update({
+                      status: 'confirmed',
+                      payment_status: 'approved',
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', paymentRecord.booking_id);
+                }
+
+                paymentStatus = 'confirmed';
+                console.log('✅ Agendamento confirmado automaticamente');
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Erro ao consultar API do Mercado Pago:', error);
+      }
+    }
+
     const response = {
-      preference_id: paymentRecord.mercado_pago_preference_id,
-      status: paymentRecord.status,
-      appointment_id: paymentRecord.appointment_id,
+      success: true,
+      preference_id: paymentRecord.preference_id,
+      payment_status: paymentStatus,
+      mercado_pago_status: mercadoPagoStatus,
+      booking_id: paymentRecord.booking_id,
       appointment: appointmentData,
       created_at: paymentRecord.created_at,
       updated_at: paymentRecord.updated_at
