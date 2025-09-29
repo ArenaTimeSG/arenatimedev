@@ -232,7 +232,23 @@ serve(async (req) => {
     if (paymentError) {
       console.error('❌ [CREATE-PREFERENCE] Erro ao criar registro de pagamento:', paymentError)
       console.error('❌ [CREATE-PREFERENCE] Detalhes do erro:', JSON.stringify(paymentError, null, 2))
-      // Continuar mesmo com erro no registro de pagamento
+      console.error('❌ [CREATE-PREFERENCE] Código do erro:', paymentError.code)
+      console.error('❌ [CREATE-PREFERENCE] Mensagem do erro:', paymentError.message)
+      console.error('❌ [CREATE-PREFERENCE] Detalhes adicionais:', paymentError.details)
+      console.error('❌ [CREATE-PREFERENCE] Hint:', paymentError.hint)
+      
+      // Retornar erro em vez de continuar
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Erro ao criar registro de pagamento: ${paymentError.message}`,
+          details: paymentError
+        } as CreatePreferenceResponse),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     } else {
       console.log('✅ [CREATE-PREFERENCE] Registro de pagamento criado:', paymentRecord.id)
       console.log('🔍 [CREATE-PREFERENCE] Dados do payment_record criado:', JSON.stringify(paymentRecord, null, 2))
