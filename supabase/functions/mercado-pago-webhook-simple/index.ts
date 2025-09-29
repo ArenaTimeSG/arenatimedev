@@ -114,28 +114,116 @@ serve(async (req) => {
 
         // Se o pagamento foi aprovado, confirmar o agendamento
         if (paymentDetails.status === 'approved') {
-          console.log('✅ Pagamento aprovado - confirmando agendamento');
+          console.log('✅ Pagamento aprovado - processando agendamento');
 
-          // Atualizar status do registro de pagamento
-          await supabase
-            .from('payment_records')
-            .update({
-              status: 'confirmed',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', paymentRecord.id);
+          if (paymentRecord) {
+            // Se encontrou registro de pagamento, confirmar agendamento existente
+            console.log('✅ Confirmando agendamento existente:', paymentRecord.booking_id);
 
-          // Confirmar agendamento
-          await supabase
-            .from('appointments')
-            .update({
+            // Atualizar status do registro de pagamento
+            await supabase
+              .from('payment_records')
+              .update({
+                status: 'confirmed',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', paymentRecord.id);
+
+            // Confirmar agendamento
+            await supabase
+              .from('appointments')
+              .update({
+                status: 'confirmed',
+                payment_status: 'approved',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', paymentRecord.booking_id);
+
+            console.log('✅ Agendamento confirmado:', paymentRecord.booking_id);
+          } else {
+            // Se não encontrou registro, criar agendamento com dados do pagamento
+            console.log('✅ Criando novo agendamento com dados do pagamento');
+
+            // Buscar dados do cliente pelo email do pagador
+            const payerEmail = paymentDetails.payer?.email;
+            let clientId = null;
+
+            if (payerEmail) {
+              const { data: existingClient } = await supabase
+                .from('clients')
+                .select('id')
+                .eq('email', payerEmail)
+                .eq('user_id', paymentRecord?.owner_id || 'e23bca4f-2a4e-4f60-baf8-2cc4b0b4a00f')
+                .single();
+
+              if (existingClient) {
+                clientId = existingClient.id;
+                console.log('✅ Cliente encontrado:', clientId);
+              } else {
+                // Criar novo cliente
+                const { data: newClient } = await supabase
+                  .from('clients')
+                  .insert({
+                    user_id: paymentRecord?.owner_id || 'e23bca4f-2a4e-4f60-baf8-2cc4b0b4a00f',
+                    name: paymentDetails.payer?.identification?.number || 'Cliente Online',
+                    email: payerEmail,
+                    phone: '',
+                    created_at: new Date().toISOString()
+                  })
+                  .select()
+                  .single();
+
+                if (newClient) {
+                  clientId = newClient.id;
+                  console.log('✅ Novo cliente criado:', clientId);
+                }
+              }
+            }
+
+            // Criar agendamento
+            const appointmentData = {
+              user_id: paymentRecord?.owner_id || 'e23bca4f-2a4e-4f60-baf8-2cc4b0b4a00f',
+              client_id: clientId,
+              date: new Date().toISOString(), // Data atual como fallback
               status: 'confirmed',
+              valor_total: paymentDetails.transaction_amount?.toString() || '50.00',
               payment_status: 'approved',
+              booking_source: 'online',
+              modality_id: 'b87a371e-63ba-4356-9556-f3f3f935c83f', // Vôlei como padrão
+              is_cortesia: false,
+              payment_data: paymentDetails,
+              created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
-            })
-            .eq('id', paymentRecord.booking_id);
+            };
 
-          console.log('✅ Agendamento confirmado:', paymentRecord.booking_id);
+            const { data: newAppointment, error: createError } = await supabase
+              .from('appointments')
+              .insert(appointmentData)
+              .select()
+              .single();
+
+            if (createError) {
+              console.error('❌ Erro ao criar agendamento:', createError);
+            } else {
+              console.log('✅ Novo agendamento criado:', newAppointment.id);
+
+              // Criar registro de pagamento para histórico
+              await supabase
+                .from('payment_records')
+                .insert({
+                  booking_id: newAppointment.id,
+                  owner_id: paymentRecord?.owner_id || 'e23bca4f-2a4e-4f60-baf8-2cc4b0b4a00f',
+                  preference_id: paymentDetails.preference_id,
+                  init_point: '',
+                  external_reference: newAppointment.id,
+                  amount: paymentDetails.transaction_amount || 50,
+                  currency: 'BRL',
+                  status: 'confirmed',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                });
+            }
+          }
         } else {
           console.log('ℹ️ Status do pagamento:', paymentDetails.status);
         }
