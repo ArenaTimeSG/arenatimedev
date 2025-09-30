@@ -167,9 +167,20 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
         
         // Tentar criar o registro automaticamente usando a função SQL
         try {
+          // Buscar user_id do sessionStorage se paymentData for null
+          const storedPaymentData = sessionStorage.getItem('paymentData');
+          let userId = 'e23bca4f-2a4e-4f60-baf8-2cc4b0b4a00f'; // fallback
+          
+          if (storedPaymentData) {
+            const parsedData = JSON.parse(storedPaymentData);
+            userId = parsedData.user_id || userId;
+          }
+          
+          console.log('🔍 [DEBUG] User ID para criação:', userId);
+          
           const { data: createdRecord, error: createError } = await supabase.rpc('create_payment_record_from_preference', {
             p_preference_id: preferenceId,
-            p_owner_id: paymentData.user_id,
+            p_owner_id: userId,
             p_init_point: `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${preferenceId}`
           });
           
