@@ -1,90 +1,53 @@
-// Teste da função create-payment-preference
+// Teste simples para verificar se create-payment-preference está funcionando
 const testCreatePaymentPreference = async () => {
-  const functionUrl = 'https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/create-payment-preference';
-  const authKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dWZiZnZyZ3B6cWJ2ZGZtdGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3ODUzMDYsImV4cCI6MjA3MTM2MTMwNn0.kckI90iRHcw2hY_J5-tNveAzB1oD8xRT7MyM_tLDZ4M';
-  
+  const supabaseUrl = 'https://xjsovawofsibcolnrgxl.supabase.co';
+  const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqc292YXdvZnNpYmNvbG5yZ3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU1NjQ4MzQsImV4cCI6MjA1MTE0MDgzNH0.8QZqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJq';
+
   const testData = {
-    user_id: '49014464-6ed9-4fee-af45-06105f31698b', // ID do Pedro Junior
-    amount: 1.00,
-    description: 'Agendamento de Vôlei',
-    client_name: 'Pedro Junior Greef Flores',
-    client_email: 'pedrogreef06@gmail.com',
-    appointment_data: {
-      client_id: 'test-client-id',
-      modality_id: 'test-modality-id',
-      date: '2025-09-13',
-      time: '14:00',
-      valor_total: 1.00,
-      status: 'pending',
-      booking_source: 'online',
-      user_id: '49014464-6ed9-4fee-af45-06105f31698b'
-    }
+    owner_id: 'e23bca4f-2a4e-4f60-baf8-2cc4b0b4a00f',
+    booking_id: null,
+    price: 1.00,
+    items: [{
+      title: 'Teste - Agendamento',
+      quantity: 1,
+      unit_price: 1.00
+    }],
+    return_url: 'https://arenatimedev.vercel.app/payment/success',
+    client_id: 'bfb72238-5c21-4277-9b2c-f741499c957b',
+    appointment_date: new Date().toISOString(),
+    modality_id: 1
   };
 
+  console.log('🧪 Testando create-payment-preference...');
+  console.log('📤 Dados enviados:', testData);
+
   try {
-    console.log('🧪 Testando create-payment-preference...');
-    console.log('📤 Dados enviados:', JSON.stringify(testData, null, 2));
-    
-    const response = await fetch(functionUrl, {
+    const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-preference`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authKey}`
+        'Authorization': `Bearer ${supabaseAnonKey}`
       },
       body: JSON.stringify(testData)
     });
 
-    console.log('📊 Status da resposta:', response.status);
-    console.log('📊 Status Text:', response.statusText);
+    console.log('📥 Status da resposta:', response.status);
     
-    const responseText = await response.text();
-    console.log('📄 Resposta:', responseText);
-    
-    if (response.ok) {
-      const data = JSON.parse(responseText);
-      console.log('✅ Função funcionando!');
-      console.log('📊 Preference ID:', data.preference_id);
-      console.log('📊 Init Point:', data.init_point);
-      
-      // Verificar se o pagamento foi salvo na tabela
-      console.log('\n🔍 Verificando se pagamento foi salvo...');
-      await checkPaymentsTable();
+    const result = await response.json();
+    console.log('📥 Resposta completa:', result);
+
+    if (result.success) {
+      console.log('✅ Sucesso! Preference ID:', result.preference_id);
+      console.log('✅ Init Point:', result.init_point);
     } else {
-      console.log('❌ Função com erro:', response.status);
+      console.error('❌ Erro:', result.error);
+      console.error('❌ Detalhes:', result.details);
     }
-    
+
   } catch (error) {
-    console.error('❌ Erro ao testar função:', error);
+    console.error('❌ Erro na requisição:', error);
   }
 };
 
-// Função para verificar tabela payments
-const checkPaymentsTable = async () => {
-  const supabaseUrl = 'https://xtufbfvrgpzqbvdfmtiy.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dWZiZnZyZ3B6cWJ2ZGZtdGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3ODUzMDYsImV4cCI6MjA3MTM2MTMwNn0.kckI90iRHcw2hY_J5-tNveAzB1oD8xRT7MyM_tLDZ4M';
-  
-  try {
-    const response = await fetch(`${supabaseUrl}/rest/v1/payments?select=*&order=created_at.desc&limit=5`, {
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      console.log('📄 Pagamentos na tabela:', data.length);
-      if (data.length > 0) {
-        console.log('✅ Pagamento salvo com sucesso!');
-        console.log('📊 Último pagamento:', data[0]);
-      } else {
-        console.log('❌ Nenhum pagamento encontrado na tabela');
-      }
-    }
-  } catch (error) {
-    console.error('❌ Erro ao verificar tabela:', error);
-  }
-};
-
+// Executar o teste
 testCreatePaymentPreference();

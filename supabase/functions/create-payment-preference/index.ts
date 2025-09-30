@@ -215,50 +215,51 @@ serve(async (req) => {
       status: 'pending_payment'
     });
 
-    console.log('🔍 [CREATE-PREFERENCE] Tentando inserir payment_record...')
-    console.log('🔍 [CREATE-PREFERENCE] Dados para inserção:', {
-      booking_id: null,
-      owner_id,
-      preference_id: mpPreference.id,
-      init_point: mpPreference.init_point,
-      external_reference: finalBookingId,
-      amount: parseFloat(price.toString()),
-      currency: 'BRL',
-      status: 'pending_payment',
-      expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+    console.log('🔍 [CREATE-PREFERENCE] Tentando inserir payment_record usando função SQL...')
+    
+    // Usar função SQL para garantir que o registro seja criado
+    const { error: sqlError } = await supabase.rpc('create_payment_record_auto', {
+      p_owner_id: owner_id,
+      p_preference_id: mpPreference.id,
+      p_init_point: mpPreference.init_point,
+      p_external_reference: finalBookingId,
+      p_amount: parseFloat(price.toString()),
+      p_currency: 'BRL',
+      p_status: 'pending_payment'
     })
     
+    console.log('🔍 [CREATE-PREFERENCE] Resultado da função SQL:', { sqlError })
+    
+    // Buscar o registro criado
     const { data: paymentRecord, error: paymentError } = await supabase
       .from('payment_records')
-      .insert({
-        booking_id: null, // Será preenchido pelo webhook quando criar o agendamento
-        owner_id,
-        preference_id: mpPreference.id,
-        init_point: mpPreference.init_point,
-        external_reference: finalBookingId,
-        amount: parseFloat(price.toString()),
-        currency: 'BRL',
-        status: 'pending_payment',
-        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutos
-      })
-      .select()
+      .select('*')
+      .eq('preference_id', mpPreference.id)
       .single()
       
-    console.log('🔍 [CREATE-PREFERENCE] Resultado da inserção:', { paymentRecord, paymentError })
+    console.log('🔍 [CREATE-PREFERENCE] Resultado da busca:', { paymentRecord, paymentError })
 
-    if (paymentError) {
-      console.error('❌ [CREATE-PREFERENCE] Erro ao criar registro de pagamento:', paymentError)
-      console.error('❌ [CREATE-PREFERENCE] Detalhes do erro:', JSON.stringify(paymentError, null, 2))
-      console.error('❌ [CREATE-PREFERENCE] Código do erro:', paymentError.code)
-      console.error('❌ [CREATE-PREFERENCE] Mensagem do erro:', paymentError.message)
-      console.error('❌ [CREATE-PREFERENCE] Detalhes adicionais:', paymentError.details)
-      console.error('❌ [CREATE-PREFERENCE] Hint:', paymentError.hint)
-      
-      // Retornar erro em vez de continuar
+    if (sqlError) {
+      console.error('❌ [CREATE-PREFERENCE] Erro na função SQL:', sqlError)
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Erro ao criar registro de pagamento: ${paymentError.message}`,
+          error: `Erro ao criar registro de pagamento: ${sqlError.message}`,
+          details: sqlError
+        } as CreatePreferenceResponse),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    if (paymentError) {
+      console.error('❌ [CREATE-PREFERENCE] Erro ao buscar registro de pagamento:', paymentError)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Erro ao buscar registro de pagamento: ${paymentError.message}`,
           details: paymentError
         } as CreatePreferenceResponse),
         { 
@@ -266,25 +267,24 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
-    } else {
-      console.log('✅ [CREATE-PREFERENCE] Registro de pagamento criado:', paymentRecord.id)
-      console.log('🔍 [CREATE-PREFERENCE] Dados do payment_record criado:', JSON.stringify(paymentRecord, null, 2))
-      
-      // Verificar se o registro realmente foi criado
-      if (!paymentRecord) {
-        console.error('❌ [CREATE-PREFERENCE] paymentRecord é null após inserção bem-sucedida!')
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Registro de pagamento não foi criado corretamente'
-          } as CreatePreferenceResponse),
-          { 
-            status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
     }
+
+    if (!paymentRecord) {
+      console.error('❌ [CREATE-PREFERENCE] paymentRecord é null após criação!')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Registro de pagamento não foi criado corretamente'
+        } as CreatePreferenceResponse),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    console.log('✅ [CREATE-PREFERENCE] Registro de pagamento criado com sucesso:', paymentRecord.id)
+    console.log('🔍 [CREATE-PREFERENCE] Dados do payment_record criado:', JSON.stringify(paymentRecord, null, 2))
 
     // Criar registro na tabela payments com dados do agendamento
     const { data: paymentData, error: paymentDataError } = await supabase
