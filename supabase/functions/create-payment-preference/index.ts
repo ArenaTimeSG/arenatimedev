@@ -312,6 +312,17 @@ serve(async (req) => {
 
     if (paymentDataError) {
       console.error('❌ [CREATE-PREFERENCE] Erro ao criar dados do agendamento:', paymentDataError)
+      console.error('❌ [CREATE-PREFERENCE] Detalhes do erro:', JSON.stringify(paymentDataError, null, 2))
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Erro ao salvar dados do agendamento'
+        } as CreatePreferenceResponse),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     } else {
       console.log('✅ [CREATE-PREFERENCE] Dados do agendamento criados:', paymentData.id)
     }

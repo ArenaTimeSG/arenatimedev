@@ -106,10 +106,10 @@ serve(async (req) => {
       }
     } else {
       console.log('⚠️ Notificação não é de pagamento ou dados inválidos');
-      return new Response(
-        JSON.stringify({ error: 'Tipo de notificação não suportado' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.log('🔍 Body recebido:', JSON.stringify(body, null, 2));
+      console.log('🔍 Tipo:', body.type, 'Topic:', body.topic);
+      console.log('🔍 Data:', body.data, 'Resource:', body.resource);
+      return new Response('ok', { status: 200, headers: corsHeaders });
     }
 
   } catch (error) {

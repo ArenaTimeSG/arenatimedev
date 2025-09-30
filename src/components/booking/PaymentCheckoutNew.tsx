@@ -264,7 +264,7 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
           const status = await response.json();
           console.log('🔄 [FRONTEND] Polling - Status:', status);
           
-          if (status.status === 'approved' && status.appointment_id) {
+          if (status.success && status.payment_status === 'approved' && status.is_confirmed) {
             console.log('✅ [FRONTEND] Pagamento aprovado via polling!');
             clearInterval(pollInterval);
             toast({
@@ -273,7 +273,7 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
               variant: 'default',
             });
             onPaymentSuccess();
-          } else if (status.status === 'failed' || status.status === 'rejected') {
+          } else if (status.payment_status === 'failed' || status.payment_status === 'rejected') {
             console.log('❌ [FRONTEND] Pagamento rejeitado via polling');
             clearInterval(pollInterval);
             toast({

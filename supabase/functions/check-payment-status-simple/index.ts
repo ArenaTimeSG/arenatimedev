@@ -94,7 +94,7 @@ serve(async (req) => {
     });
 
     // Buscar dados do agendamento
-    let appointmentData = null;
+    let appointmentData: any = null;
     if (paymentRecord.booking_id) {
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
@@ -189,7 +189,11 @@ serve(async (req) => {
       booking_id: paymentRecord.booking_id,
       appointment: appointmentData,
       created_at: paymentRecord.created_at,
-      updated_at: paymentRecord.updated_at
+      updated_at: paymentRecord.updated_at,
+      // Flag para indicar se o agendamento foi confirmado
+      is_confirmed: paymentStatus === 'approved' && appointmentData && appointmentData.status === 'confirmed',
+      // Status do agendamento para o frontend
+      appointment_status: appointmentData ? appointmentData.status : 'pending'
     };
 
     console.log('📤 Retornando status do pagamento:', response);

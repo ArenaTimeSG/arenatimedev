@@ -323,7 +323,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
         const result = await response.json();
         console.log('📊 [FRONTEND] Status do pagamento:', result);
         
-        if (result.success && result.payment_status === 'approved') {
+        if (result.success && result.payment_status === 'approved' && result.is_confirmed) {
           setPaymentStatus('approved');
           setPaymentData(result);
           toast({
