@@ -269,6 +269,21 @@ serve(async (req) => {
     } else {
       console.log('✅ [CREATE-PREFERENCE] Registro de pagamento criado:', paymentRecord.id)
       console.log('🔍 [CREATE-PREFERENCE] Dados do payment_record criado:', JSON.stringify(paymentRecord, null, 2))
+      
+      // Verificar se o registro realmente foi criado
+      if (!paymentRecord) {
+        console.error('❌ [CREATE-PREFERENCE] paymentRecord é null após inserção bem-sucedida!')
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Registro de pagamento não foi criado corretamente'
+          } as CreatePreferenceResponse),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
     }
 
     // Criar registro na tabela payments com dados do agendamento
