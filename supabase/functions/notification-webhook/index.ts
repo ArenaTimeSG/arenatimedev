@@ -214,7 +214,7 @@ serve(async (req) => {
             .from('appointments')
             .insert({
               ...paymentData.appointment_data,
-              status: 'agendado',
+              status: 'confirmed',
               payment_status: 'approved',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -247,14 +247,114 @@ serve(async (req) => {
             })
             .eq('preference_id', payment.preference_id)
         } else {
-          console.error('❌ [WEBHOOK] Dados do agendamento não encontrados na tabela payments')
-          return new Response(
-            JSON.stringify({ success: false, message: 'Dados do agendamento não encontrados' }),
-            { 
-              status: 400, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          console.log('⚠️ [WEBHOOK] Dados do agendamento não encontrados na tabela payments, tentando criar com dados básicos')
+          
+          // Buscar dados do cliente pelo external_reference
+          const externalRef = payment.external_reference || paymentRecord?.external_reference
+          console.log('🔍 [WEBHOOK] External reference:', externalRef)
+          
+          if (externalRef && externalRef.startsWith('apt_')) {
+            // Extrair dados do external_reference: apt_timestamp_userid
+            const parts = externalRef.split('_')
+            if (parts.length >= 3) {
+              const timestamp = parts[1]
+              const userId = parts[2]
+              
+              // Buscar dados do cliente mais recente para este usuário
+              const { data: recentClient } = await supabase
+                .from('booking_clients')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single()
+              
+              if (recentClient) {
+                // Buscar modalidade padrão
+                const { data: defaultModality } = await supabase
+                  .from('modalities')
+                  .select('*')
+                  .eq('user_id', userId)
+                  .limit(1)
+                  .single()
+                
+                // Criar agendamento com dados básicos
+                const appointmentData = {
+                  user_id: userId,
+                  client_id: recentClient.id,
+                  date: new Date().toISOString(), // Usar data atual como fallback
+                  modality: defaultModality?.name || 'Agendamento Online',
+                  modality_id: defaultModality?.id || null,
+                  valor_total: payment.transaction_amount,
+                  payment_status: 'approved',
+                  status: 'confirmed',
+                  booking_source: 'online',
+                  name: recentClient.name,
+                  email: recentClient.email
+                }
+                
+                console.log('🔍 [WEBHOOK] Criando agendamento com dados básicos:', appointmentData)
+                
+                const { data: newAppointment, error: createError } = await supabase
+                  .from('appointments')
+                  .insert(appointmentData)
+                  .select()
+                  .single()
+                
+                if (createError || !newAppointment) {
+                  console.error('❌ [WEBHOOK] Erro ao criar agendamento básico:', createError)
+                  return new Response(
+                    JSON.stringify({ success: false, message: 'Erro ao criar agendamento básico' }),
+                    { 
+                      status: 500, 
+                      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                    }
+                  )
+                }
+                
+                bookingId = newAppointment.id
+                booking = newAppointment
+                console.log('✅ [WEBHOOK] Agendamento básico criado com sucesso:', bookingId)
+                
+                // Atualizar o registro de pagamento com o ID do agendamento
+                await supabase
+                  .from('payment_records')
+                  .update({ 
+                    booking_id: bookingId,
+                    status: 'confirmed',
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('preference_id', payment.preference_id)
+              } else {
+                console.error('❌ [WEBHOOK] Cliente não encontrado para external_reference:', externalRef)
+                return new Response(
+                  JSON.stringify({ success: false, message: 'Cliente não encontrado' }),
+                  { 
+                    status: 400, 
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                  }
+                )
+              }
+            } else {
+              console.error('❌ [WEBHOOK] External reference inválido:', externalRef)
+              return new Response(
+                JSON.stringify({ success: false, message: 'External reference inválido' }),
+                { 
+                  status: 400, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              )
             }
-          )
+          } else {
+            console.error('❌ [WEBHOOK] External reference não encontrado')
+            return new Response(
+              JSON.stringify({ success: false, message: 'External reference não encontrado' }),
+              { 
+                status: 400, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            )
+          }
         }
       } else {
         // Se há booking_id, confirmar agendamento existente
