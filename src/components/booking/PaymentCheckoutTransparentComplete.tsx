@@ -163,16 +163,41 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
       }
 
       if (!paymentRecord) {
-        // Tentar buscar todos os registros recentes para debug
-        console.log('🔍 [DEBUG] Buscando todos os payment_records recentes...');
-        const { data: allRecords } = await supabase
-          .from('payment_records')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
-        console.log('🔍 [DEBUG] Últimos 5 payment_records:', allRecords);
+        console.log('⚠️ [DEBUG] Registro não encontrado, tentando criar automaticamente...');
         
-        throw new Error(`Registro de pagamento não encontrado para preference_id: ${preferenceId}`);
+        // Tentar criar o registro automaticamente usando a função SQL
+        try {
+          const { data: createdRecord, error: createError } = await supabase.rpc('create_payment_record_from_preference', {
+            p_preference_id: preferenceId,
+            p_owner_id: paymentData.user_id,
+            p_init_point: `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${preferenceId}`
+          });
+          
+          if (createError) {
+            console.error('❌ [DEBUG] Erro ao criar registro automaticamente:', createError);
+            throw new Error(`Erro ao criar registro de pagamento: ${createError.message}`);
+          }
+          
+          if (createdRecord) {
+            console.log('✅ [DEBUG] Registro criado automaticamente:', createdRecord);
+            paymentRecord = createdRecord;
+          } else {
+            throw new Error(`Registro de pagamento não encontrado para preference_id: ${preferenceId}`);
+          }
+        } catch (createError) {
+          console.error('❌ [DEBUG] Falha ao criar registro automaticamente:', createError);
+          
+          // Buscar todos os registros recentes para debug
+          console.log('🔍 [DEBUG] Buscando todos os payment_records recentes...');
+          const { data: allRecords } = await supabase
+            .from('payment_records')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(5);
+          console.log('🔍 [DEBUG] Últimos 5 payment_records:', allRecords);
+          
+          throw new Error(`Registro de pagamento não encontrado para preference_id: ${preferenceId}`);
+        }
       }
 
       const url = paymentRecord.init_point;

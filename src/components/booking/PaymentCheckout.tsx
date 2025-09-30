@@ -302,7 +302,31 @@ const PaymentCheckout = ({
             }
 
             if (!paymentRecord) {
-              throw new Error('Registro de pagamento não encontrado');
+              console.log('⚠️ [DEBUG] Registro não encontrado, tentando criar automaticamente...');
+              
+              // Tentar criar o registro automaticamente usando a função SQL
+              try {
+                const { data: createdRecord, error: createError } = await supabase.rpc('create_payment_record_from_preference', {
+                  p_preference_id: preferenceId,
+                  p_owner_id: paymentData.user_id,
+                  p_init_point: `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${preferenceId}`
+                });
+                
+                if (createError) {
+                  console.error('❌ [DEBUG] Erro ao criar registro automaticamente:', createError);
+                  throw new Error(`Erro ao criar registro de pagamento: ${createError.message}`);
+                }
+                
+                if (createdRecord) {
+                  console.log('✅ [DEBUG] Registro criado automaticamente:', createdRecord);
+                  paymentRecord = createdRecord;
+                } else {
+                  throw new Error('Registro de pagamento não encontrado');
+                }
+              } catch (createError) {
+                console.error('❌ [DEBUG] Falha ao criar registro automaticamente:', createError);
+                throw new Error('Registro de pagamento não encontrado');
+              }
             }
 
       const url = paymentRecord.init_point;
