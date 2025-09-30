@@ -49,7 +49,63 @@ serve(async (req) => {
     const body = await req.json()
     console.log('📥 [WEBHOOK] Body:', JSON.stringify(body, null, 2))
 
-    const paymentId = body?.data?.id
+    let paymentId = body?.data?.id
+    let paymentData = null
+
+    // Se não é uma notificação direta de pagamento, tentar processar merchant_order
+    if (!paymentId && body.topic === 'merchant_order' && body.resource) {
+      console.log('🔍 [WEBHOOK] Processando merchant_order:', body.resource)
+      
+      try {
+        // Buscar configurações do admin para obter access token
+        const adminUserId = 'e23bca4f-2a4e-4f60-baf8-2cc4b0b4a00f' // Fallback
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        const supabase = createClient(supabaseUrl, supabaseServiceKey)
+        
+        const { data: adminSettings } = await supabase
+          .from('settings')
+          .select('mercado_pago_access_token')
+          .eq('user_id', adminUserId)
+          .single()
+
+        if (adminSettings?.mercado_pago_access_token) {
+          // Buscar detalhes do merchant_order
+          const mpResponse = await fetch(body.resource, {
+            headers: {
+              'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          if (mpResponse.ok) {
+            const merchantOrder = await mpResponse.json()
+            console.log('💳 [WEBHOOK] Merchant order details:', merchantOrder)
+            
+            if (merchantOrder.payments && merchantOrder.payments.length > 0) {
+              paymentId = merchantOrder.payments[0].id
+              console.log('💳 [WEBHOOK] Payment ID encontrado:', paymentId)
+              
+              // Buscar detalhes do pagamento
+              const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+                headers: {
+                  'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
+                  'Content-Type': 'application/json'
+                }
+              })
+              
+              if (paymentResponse.ok) {
+                paymentData = await paymentResponse.json()
+                console.log('💳 [WEBHOOK] Payment details:', paymentData)
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ [WEBHOOK] Erro ao processar merchant_order:', error)
+      }
+    }
+
     if (!paymentId) {
       console.error('❌ [WEBHOOK] Payment ID não encontrado')
       return new Response(
@@ -69,9 +125,11 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Identificar o dono da preferência
-    const preferenceId = body?.data?.preference_id
+    const preferenceId = payment?.preference_id || body?.data?.preference_id
     let paymentRecord = null
     let ownerId = null
+
+    console.log('🔍 [WEBHOOK] Preference ID:', preferenceId)
 
     if (preferenceId) {
       const { data: record, error: recordError } = await supabase
@@ -85,6 +143,27 @@ serve(async (req) => {
       } else {
         paymentRecord = record
         ownerId = record.owner_id
+        console.log('✅ [WEBHOOK] Registro de pagamento encontrado:', record.id)
+      }
+    } else {
+      // Se não tem preference_id, tentar buscar pelo external_reference
+      const externalRef = payment?.external_reference
+      console.log('🔍 [WEBHOOK] External reference:', externalRef)
+      
+      if (externalRef) {
+        const { data: record, error: recordError } = await supabase
+          .from('payment_records')
+          .select('*')
+          .eq('external_reference', externalRef)
+          .single()
+
+        if (recordError) {
+          console.error('❌ [WEBHOOK] Erro ao buscar registro por external_reference:', recordError)
+        } else {
+          paymentRecord = record
+          ownerId = record.owner_id
+          console.log('✅ [WEBHOOK] Registro de pagamento encontrado por external_reference:', record.id)
+        }
       }
     }
 
@@ -144,26 +223,33 @@ serve(async (req) => {
       console.log('🔐 [WEBHOOK] Assinatura recebida:', signature)
     }
 
-    // Buscar detalhes do pagamento
-    const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: { 
-        'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
-        'Content-Type': 'application/json'
-      }
-    })
-
-    if (!mpResponse.ok) {
-      console.error('❌ [WEBHOOK] Erro ao buscar detalhes do pagamento:', mpResponse.status)
-      return new Response(
-        JSON.stringify({ success: false, message: 'Erro ao buscar detalhes do pagamento' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    // Buscar detalhes do pagamento (se não foi obtido do merchant_order)
+    let payment: MercadoPagoPayment
+    if (paymentData) {
+      payment = paymentData
+      console.log('💳 [WEBHOOK] Usando dados do pagamento do merchant_order')
+    } else {
+      const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+        headers: { 
+          'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
+          'Content-Type': 'application/json'
         }
-      )
-    }
+      })
 
-    const payment: MercadoPagoPayment = await mpResponse.json()
+      if (!mpResponse.ok) {
+        console.error('❌ [WEBHOOK] Erro ao buscar detalhes do pagamento:', mpResponse.status)
+        return new Response(
+          JSON.stringify({ success: false, message: 'Erro ao buscar detalhes do pagamento' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      payment = await mpResponse.json()
+    }
+    
     console.log('💳 [WEBHOOK] Detalhes do pagamento:', JSON.stringify(payment, null, 2))
 
     // Salvar notificação
