@@ -296,6 +296,7 @@ const OnlineBooking = () => {
       };
       
       console.log('💳 OnlineBooking: Dados da preferência:', paymentPreferenceData);
+      console.log('🔍 [DEBUG] Chamando create-payment-preference...');
       
       const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-preference`, {
         method: 'POST',
@@ -307,6 +308,7 @@ const OnlineBooking = () => {
       });
       
       console.log('📤 OnlineBooking: Status da resposta:', response.status);
+      console.log('🔍 [DEBUG] Headers da resposta:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         const errorData = await response.json();
