@@ -269,15 +269,54 @@ serve(async (req) => {
     if (payment.status === 'approved') {
       console.log('✅ [WEBHOOK] Pagamento aprovado - Criando/confirmando agendamento')
       
+      // Se não encontrou payment_record, tentar criar um automaticamente
       if (!paymentRecord) {
-        console.error('❌ [WEBHOOK] Registro de pagamento não encontrado')
-        return new Response(
-          JSON.stringify({ success: false, message: 'Registro de pagamento não encontrado' }),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        console.log('⚠️ [WEBHOOK] Registro de pagamento não encontrado, criando automaticamente...')
+        
+        const externalRef = payment.external_reference
+        if (externalRef && externalRef.startsWith('apt_')) {
+          // Extrair user_id do external_reference
+          const parts = externalRef.split('_')
+          if (parts.length >= 3) {
+            const userId = parts[2]
+            
+            // Criar payment_record automaticamente
+            const { data: newPaymentRecord, error: createRecordError } = await supabase
+              .from('payment_records')
+              .insert({
+                booking_id: null,
+                owner_id: userId,
+                preference_id: payment.preference_id || `auto_${paymentId}`,
+                init_point: `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${payment.preference_id || paymentId}`,
+                external_reference: externalRef,
+                amount: payment.transaction_amount,
+                currency: payment.currency_id,
+                status: 'confirmed',
+                expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutos
+              })
+              .select()
+              .single()
+            
+            if (createRecordError) {
+              console.error('❌ [WEBHOOK] Erro ao criar payment_record:', createRecordError)
+            } else {
+              paymentRecord = newPaymentRecord
+              ownerId = userId
+              console.log('✅ [WEBHOOK] Payment_record criado automaticamente:', paymentRecord.id)
+            }
           }
-        )
+        }
+        
+        if (!paymentRecord) {
+          console.error('❌ [WEBHOOK] Não foi possível criar payment_record')
+          return new Response(
+            JSON.stringify({ success: false, message: 'Registro de pagamento não encontrado' }),
+            { 
+              status: 400, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
       }
 
       let bookingId = paymentRecord.booking_id
@@ -410,7 +449,7 @@ serve(async (req) => {
                     status: 'confirmed',
                     updated_at: new Date().toISOString()
                   })
-                  .eq('preference_id', payment.preference_id)
+                  .eq('id', paymentRecord.id)
               } else {
                 console.error('❌ [WEBHOOK] Cliente não encontrado para external_reference:', externalRef)
                 return new Response(
