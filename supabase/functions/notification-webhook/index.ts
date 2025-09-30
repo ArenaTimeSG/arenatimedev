@@ -381,12 +381,14 @@ serve(async (req) => {
           .single()
         
         if (paymentData && paymentData.appointment_data) {
+          console.log('🔍 [WEBHOOK] Dados do agendamento encontrados:', paymentData.appointment_data)
+          
           // Criar o agendamento com os dados armazenados
           const { data: newAppointment, error: createError } = await supabase
             .from('appointments')
             .insert({
               ...paymentData.appointment_data,
-              status: 'approved',
+              status: 'confirmed',
               payment_status: 'approved',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -418,6 +420,18 @@ serve(async (req) => {
               updated_at: new Date().toISOString()
             })
             .eq('preference_id', payment.preference_id)
+            
+          // Atualizar o registro na tabela payments
+          await supabase
+            .from('payments')
+            .update({
+              appointment_id: bookingId,
+              status: 'approved',
+              mercado_pago_status: 'approved',
+              mercado_pago_payment_id: paymentId,
+              updated_at: new Date().toISOString()
+            })
+            .eq('mercado_pago_preference_id', payment.preference_id)
         } else {
           console.log('⚠️ [WEBHOOK] Dados do agendamento não encontrados na tabela payments, tentando criar com dados básicos')
           
@@ -601,7 +615,7 @@ serve(async (req) => {
       const { error: updateError } = await supabase
         .from('appointments')
         .update({
-          status: 'approved',
+          status: 'confirmed',
           payment_status: 'approved',
           payment_data: payment,
           updated_at: new Date().toISOString()
