@@ -26,6 +26,7 @@ const AgendamentosMenu = ({ clientId, adminUserId, isOpen, onClose }: Agendament
   const [loading, setLoading] = useState(false);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'futuros' | 'passados'>('futuros');
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   // Buscar agendamentos do cliente
   const fetchAgendamentos = async () => {
@@ -147,6 +148,88 @@ const AgendamentosMenu = ({ clientId, adminUserId, isOpen, onClose }: Agendament
     }
   }, [isOpen, clientId, adminUserId]);
 
+  // Inscrição Realtime para atualizações de agendamentos
+  useEffect(() => {
+    if (!clientId || !adminUserId || !isOpen) return;
+
+    console.log('🔔 Configurando Supabase Realtime para:', { clientId, adminUserId });
+
+    const channel = supabase
+      .channel(`appointments-realtime-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `client_id=eq.${clientId}`
+        },
+        (payload) => {
+          console.log('🔔 Mudança recebida em tempo real:', payload);
+
+          if (payload.eventType === 'INSERT') {
+            const newAppointment = payload.new as Agendamento;
+            
+            // Verificar se é para este adminUserId
+            if (newAppointment.user_id !== adminUserId) return;
+
+            console.log('✅ Novo agendamento recebido:', newAppointment);
+            
+            setAgendamentos(prev => {
+              // Evitar duplicatas
+              if (prev.some(apt => apt.id === newAppointment.id)) {
+                return prev;
+              }
+              return [...prev, newAppointment];
+            });
+
+            // Mostrar mensagem de sucesso
+            if (newAppointment.status === 'confirmed' || newAppointment.payment_status === 'approved') {
+              setShowSuccessToast(true);
+              setTimeout(() => setShowSuccessToast(false), 5000);
+            }
+          }
+
+          if (payload.eventType === 'UPDATE') {
+            const updatedAppointment = payload.new as Agendamento;
+            
+            // Verificar se é para este adminUserId
+            if (updatedAppointment.user_id !== adminUserId) return;
+
+            console.log('✅ Agendamento atualizado:', updatedAppointment);
+            
+            setAgendamentos(prev =>
+              prev.map(apt =>
+                apt.id === updatedAppointment.id ? updatedAppointment : apt
+              )
+            );
+
+            // Mostrar mensagem de sucesso se o pagamento foi aprovado
+            if (updatedAppointment.payment_status === 'approved' && updatedAppointment.status === 'confirmed') {
+              setShowSuccessToast(true);
+              setTimeout(() => setShowSuccessToast(false), 5000);
+            }
+          }
+
+          if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            console.log('❌ Agendamento deletado:', deletedId);
+            
+            setAgendamentos(prev =>
+              prev.filter(apt => apt.id !== deletedId)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup ao desmontar
+    return () => {
+      console.log('🔕 Desconectando Supabase Realtime');
+      supabase.removeChannel(channel);
+    };
+  }, [clientId, adminUserId, isOpen]);
+
   // Filtrar agendamentos por status e data
   const agendamentosFuturos = agendamentos.filter(apt => {
     const aptDate = parseISO(apt.date);
@@ -234,6 +317,22 @@ const AgendamentosMenu = ({ clientId, adminUserId, isOpen, onClose }: Agendament
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
+      {/* Toast de Sucesso */}
+      {showSuccessToast && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className="fixed top-4 right-4 z-[60] bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3"
+        >
+          <CheckCircle className="w-5 h-5" />
+          <div>
+            <p className="font-semibold">Pagamento Confirmado!</p>
+            <p className="text-sm">Seu horário foi agendado com sucesso.</p>
+          </div>
+        </motion.div>
+      )}
+
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
