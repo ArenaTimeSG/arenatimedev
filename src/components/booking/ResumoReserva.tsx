@@ -53,6 +53,8 @@ const ResumoReserva = ({
 }: ResumoReservaProps) => {
   const [showPayment, setShowPayment] = useState(false);
   const [paymentChoice, setPaymentChoice] = useState<'pay' | 'no_pay' | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentData, setPaymentData] = useState<any>(null);
 
   // Debug logs
   console.log('🔍 ResumoReserva - reserva.cliente:', reserva.cliente);
@@ -61,12 +63,12 @@ const ResumoReserva = ({
 
 
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (data?: any) => {
+    console.log('✅ Payment successful - agendamento será criado pelo webhook');
+    setPaymentData(data);
+    setPaymentSuccess(true);
     setShowPayment(false);
     setPaymentChoice(null);
-    // Após pagamento bem-sucedido, apenas mostrar mensagem de processamento
-    // O agendamento será criado pelo webhook quando o pagamento for aprovado
-    console.log('✅ Payment successful - agendamento será criado pelo webhook');
     // Não chamar onConfirmarComPagamento - o webhook criará o agendamento
   };
 
@@ -413,6 +415,69 @@ const ResumoReserva = ({
                 />
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Tela de Sucesso do Pagamento */}
+      {paymentSuccess && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto relative">
+            {/* Botão de fechar */}
+            <button
+              onClick={() => setPaymentSuccess(false)}
+              className="absolute top-4 right-4 z-10 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+            
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Pagamento Confirmado!</h2>
+                <p className="text-gray-600">Seu agendamento foi realizado com sucesso.</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">Detalhes do Agendamento:</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Modalidade:</span>
+                    <span className="font-medium">{reserva.modalidade?.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Data:</span>
+                    <span className="font-medium">{reserva.data ? format(reserva.data, "dd/MM/yyyy", { locale: ptBR }) : 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Horário:</span>
+                    <span className="font-medium">{reserva.horario || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Cliente:</span>
+                    <span className="font-medium">{reserva.cliente.nome}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total:</span>
+                    <span className="font-bold text-green-600">R$ {reserva.modalidade?.valor?.toFixed(2) || '0,00'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => setPaymentSuccess(false)}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+                >
+                  Fechar
+                </button>
+                <p className="text-xs text-gray-500 text-center">
+                  Você pode visualizar seus agendamentos a qualquer momento.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

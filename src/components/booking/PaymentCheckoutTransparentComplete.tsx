@@ -330,7 +330,7 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
             title: "Pagamento Aprovado!",
             description: "Seu agendamento foi confirmado com sucesso.",
           });
-          onPaymentSuccess();
+          onPaymentSuccess(result);
         } else if (result.success && result.payment_status === 'rejected') {
           setPaymentStatus('rejected');
           toast({
