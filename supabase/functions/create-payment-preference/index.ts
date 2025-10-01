@@ -131,6 +131,9 @@ serve(async (req) => {
           date: appointment_date || new Date().toISOString(),
           status: 'pending_payment',
           modality_id: modality_id || null,
+          valor_total: price || 0,
+          payment_status: 'pending',
+          booking_source: 'online',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -152,7 +155,7 @@ serve(async (req) => {
     // Criar preferência do Mercado Pago
     console.log('💳 [CREATE-PREFERENCE] Criando preferência no Mercado Pago...')
     
-    const baseUrl = 'https://arenatime.vercel.app'; // HTTPS obrigatório desde maio 2025
+    const baseUrl = 'https://arenatimedev.vercel.app'; // HTTPS obrigatório desde maio 2025
     
     const preferenceData = {
       items: items || [{ 

@@ -89,7 +89,7 @@ serve(async (req) => {
         const { data: paymentData, error: paymentError } = await supabase
           .from('payments')
           .select('*')
-          .eq('external_reference', external_reference)
+          .eq('mercado_pago_preference_id', preference_id)
           .single();
         
         if (paymentError) {
