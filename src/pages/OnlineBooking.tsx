@@ -837,6 +837,7 @@ const OnlineBooking = () => {
                   appointmentId={sessionStorage.getItem('lastAppointmentId') || undefined}
                   userId={adminData?.user?.user_id}
                   mercadoPagoPublicKey={(adminData?.settings as any)?.mercado_pago_public_key}
+                  username={username}
                 />
               </div>
             </div>

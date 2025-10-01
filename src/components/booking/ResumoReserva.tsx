@@ -38,6 +38,7 @@ interface ResumoReservaProps {
   appointmentId?: string;
   userId?: string;
   mercadoPagoPublicKey?: string;
+  username?: string;
 }
 
 const ResumoReserva = ({ 
@@ -49,7 +50,8 @@ const ResumoReserva = ({
   paymentPolicy = 'sem_pagamento',
   appointmentId,
   userId,
-  mercadoPagoPublicKey
+  mercadoPagoPublicKey,
+  username
 }: ResumoReservaProps) => {
   const [showPayment, setShowPayment] = useState(false);
   const [paymentChoice, setPaymentChoice] = useState<'pay' | 'no_pay' | null>(null);
@@ -470,8 +472,12 @@ const ResumoReserva = ({
                 <button
                   onClick={() => {
                     setPaymentSuccess(false);
-                    // Redirecionar para o menu após fechar o modal
-                    window.location.href = '/';
+                    // Redirecionar para o painel de agendamento do cliente
+                    if (username) {
+                      window.location.href = `/agendar/${username}`;
+                    } else {
+                      window.location.href = '/';
+                    }
                   }}
                   className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
                 >
