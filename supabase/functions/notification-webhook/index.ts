@@ -171,14 +171,66 @@ serve(async (req) => {
       const paymentData = paymentDataList[0]
       console.log('📅 [WEBHOOK] Dados do agendamento encontrados:', paymentData.appointment_data)
 
+      // Determinar client_id - criar cliente temporário se necessário
+      let finalClientId = paymentData.appointment_data.client_id;
+      
+      if (!finalClientId && paymentData.appointment_data.client_data) {
+        console.log('🔍 [WEBHOOK] Criando cliente temporário para agendamento com pagamento...');
+        
+        // Buscar cliente existente primeiro
+        const { data: existingClient } = await supabase
+          .from('booking_clients')
+          .select('id, name, email, user_id')
+          .eq('email', paymentData.appointment_data.client_data.email)
+          .eq('user_id', paymentData.appointment_data.user_id)
+          .maybeSingle();
+
+        if (existingClient) {
+          finalClientId = existingClient.id;
+          console.log('✅ [WEBHOOK] Cliente existente encontrado:', { clientId: finalClientId, email: paymentData.appointment_data.client_data.email });
+        } else {
+          // Criar novo cliente temporário
+          const { data: newClient, error: clientError } = await supabase
+            .from('booking_clients')
+            .insert({
+              name: paymentData.appointment_data.client_data.name,
+              email: paymentData.appointment_data.client_data.email,
+              phone: paymentData.appointment_data.client_data.phone || null,
+              password_hash: 'temp_hash', // Cliente temporário
+              user_id: paymentData.appointment_data.user_id
+            })
+            .select('id, name, email, user_id')
+            .single();
+
+          if (clientError) {
+            console.error('❌ [WEBHOOK] Erro ao criar cliente temporário:', clientError);
+            return new Response('ok', { status: 200, headers: corsHeaders })
+          }
+
+          finalClientId = newClient.id;
+          console.log('✅ [WEBHOOK] Cliente temporário criado:', { clientId: finalClientId, email: newClient.email });
+        }
+      }
+
+      // Gerar UUID para o agendamento (não usar external_reference)
+      const appointmentId = crypto.randomUUID();
+      
       // Criar o agendamento
       const { data: newAppointment, error: createError } = await supabase
         .from('appointments')
         .insert({
-          ...paymentData.appointment_data,
+          id: appointmentId, // Usar UUID gerado
+          user_id: paymentData.appointment_data.user_id,
+          client_id: finalClientId, // Usar client_id determinado
+          date: paymentData.appointment_data.date,
+          time: paymentData.appointment_data.time,
+          modality_id: paymentData.appointment_data.modality_id,
+          modality_name: paymentData.appointment_data.modality,
+          valor_total: paymentData.appointment_data.valor_total,
           status: 'confirmed',
           payment_status: 'approved',
           payment_data: { preference_id: preferenceId, status: paymentStatus },
+          booking_source: 'online',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
