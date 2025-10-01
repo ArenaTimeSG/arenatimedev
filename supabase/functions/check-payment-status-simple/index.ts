@@ -95,6 +95,8 @@ serve(async (req) => {
 
     // Buscar dados do agendamento
     let appointmentData: any = null;
+    
+    // Primeiro tentar buscar por booking_id se disponível
     if (paymentRecord.booking_id) {
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
@@ -112,7 +114,29 @@ serve(async (req) => {
           client_id: appointment.client_id,
           created_at: appointment.created_at
         };
-        console.log('✅ Agendamento encontrado:', appointmentData);
+        console.log('✅ Agendamento encontrado por booking_id:', appointmentData);
+      }
+    }
+    
+    // Se não encontrou por booking_id, tentar buscar por preference_id no payment_data
+    if (!appointmentData) {
+      const { data: appointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .select('*')
+        .contains('payment_data', { preference_id: paymentRecord.preference_id })
+        .single();
+
+      if (!appointmentError && appointment) {
+        appointmentData = {
+          id: appointment.id,
+          status: appointment.status,
+          date: appointment.date,
+          time: appointment.time,
+          modality_id: appointment.modality_id,
+          client_id: appointment.client_id,
+          created_at: appointment.created_at
+        };
+        console.log('✅ Agendamento encontrado por preference_id:', appointmentData);
       }
     }
 
@@ -191,7 +215,7 @@ serve(async (req) => {
       created_at: paymentRecord.created_at,
       updated_at: paymentRecord.updated_at,
       // Flag para indicar se o agendamento foi confirmado
-      is_confirmed: paymentStatus === 'approved' && appointmentData && appointmentData.status === 'confirmed',
+      is_confirmed: (paymentStatus === 'confirmed' || paymentStatus === 'approved') && appointmentData && appointmentData.status === 'confirmed',
       // Status do agendamento para o frontend
       appointment_status: appointmentData ? appointmentData.status : 'pending'
     };
