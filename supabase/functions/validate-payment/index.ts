@@ -106,6 +106,50 @@ serve(async (req) => {
         
         const appointmentData = paymentRecord.appointment_data;
         
+        // Determinar client_id - criar cliente temporário se necessário
+        let finalClientId = appointmentData.client_id;
+        
+        if (!finalClientId && appointmentData.client_data) {
+          console.log('🔍 Criando cliente temporário para agendamento com pagamento...');
+          
+          // Buscar cliente existente primeiro
+          const { data: existingClient } = await supabase
+            .from('booking_clients')
+            .select('id, name, email, user_id')
+            .eq('email', appointmentData.client_data.email)
+            .eq('user_id', appointmentData.user_id)
+            .maybeSingle();
+
+          if (existingClient) {
+            finalClientId = existingClient.id;
+            console.log('✅ Cliente existente encontrado:', { clientId: finalClientId, email: appointmentData.client_data.email });
+          } else {
+            // Criar novo cliente temporário
+            const { data: newClient, error: clientError } = await supabase
+              .from('booking_clients')
+              .insert({
+                name: appointmentData.client_data.name,
+                email: appointmentData.client_data.email,
+                phone: appointmentData.client_data.phone || null,
+                password_hash: 'temp_hash', // Cliente temporário
+                user_id: appointmentData.user_id
+              })
+              .select('id, name, email, user_id')
+              .single();
+
+            if (clientError) {
+              console.error('❌ Erro ao criar cliente temporário:', clientError);
+              return new Response(
+                JSON.stringify({ error: 'Failed to create client', details: clientError }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              )
+            }
+
+            finalClientId = newClient.id;
+            console.log('✅ Cliente temporário criado:', { clientId: finalClientId, email: newClient.email });
+          }
+        }
+        
         // Verificar se já existe um agendamento com esse external_reference
         const { data: existingAppointment, error: existingError } = await supabase
           .from('appointments')
@@ -126,7 +170,7 @@ serve(async (req) => {
               status: 'agendado',
               payment_status: 'paid',
               payment_id: payment_id,
-              client_id: appointmentData.client_id, // Preservar client_id
+              client_id: finalClientId, // Usar client_id determinado
               updated_at: new Date().toISOString()
             })
             .eq('id', external_reference)
@@ -160,7 +204,7 @@ serve(async (req) => {
             .insert({
               id: external_reference,
               user_id: appointmentData.user_id,
-              client_id: appointmentData.client_id,
+              client_id: finalClientId, // Usar client_id determinado
               date: appointmentData.date,
               time: appointmentData.time,
               modality_id: appointmentData.modality_id,

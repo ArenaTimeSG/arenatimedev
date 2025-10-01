@@ -16,6 +16,11 @@ interface CreatePreferenceRequest {
   }>
   return_url?: string
   client_id?: string
+  client_data?: {
+    name: string
+    email: string
+    phone?: string
+  }
   appointment_date?: string
   modality_id?: string
 }
@@ -36,7 +41,7 @@ serve(async (req) => {
   try {
     console.log('🚀 [CREATE-PREFERENCE] Iniciando criação de preferência')
     
-    const { owner_id, booking_id, price, items, return_url, client_id, appointment_date, modality_id }: CreatePreferenceRequest = await req.json()
+    const { owner_id, booking_id, price, items, return_url, client_id, client_data, appointment_date, modality_id }: CreatePreferenceRequest = await req.json()
 
     // Validar campos obrigatórios com valores padrão
     if (!owner_id || !price) {
@@ -300,7 +305,8 @@ serve(async (req) => {
         mercado_pago_preference_id: mpPreference.id,
         appointment_data: {
           user_id: owner_id,
-          client_id: client_id,
+          client_id: client_id, // Pode ser null se client_data for fornecido
+          client_data: client_data, // Dados do cliente para criação
           date: appointment_date,
           modality: items?.[0]?.title || 'Agendamento',
           modality_id: modality_id,

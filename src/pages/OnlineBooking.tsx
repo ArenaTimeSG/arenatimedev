@@ -239,17 +239,29 @@ const OnlineBooking = () => {
       const [horas, minutos] = reserva.horario.split(':');
       dataHora.setHours(parseInt(horas), parseInt(minutos), 0, 0);
       
+      // IMPORTANTE: Para pagamentos, usar os dados do formulário (reserva.cliente) 
+      // em vez do cliente logado (client), para criar um cliente temporário
+      console.log('🔍 OnlineBooking: Usando dados do formulário para pagamento:', {
+        formClient: reserva.cliente,
+        loggedClient: client
+      });
+      
       // Preparar dados do pagamento (sem criar agendamento ainda)
       const paymentData = {
         user_id: adminData.user.user_id,
         amount: reserva.modalidade.valor,
         description: `Agendamento - ${reserva.modalidade.name}`,
-        client_name: client.name,
-        client_email: client.email,
+        client_name: reserva.cliente.nome, // Usar dados do formulário
+        client_email: reserva.cliente.email, // Usar dados do formulário
         // Dados do agendamento para criar após pagamento
         appointment_data: {
           user_id: adminData.user.user_id,
-          client_id: client.id,
+          client_id: null, // Será criado pelo webhook como cliente temporário
+          client_data: { // Incluir dados do cliente para criação
+            name: reserva.cliente.nome,
+            email: reserva.cliente.email,
+            phone: reserva.cliente.telefone
+          },
           date: dataHora.toISOString(),
           modality: reserva.modalidade.name,
           modality_id: reserva.modalidade.id,
@@ -290,7 +302,12 @@ const OnlineBooking = () => {
           unit_price: reserva.modalidade.valor
         }],
         return_url: window.location.origin + '/payment/success',
-        client_id: client.id,
+        client_id: null, // Não usar client.id - será criado como cliente temporário
+        client_data: { // Incluir dados do cliente para criação
+          name: reserva.cliente.nome,
+          email: reserva.cliente.email,
+          phone: reserva.cliente.telefone
+        },
         appointment_date: dataHora.toISOString(),
         modality_id: reserva.modalidade.id
       };
