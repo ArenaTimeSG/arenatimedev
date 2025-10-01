@@ -138,7 +138,7 @@ serve(async (req) => {
         payment_id: null,
         preference_id: preferenceId,
         owner_id: adminSettings.user_id,
-        booking_id: externalReference,
+        booking_id: null, // Não usar external_reference como booking_id
         status: paymentStatus,
         raw_data: body,
         processed_at: new Date().toISOString()
@@ -223,11 +223,10 @@ serve(async (req) => {
           user_id: paymentData.appointment_data.user_id,
           client_id: finalClientId, // Usar client_id determinado
           date: paymentData.appointment_data.date,
-          time: paymentData.appointment_data.time,
           modality_id: paymentData.appointment_data.modality_id,
-          modality_name: paymentData.appointment_data.modality,
+          modality: paymentData.appointment_data.modality,
           valor_total: paymentData.appointment_data.valor_total,
-          status: 'confirmed',
+          status: 'pago', // Status correto para agendamento pago
           payment_status: 'approved',
           payment_data: { preference_id: preferenceId, status: paymentStatus },
           booking_source: 'online',
