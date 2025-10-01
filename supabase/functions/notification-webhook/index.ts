@@ -37,15 +37,6 @@ serve(async (req) => {
       return new Response('ok', { status: 200, headers: corsHeaders })
     }
 
-    // Verificar se é uma notificação de pagamento
-    if (body.type !== 'payment' || !body.data?.id) {
-      console.log('⚠️ [WEBHOOK] Notificação não é de pagamento ou dados inválidos')
-      return new Response('ok', { status: 200, headers: corsHeaders })
-    }
-
-    const paymentId = body.data.id
-    console.log('💳 [WEBHOOK] Processando pagamento ID:', paymentId)
-
     // Inicializar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -57,7 +48,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Buscar configurações do admin (usar o primeiro admin encontrado)
+    // Buscar configurações do admin
     const { data: adminSettings, error: settingsError } = await supabase
       .from('settings')
       .select('*')
@@ -71,6 +62,60 @@ serve(async (req) => {
     }
 
     console.log('✅ [WEBHOOK] Configurações encontradas para usuário:', adminSettings.user_id)
+
+    let paymentId = null
+    let paymentData = null
+
+    // Processar diferentes tipos de notificação do Mercado Pago
+    if (body.type === 'payment' && body.data?.id) {
+      // Notificação direta de pagamento
+      paymentId = body.data.id
+      console.log('💳 [WEBHOOK] Notificação de pagamento direto:', paymentId)
+      
+    } else if (body.topic === 'merchant_order' && body.data?.id) {
+      // Notificação de merchant_order - buscar pagamentos associados
+      const merchantOrderId = body.data.id
+      console.log('🛒 [WEBHOOK] Notificação de merchant_order:', merchantOrderId)
+      
+      try {
+        // Buscar detalhes da merchant_order
+        const mpResponse = await fetch(`https://api.mercadopago.com/merchant_orders/${merchantOrderId}`, {
+          headers: {
+            'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (mpResponse.ok) {
+          const merchantOrder = await mpResponse.json()
+          console.log('🛒 [WEBHOOK] Merchant order details:', merchantOrder)
+          
+          if (merchantOrder.payments && merchantOrder.payments.length > 0) {
+            paymentId = merchantOrder.payments[0].id
+            console.log('💳 [WEBHOOK] Payment ID encontrado na merchant_order:', paymentId)
+          }
+        }
+      } catch (error) {
+        console.error('❌ [WEBHOOK] Erro ao buscar merchant_order:', error)
+      }
+      
+    } else if (body.topic === 'payment' && body.resource) {
+      // Notificação com resource URL
+      const resourceUrl = body.resource
+      console.log('🔗 [WEBHOOK] Notificação com resource URL:', resourceUrl)
+      
+      // Extrair payment ID da URL
+      const urlParts = resourceUrl.split('/')
+      paymentId = urlParts[urlParts.length - 1]
+      console.log('💳 [WEBHOOK] Payment ID extraído da URL:', paymentId)
+    }
+
+    if (!paymentId) {
+      console.log('⚠️ [WEBHOOK] Payment ID não encontrado na notificação')
+      return new Response('ok', { status: 200, headers: corsHeaders })
+    }
+
+    console.log('💳 [WEBHOOK] Processando pagamento ID:', paymentId)
 
     // Buscar detalhes do pagamento no Mercado Pago
     const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
@@ -88,7 +133,7 @@ serve(async (req) => {
     const payment = await mpResponse.json()
     console.log('💳 [WEBHOOK] Pagamento encontrado:', payment.status, payment.external_reference)
 
-    // Salvar notificação do webhook (com campos obrigatórios)
+    // Salvar notificação do webhook
     const { error: webhookError } = await supabase
       .from('webhook_notifications')
       .insert({
@@ -109,7 +154,7 @@ serve(async (req) => {
     if (payment.status === 'approved' && payment.external_reference) {
       console.log('✅ [WEBHOOK] Pagamento aprovado, processando agendamento...')
 
-      // Buscar dados do agendamento na tabela payments (sem .single() para evitar erro PGRST116)
+      // Buscar dados do agendamento na tabela payments
       const { data: paymentDataList, error: paymentError } = await supabase
         .from('payments')
         .select('appointment_data')
