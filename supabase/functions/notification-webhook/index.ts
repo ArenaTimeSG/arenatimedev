@@ -27,59 +27,46 @@ serve(async (req) => {
       return new Response('ok', { status: 200, headers: corsHeaders })
     }
 
-    // Obter o corpo da requisição
-    let body
-    try {
-      body = await req.json()
-      console.log('📥 [WEBHOOK] Body:', JSON.stringify(body, null, 2))
-    } catch (error) {
-      console.log('⚠️ [WEBHOOK] Erro ao parsear JSON, retornando 200')
+    const body = await req.json()
+    console.log('📋 [WEBHOOK] Body:', body)
+
+    // Verificar se é uma notificação válida
+    if (!body || (!body.topic && !body.type)) {
+      console.log('⚠️ [WEBHOOK] Notificação inválida - sem topic ou type')
       return new Response('ok', { status: 200, headers: corsHeaders })
     }
 
     // Inicializar Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('❌ [WEBHOOK] Variáveis de ambiente não configuradas')
-      return new Response('ok', { status: 200, headers: corsHeaders })
-    }
-
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Buscar configurações do admin
+    // Buscar configurações do Mercado Pago (assumindo primeiro usuário por enquanto)
     const { data: adminSettings, error: settingsError } = await supabase
       .from('settings')
-      .select('*')
-      .eq('mercado_pago_enabled', true)
+      .select('mercado_pago_access_token, user_id')
       .not('mercado_pago_access_token', 'is', null)
+      .limit(1)
       .single()
 
-    if (settingsError || !adminSettings) {
+    if (settingsError || !adminSettings?.mercado_pago_access_token) {
       console.error('❌ [WEBHOOK] Configurações do Mercado Pago não encontradas')
       return new Response('ok', { status: 200, headers: corsHeaders })
     }
 
     console.log('✅ [WEBHOOK] Configurações encontradas para usuário:', adminSettings.user_id)
 
-    let paymentId = null
-    let paymentData = null
+    let preferenceId = null
+    let paymentStatus = null
+    let externalReference = null
 
-    // Processar diferentes tipos de notificação do Mercado Pago
-    if (body.type === 'payment' && body.data?.id) {
-      // Notificação direta de pagamento
-      paymentId = body.data.id
-      console.log('💳 [WEBHOOK] Notificação de pagamento direto:', paymentId)
-      
-    } else if (body.topic === 'merchant_order' && body.data?.id) {
-      // Notificação de merchant_order - buscar pagamentos associados
-      const merchantOrderId = body.data.id
-      console.log('🛒 [WEBHOOK] Notificação de merchant_order:', merchantOrderId)
+    // Processar notificação de merchant_order
+    if (body.topic === 'merchant_order' && body.resource) {
+      console.log('🛒 [WEBHOOK] Processando merchant_order:', body.resource)
       
       try {
         // Buscar detalhes da merchant_order
-        const mpResponse = await fetch(`https://api.mercadopago.com/merchant_orders/${merchantOrderId}`, {
+        const mpResponse = await fetch(body.resource, {
           headers: {
             'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
             'Content-Type': 'application/json'
@@ -90,59 +77,70 @@ serve(async (req) => {
           const merchantOrder = await mpResponse.json()
           console.log('🛒 [WEBHOOK] Merchant order details:', merchantOrder)
           
+          preferenceId = merchantOrder.preference_id
+          externalReference = merchantOrder.external_reference
+          
           if (merchantOrder.payments && merchantOrder.payments.length > 0) {
-            paymentId = merchantOrder.payments[0].id
-            console.log('💳 [WEBHOOK] Payment ID encontrado na merchant_order:', paymentId)
+            paymentStatus = merchantOrder.payments[0].status
+            console.log('💳 [WEBHOOK] Payment status encontrado:', paymentStatus)
           }
+        } else {
+          console.error('❌ [WEBHOOK] Erro ao buscar merchant_order:', mpResponse.status)
         }
       } catch (error) {
         console.error('❌ [WEBHOOK] Erro ao buscar merchant_order:', error)
       }
       
     } else if (body.topic === 'payment' && body.resource) {
-      // Notificação com resource URL
-      const resourceUrl = body.resource
-      console.log('🔗 [WEBHOOK] Notificação com resource URL:', resourceUrl)
+      console.log('💳 [WEBHOOK] Processando payment:', body.resource)
       
-      // Extrair payment ID da URL
-      const urlParts = resourceUrl.split('/')
-      paymentId = urlParts[urlParts.length - 1]
-      console.log('💳 [WEBHOOK] Payment ID extraído da URL:', paymentId)
-    }
-
-    if (!paymentId) {
-      console.log('⚠️ [WEBHOOK] Payment ID não encontrado na notificação')
-      return new Response('ok', { status: 200, headers: corsHeaders })
-    }
-
-    console.log('💳 [WEBHOOK] Processando pagamento ID:', paymentId)
-
-    // Buscar detalhes do pagamento no Mercado Pago
-    const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: {
-        'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
-        'Content-Type': 'application/json'
+      try {
+        // Extrair payment ID da URL
+        const urlParts = body.resource.split('/')
+        const paymentId = urlParts[urlParts.length - 1]
+        
+        // Buscar detalhes do pagamento
+        const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+          headers: {
+            'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (mpResponse.ok) {
+          const payment = await mpResponse.json()
+          console.log('💳 [WEBHOOK] Payment details:', payment)
+          
+          preferenceId = payment.preference_id
+          paymentStatus = payment.status
+          externalReference = payment.external_reference
+        } else {
+          console.error('❌ [WEBHOOK] Erro ao buscar payment:', mpResponse.status)
+        }
+      } catch (error) {
+        console.error('❌ [WEBHOOK] Erro ao buscar payment:', error)
       }
-    })
+    }
 
-    if (!mpResponse.ok) {
-      console.error('❌ [WEBHOOK] Erro ao buscar pagamento no MP:', mpResponse.status)
+    if (!preferenceId) {
+      console.log('⚠️ [WEBHOOK] Preference ID não encontrado')
       return new Response('ok', { status: 200, headers: corsHeaders })
     }
 
-    const payment = await mpResponse.json()
-    console.log('💳 [WEBHOOK] Pagamento encontrado:', payment.status, payment.external_reference)
+    console.log('🔍 [WEBHOOK] Preference ID encontrado:', preferenceId)
+    console.log('📊 [WEBHOOK] Payment status:', paymentStatus)
+    console.log('🔗 [WEBHOOK] External reference:', externalReference)
 
     // Salvar notificação do webhook
     const { error: webhookError } = await supabase
       .from('webhook_notifications')
       .insert({
-        payment_id: paymentId,
-        preference_id: payment.preference_id || null,
+        payment_id: null,
+        preference_id: preferenceId,
         owner_id: adminSettings.user_id,
-        booking_id: null,
-        status: payment.status,
-        raw_data: payment,
+        booking_id: externalReference,
+        status: paymentStatus,
+        raw_data: body,
         processed_at: new Date().toISOString()
       })
 
@@ -151,14 +149,14 @@ serve(async (req) => {
     }
 
     // Se o pagamento foi aprovado, criar/confirmar agendamento
-    if (payment.status === 'approved' && payment.external_reference) {
+    if (paymentStatus === 'approved' && preferenceId) {
       console.log('✅ [WEBHOOK] Pagamento aprovado, processando agendamento...')
 
-      // Buscar dados do agendamento na tabela payments usando external_reference
+      // Buscar dados do agendamento na tabela payments
       const { data: paymentDataList, error: paymentError } = await supabase
         .from('payments')
         .select('appointment_data, mercado_pago_preference_id')
-        .eq('mercado_pago_preference_id', payment.preference_id)
+        .eq('mercado_pago_preference_id', preferenceId)
 
       if (paymentError) {
         console.error('❌ [WEBHOOK] Erro ao buscar dados do agendamento:', paymentError)
@@ -166,90 +164,7 @@ serve(async (req) => {
       }
 
       if (!paymentDataList || paymentDataList.length === 0) {
-        console.log('⚠️ [WEBHOOK] Nenhum dado de agendamento encontrado para preference_id:', payment.preference_id)
-        console.log('🔍 [WEBHOOK] Tentando buscar por external_reference:', payment.external_reference)
-        
-        // Tentar buscar por external_reference na tabela payment_records
-        const { data: paymentRecord, error: recordError } = await supabase
-          .from('payment_records')
-          .select('preference_id')
-          .eq('external_reference', payment.external_reference)
-          .single()
-        
-        if (recordError || !paymentRecord) {
-          console.log('⚠️ [WEBHOOK] Nenhum payment_record encontrado para external_reference:', payment.external_reference)
-          return new Response('ok', { status: 200, headers: corsHeaders })
-        }
-        
-        // Buscar dados do agendamento usando o preference_id encontrado
-        const { data: paymentDataList2, error: paymentError2 } = await supabase
-          .from('payments')
-          .select('appointment_data, mercado_pago_preference_id')
-          .eq('mercado_pago_preference_id', paymentRecord.preference_id)
-        
-        if (paymentError2 || !paymentDataList2 || paymentDataList2.length === 0) {
-          console.log('⚠️ [WEBHOOK] Nenhum dado de agendamento encontrado para preference_id:', paymentRecord.preference_id)
-          return new Response('ok', { status: 200, headers: corsHeaders })
-        }
-        
-        // Usar os dados encontrados
-        const paymentData = paymentDataList2[0]
-        console.log('📅 [WEBHOOK] Dados do agendamento encontrados via external_reference:', paymentData.appointment_data)
-        
-        // Criar o agendamento
-        const { data: newAppointment, error: createError } = await supabase
-          .from('appointments')
-          .insert({
-            ...paymentData.appointment_data,
-            status: 'confirmed',
-            payment_status: 'approved',
-            payment_data: payment,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single()
-
-        if (createError) {
-          console.error('❌ [WEBHOOK] Erro ao criar agendamento:', createError)
-          return new Response('ok', { status: 200, headers: corsHeaders })
-        }
-
-        console.log('✅ [WEBHOOK] Agendamento criado com sucesso:', newAppointment.id)
-
-        // Atualizar tabela payments
-        const { error: updateError } = await supabase
-          .from('payments')
-          .update({
-            status: 'approved',
-            mercado_pago_status: 'approved',
-            mercado_pago_payment_id: paymentId,
-            appointment_id: newAppointment.id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('mercado_pago_preference_id', paymentRecord.preference_id)
-
-        if (updateError) {
-          console.error('❌ [WEBHOOK] Erro ao atualizar payment:', updateError)
-        } else {
-          console.log('✅ [WEBHOOK] Payment atualizado com sucesso')
-        }
-
-        // Atualizar payment_records
-        const { error: recordUpdateError } = await supabase
-          .from('payment_records')
-          .update({
-            status: 'approved',
-            updated_at: new Date().toISOString()
-          })
-          .eq('preference_id', paymentRecord.preference_id)
-
-        if (recordUpdateError) {
-          console.error('❌ [WEBHOOK] Erro ao atualizar payment_record:', recordUpdateError)
-        } else {
-          console.log('✅ [WEBHOOK] Payment record atualizado com sucesso')
-        }
-        
+        console.log('⚠️ [WEBHOOK] Nenhum dado de agendamento encontrado para preference_id:', preferenceId)
         return new Response('ok', { status: 200, headers: corsHeaders })
       }
 
@@ -263,7 +178,7 @@ serve(async (req) => {
           ...paymentData.appointment_data,
           status: 'confirmed',
           payment_status: 'approved',
-          payment_data: payment,
+          payment_data: { preference_id: preferenceId, status: paymentStatus },
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -283,11 +198,11 @@ serve(async (req) => {
         .update({
           status: 'approved',
           mercado_pago_status: 'approved',
-          mercado_pago_payment_id: paymentId,
+          mercado_pago_payment_id: null,
           appointment_id: newAppointment.id,
           updated_at: new Date().toISOString()
         })
-        .eq('mercado_pago_preference_id', payment.preference_id)
+        .eq('mercado_pago_preference_id', preferenceId)
 
       if (updateError) {
         console.error('❌ [WEBHOOK] Erro ao atualizar payment:', updateError)
@@ -302,24 +217,19 @@ serve(async (req) => {
           status: 'approved',
           updated_at: new Date().toISOString()
         })
-        .eq('preference_id', payment.preference_id)
+        .eq('preference_id', preferenceId)
 
       if (recordError) {
         console.error('❌ [WEBHOOK] Erro ao atualizar payment_record:', recordError)
       } else {
         console.log('✅ [WEBHOOK] Payment record atualizado com sucesso')
       }
-
-    } else {
-      console.log('⚠️ [WEBHOOK] Pagamento não aprovado ou sem external_reference:', payment.status)
     }
 
-    // Sempre retornar 200 OK para o Mercado Pago
     return new Response('ok', { status: 200, headers: corsHeaders })
 
   } catch (error) {
-    console.error('❌ [WEBHOOK] Erro interno:', error)
-    // Sempre retornar 200 OK mesmo em caso de erro
+    console.error('❌ [WEBHOOK] Erro geral:', error)
     return new Response('ok', { status: 200, headers: corsHeaders })
   }
 })
