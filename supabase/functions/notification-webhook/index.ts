@@ -88,11 +88,14 @@ serve(async (req) => {
     const payment = await mpResponse.json()
     console.log('💳 [WEBHOOK] Pagamento encontrado:', payment.status, payment.external_reference)
 
-    // Salvar notificação do webhook
+    // Salvar notificação do webhook (com campos obrigatórios)
     const { error: webhookError } = await supabase
       .from('webhook_notifications')
       .insert({
         payment_id: paymentId,
+        preference_id: payment.preference_id || null,
+        owner_id: adminSettings.user_id,
+        booking_id: null,
         status: payment.status,
         raw_data: payment,
         processed_at: new Date().toISOString()
@@ -106,18 +109,23 @@ serve(async (req) => {
     if (payment.status === 'approved' && payment.external_reference) {
       console.log('✅ [WEBHOOK] Pagamento aprovado, processando agendamento...')
 
-      // Buscar dados do agendamento na tabela payments
-      const { data: paymentData, error: paymentError } = await supabase
+      // Buscar dados do agendamento na tabela payments (sem .single() para evitar erro PGRST116)
+      const { data: paymentDataList, error: paymentError } = await supabase
         .from('payments')
         .select('appointment_data')
         .eq('mercado_pago_preference_id', payment.preference_id)
-        .single()
 
-      if (paymentError || !paymentData) {
+      if (paymentError) {
         console.error('❌ [WEBHOOK] Erro ao buscar dados do agendamento:', paymentError)
         return new Response('ok', { status: 200, headers: corsHeaders })
       }
 
+      if (!paymentDataList || paymentDataList.length === 0) {
+        console.log('⚠️ [WEBHOOK] Nenhum dado de agendamento encontrado para preference_id:', payment.preference_id)
+        return new Response('ok', { status: 200, headers: corsHeaders })
+      }
+
+      const paymentData = paymentDataList[0]
       console.log('📅 [WEBHOOK] Dados do agendamento encontrados:', paymentData.appointment_data)
 
       // Criar o agendamento
