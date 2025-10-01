@@ -214,7 +214,8 @@ serve(async (req) => {
       const { error: recordError } = await supabase
         .from('payment_records')
         .update({
-          status: 'approved',
+          status: 'confirmed',
+          booking_id: newAppointment.id,
           updated_at: new Date().toISOString()
         })
         .eq('preference_id', preferenceId)
