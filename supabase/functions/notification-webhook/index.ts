@@ -154,10 +154,10 @@ serve(async (req) => {
     if (payment.status === 'approved' && payment.external_reference) {
       console.log('✅ [WEBHOOK] Pagamento aprovado, processando agendamento...')
 
-      // Buscar dados do agendamento na tabela payments
+      // Buscar dados do agendamento na tabela payments usando external_reference
       const { data: paymentDataList, error: paymentError } = await supabase
         .from('payments')
-        .select('appointment_data')
+        .select('appointment_data, mercado_pago_preference_id')
         .eq('mercado_pago_preference_id', payment.preference_id)
 
       if (paymentError) {
@@ -167,6 +167,89 @@ serve(async (req) => {
 
       if (!paymentDataList || paymentDataList.length === 0) {
         console.log('⚠️ [WEBHOOK] Nenhum dado de agendamento encontrado para preference_id:', payment.preference_id)
+        console.log('🔍 [WEBHOOK] Tentando buscar por external_reference:', payment.external_reference)
+        
+        // Tentar buscar por external_reference na tabela payment_records
+        const { data: paymentRecord, error: recordError } = await supabase
+          .from('payment_records')
+          .select('preference_id')
+          .eq('external_reference', payment.external_reference)
+          .single()
+        
+        if (recordError || !paymentRecord) {
+          console.log('⚠️ [WEBHOOK] Nenhum payment_record encontrado para external_reference:', payment.external_reference)
+          return new Response('ok', { status: 200, headers: corsHeaders })
+        }
+        
+        // Buscar dados do agendamento usando o preference_id encontrado
+        const { data: paymentDataList2, error: paymentError2 } = await supabase
+          .from('payments')
+          .select('appointment_data, mercado_pago_preference_id')
+          .eq('mercado_pago_preference_id', paymentRecord.preference_id)
+        
+        if (paymentError2 || !paymentDataList2 || paymentDataList2.length === 0) {
+          console.log('⚠️ [WEBHOOK] Nenhum dado de agendamento encontrado para preference_id:', paymentRecord.preference_id)
+          return new Response('ok', { status: 200, headers: corsHeaders })
+        }
+        
+        // Usar os dados encontrados
+        const paymentData = paymentDataList2[0]
+        console.log('📅 [WEBHOOK] Dados do agendamento encontrados via external_reference:', paymentData.appointment_data)
+        
+        // Criar o agendamento
+        const { data: newAppointment, error: createError } = await supabase
+          .from('appointments')
+          .insert({
+            ...paymentData.appointment_data,
+            status: 'confirmed',
+            payment_status: 'approved',
+            payment_data: payment,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (createError) {
+          console.error('❌ [WEBHOOK] Erro ao criar agendamento:', createError)
+          return new Response('ok', { status: 200, headers: corsHeaders })
+        }
+
+        console.log('✅ [WEBHOOK] Agendamento criado com sucesso:', newAppointment.id)
+
+        // Atualizar tabela payments
+        const { error: updateError } = await supabase
+          .from('payments')
+          .update({
+            status: 'approved',
+            mercado_pago_status: 'approved',
+            mercado_pago_payment_id: paymentId,
+            appointment_id: newAppointment.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('mercado_pago_preference_id', paymentRecord.preference_id)
+
+        if (updateError) {
+          console.error('❌ [WEBHOOK] Erro ao atualizar payment:', updateError)
+        } else {
+          console.log('✅ [WEBHOOK] Payment atualizado com sucesso')
+        }
+
+        // Atualizar payment_records
+        const { error: recordUpdateError } = await supabase
+          .from('payment_records')
+          .update({
+            status: 'approved',
+            updated_at: new Date().toISOString()
+          })
+          .eq('preference_id', paymentRecord.preference_id)
+
+        if (recordUpdateError) {
+          console.error('❌ [WEBHOOK] Erro ao atualizar payment_record:', recordUpdateError)
+        } else {
+          console.log('✅ [WEBHOOK] Payment record atualizado com sucesso')
+        }
+        
         return new Response('ok', { status: 200, headers: corsHeaders })
       }
 
