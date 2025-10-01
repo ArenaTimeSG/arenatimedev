@@ -152,7 +152,7 @@ serve(async (req) => {
     // Criar preferência do Mercado Pago
     console.log('💳 [CREATE-PREFERENCE] Criando preferência no Mercado Pago...')
     
-    const baseUrl = 'https://arenatimedev.vercel.app'; // HTTPS obrigatório desde maio 2025
+    const baseUrl = 'https://arenatime.vercel.app'; // HTTPS obrigatório desde maio 2025
     
     const preferenceData = {
       items: items || [{ 

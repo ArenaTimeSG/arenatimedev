@@ -140,6 +140,12 @@ const PaymentCheckout = ({
           description: 'Seu agendamento foi confirmado com sucesso.',
           variant: 'default',
         });
+        
+        // Redirecionar para o menu após 2 segundos
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+        
         onPaymentSuccess();
         return true; // Indica que encontrou um agendamento
       }
