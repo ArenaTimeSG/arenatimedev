@@ -468,7 +468,11 @@ const ResumoReserva = ({
 
               <div className="space-y-3">
                 <button
-                  onClick={() => setPaymentSuccess(false)}
+                  onClick={() => {
+                    setPaymentSuccess(false);
+                    // Redirecionar para o menu após fechar o modal
+                    window.location.href = '/';
+                  }}
                   className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
                 >
                   Fechar
