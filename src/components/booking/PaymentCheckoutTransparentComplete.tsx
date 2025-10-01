@@ -345,13 +345,24 @@ const PaymentCheckoutTransparentComplete: React.FC<PaymentCheckoutTransparentCom
     }
   };
 
-  // Verificar status do pagamento periodicamente (apenas se checkout estiver aberto)
+  // Verificar status do pagamento periodicamente (continuar verificando até ser aprovado ou rejeitado)
   useEffect(() => {
-    if (preferenceId && paymentStatus !== 'approved' && isCheckoutOpen) {
-      const interval = setInterval(checkPaymentStatus, 10000); // Verificar a cada 10 segundos
-      return () => clearInterval(interval);
+    if (preferenceId && paymentStatus !== 'approved' && paymentStatus !== 'rejected') {
+      console.log('🔄 [FRONTEND] Iniciando polling para preference_id:', preferenceId);
+      const interval = setInterval(checkPaymentStatus, 5000); // Verificar a cada 5 segundos
+      
+      // Parar polling após 10 minutos
+      const timeout = setTimeout(() => {
+        clearInterval(interval);
+        console.log('⏰ [FRONTEND] Polling finalizado por timeout');
+      }, 600000);
+      
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
     }
-  }, [preferenceId, paymentStatus, isCheckoutOpen]);
+  }, [preferenceId, paymentStatus]);
 
   // Reset do estado quando componente é desmontado
   useEffect(() => {
