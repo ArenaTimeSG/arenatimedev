@@ -131,6 +131,7 @@ const Dashboard = () => {
           modality,
           recurrence_id,
           user_id,
+          client_id,
           client:booking_clients(name)
         `)
         .gte('date', weekStart.toISOString())
