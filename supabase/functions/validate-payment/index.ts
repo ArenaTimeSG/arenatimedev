@@ -126,6 +126,7 @@ serve(async (req) => {
               status: 'agendado',
               payment_status: 'paid',
               payment_id: payment_id,
+              client_id: appointmentData.client_id, // Preservar client_id
               updated_at: new Date().toISOString()
             })
             .eq('id', external_reference)

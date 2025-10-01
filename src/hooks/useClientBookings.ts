@@ -210,7 +210,7 @@ export const useClientBookings = (adminUserId?: string) => {
       
       // Determinar payment_status e status baseado na política de pagamento
       let paymentStatus: 'not_required' | 'pending' | 'failed' = 'not_required';
-      let appointmentStatus: 'a_cobrar' | 'agendado' = 'agendado'; // Padrão para agendamentos online
+      let appointmentStatus: 'a_cobrar' | 'agendado' = 'a_cobrar'; // Padrão para agendamentos online
       
       console.log('🔍 useClientBookings: Determinando status do agendamento:', {
         payment_policy: bookingData.payment_policy,
@@ -220,11 +220,11 @@ export const useClientBookings = (adminUserId?: string) => {
       
       if (bookingData.payment_policy === 'opcional') {
         paymentStatus = 'not_required'; // Cliente pode escolher pagar depois
-        // Para pagamento opcional, agendamentos online são sempre 'agendado'
-        appointmentStatus = 'agendado';
+        // Para pagamento opcional, agendamentos online ficam como 'a_cobrar'
+        appointmentStatus = 'a_cobrar';
       } else {
-        // Para 'sem_pagamento', agendamentos online são sempre 'agendado'
-        appointmentStatus = 'agendado';
+        // Para 'sem_pagamento', agendamentos online ficam como 'a_cobrar'
+        appointmentStatus = 'a_cobrar';
       }
       
       console.log('✅ useClientBookings: Status final determinado:', {
