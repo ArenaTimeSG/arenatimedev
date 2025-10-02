@@ -159,22 +159,38 @@ const Dashboard = () => {
       
       let clients = [];
       if (clientIds.length > 0) {
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('booking_clients')
-          .select(`
-            id, name, email, phone,
-            client_admin_associations!inner(admin_id)
-          `)
-          .in('id', clientIds)
-          .eq('client_admin_associations.admin_id', userProfile?.user_id);
+        // NOVA ABORDAGEM: Duas consultas separadas
+        console.log('🔍 Dashboard - Buscando associações...');
+        
+        // 1. Buscar associações válidas
+        const { data: associations, error: assocError } = await supabase
+          .from('client_admin_associations')
+          .select('client_id')
+          .in('client_id', clientIds)
+          .eq('admin_id', userProfile?.user_id);
 
-        console.log('🔍 Dashboard - Consulta clientes resultado:', { clientsData, clientsError });
+        console.log('🔍 Dashboard - Associações encontradas:', { associations, assocError });
 
-        if (clientsError) {
-          console.error('🔍 Dashboard - Erro ao buscar clientes:', clientsError);
+        if (!assocError && associations && associations.length > 0) {
+          const validClientIds = associations.map(a => a.client_id);
+          console.log('🔍 Dashboard - IDs de clientes válidos:', validClientIds);
+          
+          // 2. Buscar dados dos clientes válidos
+          const { data: clientsData, error: clientsError } = await supabase
+            .from('booking_clients')
+            .select('id, name, email, phone')
+            .in('id', validClientIds);
+
+          console.log('🔍 Dashboard - Consulta clientes resultado:', { clientsData, clientsError });
+
+          if (clientsError) {
+            console.error('🔍 Dashboard - Erro ao buscar clientes:', clientsError);
+          } else {
+            clients = clientsData || [];
+            console.log('🔍 Dashboard - Clientes encontrados:', clients);
+          }
         } else {
-          clients = clientsData || [];
-          console.log('🔍 Dashboard - Clientes encontrados:', clients);
+          console.log('🔍 Dashboard - Nenhuma associação válida encontrada');
         }
       }
 
