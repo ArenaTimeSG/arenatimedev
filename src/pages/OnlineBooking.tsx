@@ -257,11 +257,11 @@ const OnlineBooking = () => {
         appointment_data: {
           user_id: adminData.user.user_id,
           client_id: client?.id || null, // USAR CLIENTE LOGADO se disponível
-          client_data: { // Incluir dados do cliente para criação
-            name: reserva.cliente.nome,
-            email: reserva.cliente.email,
-            phone: reserva.cliente.telefone
-          },
+        client_data: { // Incluir dados do cliente para criação - SEMPRE usar dados do cliente logado se disponível
+          name: client?.name || reserva.cliente.nome,
+          email: client?.email || reserva.cliente.email,
+          phone: client?.phone || reserva.cliente.telefone
+        },
           date: dataHora.toISOString(),
           modality: reserva.modalidade.name,
           modality_id: reserva.modalidade.id,
@@ -303,10 +303,10 @@ const OnlineBooking = () => {
         }],
         return_url: window.location.origin + '/payment/success',
         client_id: null, // Não usar client.id - será criado como cliente temporário
-        client_data: { // Incluir dados do cliente para criação
-          name: reserva.cliente.nome,
-          email: reserva.cliente.email,
-          phone: reserva.cliente.telefone
+        client_data: { // Incluir dados do cliente para criação - SEMPRE usar dados do cliente logado se disponível
+          name: client?.name || reserva.cliente.nome,
+          email: client?.email || reserva.cliente.email,
+          phone: client?.phone || reserva.cliente.telefone
         },
         appointment_date: dataHora.toISOString(),
         modality_id: reserva.modalidade.id
