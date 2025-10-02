@@ -209,50 +209,28 @@ const Dashboard = () => {
         return;
       }
 
-      // Buscar dados dos clientes usando nova tabela de associações
+      // Buscar dados dos clientes usando JOIN direto
       const clientIds = appointments.map(apt => apt.client_id).filter(Boolean);
-      console.log('🔍 Dashboard - Client IDs encontrados:', clientIds);
-      console.log('🔍 Dashboard - User Profile ID:', userProfile?.user_id);
-      
       let clients = [];
+      
       if (clientIds.length > 0) {
-        // NOVA ABORDAGEM: Duas consultas separadas
-        console.log('🔍 Dashboard - Buscando associações...');
-        
-        // 1. Buscar associações válidas
-        const { data: associations, error: assocError } = await supabase
+        // CONSULTA DIRETA COM JOIN
+        const { data: clientsData, error: clientsError } = await supabase
           .from('client_admin_associations')
-          .select('client_id')
+          .select(`
+            client_id,
+            booking_clients!inner(id, name, email, phone)
+          `)
           .in('client_id', clientIds)
           .eq('admin_id', userProfile?.user_id);
 
-        console.log('🔍 Dashboard - Associações encontradas:', { associations, assocError });
-        console.log('🔍 Dashboard - DETALHES DA CONSULTA DE ASSOCIAÇÕES:', {
-          clientIds,
-          adminId: userProfile?.user_id,
-          associationsLength: associations?.length || 0
-        });
-
-        if (!assocError && associations && associations.length > 0) {
-          const validClientIds = associations.map(a => a.client_id);
-          console.log('🔍 Dashboard - IDs de clientes válidos:', validClientIds);
-          
-          // 2. Buscar dados dos clientes válidos
-          const { data: clientsData, error: clientsError } = await supabase
-            .from('booking_clients')
-            .select('id, name, email, phone')
-            .in('id', validClientIds);
-
-          console.log('🔍 Dashboard - Consulta clientes resultado:', { clientsData, clientsError });
-
-          if (clientsError) {
-            console.error('🔍 Dashboard - Erro ao buscar clientes:', clientsError);
-          } else {
-            clients = clientsData || [];
-            console.log('🔍 Dashboard - Clientes encontrados:', clients);
-          }
-        } else {
-          console.log('🔍 Dashboard - Nenhuma associação válida encontrada');
+        if (!clientsError && clientsData) {
+          clients = clientsData.map(item => ({
+            id: item.booking_clients.id,
+            name: item.booking_clients.name,
+            email: item.booking_clients.email,
+            phone: item.booking_clients.phone
+          }));
         }
       }
 

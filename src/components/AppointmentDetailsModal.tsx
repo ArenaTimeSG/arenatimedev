@@ -39,25 +39,7 @@ const AppointmentDetailsModal = ({
   // Debug apenas em desenvolvimento
   const isDevelopment = import.meta.env.DEV;
   
-  useEffect(() => {
-    console.log('🔍 AppointmentDetailsModal - APPOINTMENT COMPLETO:', appointment);
-    console.log('🔍 AppointmentDetailsModal - CLIENT DETAILS:', {
-      hasClient: !!appointment?.client,
-      clientObject: appointment?.client,
-      clientName: appointment?.client?.name,
-      clientType: typeof appointment?.client
-    });
-    console.log('🔍 AppointmentDetailsModal - CONDIÇÕES:', {
-      isOpen,
-      isFetching: false,
-      error: null,
-      hasAppointment: !!appointment,
-      hasId: !!appointment?.id,
-      hasClient: !!appointment?.client,
-      hasDate: !!appointment?.date,
-      conditionMet: !false && !null && appointment && appointment.id && appointment.client && appointment.date
-    });
-  }, [isOpen, appointment, showSingleDeleteDialog, showRecurrenceDeleteDialog]);
+  // Limpar logs desnecessários
 
   // Limpar estados quando o modal fecha
   useEffect(() => {
