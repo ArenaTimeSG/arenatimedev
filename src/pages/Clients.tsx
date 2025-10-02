@@ -55,15 +55,30 @@ const Clients = () => {
   const fetchClients = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('booking_clients')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('name');
+      
+      // NOVA LÓGICA: Buscar clientes através da tabela de associações
+      console.log('🔍 Clients - Buscando clientes associados ao admin:', user?.id);
+      
+      const { data: associations, error: assocError } = await supabase
+        .from('client_admin_associations')
+        .select(`
+          client_id,
+          booking_clients!inner(*)
+        `)
+        .eq('admin_id', user?.id);
 
-      if (error) throw error;
-      setClients(data || []);
+      console.log('🔍 Clients - Associações encontradas:', { associations, assocError });
+
+      if (assocError) throw assocError;
+      
+      // Extrair dados dos clientes das associações
+      const clientsData = associations?.map(assoc => assoc.booking_clients).filter(Boolean) || [];
+      
+      console.log('🔍 Clients - Clientes extraídos:', clientsData);
+      
+      setClients(clientsData);
     } catch (error: any) {
+      console.error('❌ Clients - Erro ao carregar clientes:', error);
       toast({
         title: 'Erro ao carregar clientes',
         description: error.message,
