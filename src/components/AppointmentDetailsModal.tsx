@@ -40,25 +40,24 @@ const AppointmentDetailsModal = ({
   const isDevelopment = import.meta.env.DEV;
   
   useEffect(() => {
-    if (isDevelopment) {
-      console.log('🔍 AppointmentDetailsModal - Debug Info:', {
-        isOpen,
-        appointment: appointment ? {
-          id: appointment.id,
-          date: appointment.date,
-          status: appointment.status,
-          modality: appointment.modality,
-          clientName: appointment.client?.name,
-          recurrence_id: appointment.recurrence_id
-        } : null,
-        recurrence_id: appointment?.recurrence_id,
-        hasRecurrence: !!appointment?.recurrence_id,
-        appointmentId: appointment?.id,
-        showSingleDeleteDialog,
-        showRecurrenceDeleteDialog
-      });
-    }
-  }, [isOpen, appointment, isDevelopment, showSingleDeleteDialog, showRecurrenceDeleteDialog]);
+    console.log('🔍 AppointmentDetailsModal - Debug Info:', {
+      isOpen,
+      appointment: appointment ? {
+        id: appointment.id,
+        date: appointment.date,
+        status: appointment.status,
+        modality: appointment.modality,
+        client: appointment.client,
+        clientName: appointment.client?.name,
+        recurrence_id: appointment.recurrence_id
+      } : null,
+      recurrence_id: appointment?.recurrence_id,
+      hasRecurrence: !!appointment?.recurrence_id,
+      appointmentId: appointment?.id,
+      showSingleDeleteDialog,
+      showRecurrenceDeleteDialog
+    });
+  }, [isOpen, appointment, showSingleDeleteDialog, showRecurrenceDeleteDialog]);
 
   // Limpar estados quando o modal fecha
   useEffect(() => {
