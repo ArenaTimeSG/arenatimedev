@@ -151,6 +151,9 @@ const Dashboard = () => {
 
       // Buscar dados dos clientes usando nova tabela de associações
       const clientIds = appointments.map(apt => apt.client_id).filter(Boolean);
+      console.log('🔍 Dashboard - Client IDs encontrados:', clientIds);
+      console.log('🔍 Dashboard - User Profile ID:', userProfile?.user_id);
+      
       let clients = [];
       if (clientIds.length > 0) {
         const { data: clientsData, error: clientsError } = await supabase
@@ -162,10 +165,13 @@ const Dashboard = () => {
           .in('id', clientIds)
           .eq('client_admin_associations.admin_id', userProfile?.user_id);
 
+        console.log('🔍 Dashboard - Consulta clientes resultado:', { clientsData, clientsError });
+
         if (clientsError) {
           console.error('🔍 Dashboard - Erro ao buscar clientes:', clientsError);
         } else {
           clients = clientsData || [];
+          console.log('🔍 Dashboard - Clientes encontrados:', clients);
         }
       }
 
