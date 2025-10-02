@@ -56,50 +56,67 @@ const ClientDashboard = () => {
         clientName: client.name
       });
       
-      // Primeiro, verificar se o cliente existe na tabela booking_clients
-      const { data: clientCheck, error: clientError } = await supabase
-        .from('booking_clients')
-        .select('id, name, email, user_id')
-        .eq('id', client.id)
-        .eq('user_id', adminData.user.user_id) // Verificar se o cliente pertence ao admin correto
+      // Verificar se o cliente tem associação com este admin usando nova arquitetura
+      const { data: clientAssociation, error: associationError } = await supabase
+        .from('client_admin_associations')
+        .select(`
+          client_id,
+          admin_id,
+          booking_clients!inner(id, name, email, user_id)
+        `)
+        .eq('client_id', client.id)
+        .eq('admin_id', adminData.user.user_id)
         .maybeSingle();
 
-      if (clientError) {
-        console.error('❌ Erro ao verificar cliente:', clientError);
+      if (associationError) {
+        console.error('❌ Erro ao verificar associação cliente-admin:', associationError);
         return;
       }
 
-      if (!clientCheck) {
-        console.error('❌ Cliente não encontrado na tabela booking_clients para este admin:', {
+      if (!clientAssociation) {
+        console.error('❌ Cliente não tem associação com este admin:', {
           clientId: client.id,
           adminUserId: adminData.user.user_id,
           clientEmail: client.email
         });
         
-        // Tentar buscar cliente por email para este admin
-        console.log('🔍 Tentando buscar cliente por email...');
-        const { data: clientByEmail, error: emailError } = await supabase
+        // Tentar buscar cliente global por email
+        console.log('🔍 Tentando buscar cliente global por email...');
+        const { data: globalClient, error: globalError } = await supabase
           .from('booking_clients')
           .select('id, name, email, user_id')
           .eq('email', client.email)
-          .eq('user_id', adminData.user.user_id)
+          .is('user_id', null) // Buscar cliente global
           .maybeSingle();
           
-        if (emailError) {
-          console.error('❌ Erro ao buscar cliente por email:', emailError);
+        if (globalError) {
+          console.error('❌ Erro ao buscar cliente global:', globalError);
           return;
         }
         
-        if (clientByEmail) {
-          console.log('✅ Cliente encontrado por email:', clientByEmail);
+        if (globalClient) {
+          console.log('✅ Cliente global encontrado:', globalClient);
           // Atualizar o client.id para o ID correto
-          client.id = clientByEmail.id;
+          client.id = globalClient.id;
+          
+          // Verificar se tem associação com este cliente global
+          const { data: globalAssociation } = await supabase
+            .from('client_admin_associations')
+            .select('*')
+            .eq('client_id', globalClient.id)
+            .eq('admin_id', adminData.user.user_id)
+            .maybeSingle();
+            
+          if (!globalAssociation) {
+            console.error('❌ Cliente global não tem associação com este admin');
+            return;
+          }
         } else {
-          console.error('❌ Cliente não encontrado nem por ID nem por email para este admin');
+          console.error('❌ Cliente não encontrado nem por associação nem como global');
           return;
         }
       } else {
-        console.log('✅ Cliente verificado:', clientCheck);
+        console.log('✅ Associação cliente-admin verificada:', clientAssociation);
       }
       
       // Buscar agendamentos com JOIN para obter dados do cliente
