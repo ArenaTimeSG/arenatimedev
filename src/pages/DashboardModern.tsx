@@ -86,16 +86,17 @@ const Dashboard = () => {
     }
   }, [user, currentWeek, loading]);
 
-  // FORÇAR ATUALIZAÇÃO A CADA 10 SEGUNDOS PARA DEBUG
+  // FORÇAR ATUALIZAÇÃO quando a página for focada (volta de outra aba/página)
   useEffect(() => {
-    const interval = setInterval(() => {
-      console.log('🔍 Dashboard - Atualização automática...');
+    const handleFocus = () => {
+      console.log('🔍 Dashboard - Página focada, atualizando...');
       if (user && !loading) {
         fetchAppointments();
       }
-    }, 10000); // 10 segundos
+    };
 
-    return () => clearInterval(interval);
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [user, loading]);
 
   const fetchUserProfile = async () => {
