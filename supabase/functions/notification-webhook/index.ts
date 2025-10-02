@@ -193,7 +193,7 @@ serve(async (req) => {
 
       const paymentData = paymentDataList[0]
       console.log('📅 [WEBHOOK] Dados do agendamento encontrados:', paymentData.appointment_data)
-      
+
       // LOGS DETALHADOS PARA DEBUG
       console.log('🔍 [WEBHOOK] Debug client_data:')
       console.log('  - client_id atual:', paymentData.appointment_data.client_id)
@@ -204,15 +204,22 @@ serve(async (req) => {
         console.log('  - client_data.phone:', paymentData.appointment_data.client_data.phone)
       }
 
-      // DETERMINAR CLIENT_ID CORRETO PRIMEIRO - SEMPRE BUSCAR PELO CLIENT_DATA
-      let finalClientId = null; // FORÇAR BUSCA SEMPRE
-      
-      // Sempre buscar pelo client_data se disponível, ignorar client_id que pode estar errado
-      if (paymentData.appointment_data.client_data) {
-          console.log('🔍 [WEBHOOK] Buscando cliente existente por email...')
-          
-          // BUSCA INTELIGENTE: Primeiro cliente global, depois específico do admin
-          console.log('🔍 [WEBHOOK] Buscando cliente global primeiro...')
+    // DETERMINAR CLIENT_ID CORRETO PRIMEIRO - SEMPRE BUSCAR PELO CLIENT_DATA
+    let finalClientId = null; // FORÇAR BUSCA SEMPRE
+    
+    console.log('🔍 [WEBHOOK CRITICAL DEBUG] === INICIANDO BUSCA DE CLIENTE ===')
+    console.log('🔍 [WEBHOOK] paymentData complete =', JSON.stringify(paymentData, null, 2))
+    console.log('🔍 [WEBHOOK] appointment_data.client_data =', paymentData.appointment_data.client_data)
+    console.log('🔍 [WEBHOOK] appointment_data.client_id =', paymentData.appointment_data.client_id)
+    console.log('🔍 [WEBHOOK] appointment_data.user_id =', paymentData.appointment_data.user_id)
+    
+    // Sempre buscar pelo client_data se disponível, ignorar client_id que pode estar errado
+    if (paymentData.appointment_data.client_data) {
+        console.log('🔍 [WEBHOOK] ✅ Client_data encontrado! Buscando cliente existente por email...')
+        console.log('🔍 [WEBHOOK] Client_data email =', paymentData.appointment_data.client_data.email)
+        
+        // BUSCA INTELIGENTE: Primeiro cliente global, depois específico do admin
+        console.log('🔍 [WEBHOOK] Buscando cliente global primeiro...')
           
           // 1. Buscar cliente global (user_id = null) - PRIORIDADE
           const { data: globalClient } = await supabase
@@ -264,7 +271,10 @@ serve(async (req) => {
                 hasRealPassword: adminClient.password_hash !== 'temp_hash'
               })
             } else {
-              console.log('❌ [WEBHOOK] NENHUM cliente encontrado! Usando primeiro cliente disponível como fallback...')
+              console.log('❌ [WEBHOOK] ⚠️ ⚠️ ⚠️ PROBLEMA CRÍTICO: NENHUM cliente encontrado!')
+              console.log('❌ [WEBHOOK] Email buscado:', paymentData.appointment_data.client_data.email.toLowerCase().trim())
+              console.log('❌ [WEBHOOK] Admin_id:', paymentData.appointment_data.user_id)
+              console.log('❌ [WEBHOOK] Isso vai gerar cliente ERRADO - encontrando primeiro cliente...')
               
               // Fallback: usar primeiro cliente disponível do admin
               const { data: firstClient, error: clientError } = await supabase
@@ -282,11 +292,12 @@ serve(async (req) => {
               }
 
               finalClientId = firstClient.id
-              console.log('✅ [WEBHOOK] Usando primeiro cliente disponível como fallback:', { 
+              console.log('❌ [WEBHOOK] ⚠️ USANDO CLIENTE ERRADO COMO FALLBACK:', { 
                 clientId: finalClientId, 
                 name: firstClient.name, 
                 email: firstClient.email 
               })
+              console.log('❌ [WEBHOOK] ⚠️ Este cliente será associado incorretamente ao agendamento!')
             }
           }
         }
