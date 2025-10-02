@@ -40,7 +40,7 @@ interface Appointment {
 }
 
 const Dashboard = () => {
-  console.log('🚨 DASHBOARD COMPONENT RENDERIZADO - INICIO');
+  console.log('🚨🚨🚨 DASHBOARD COMPONENT RENDERIZADO - INICIO 🚨🚨🚨');
   
   const { user, loading, signOut } = useAuth();
   const { toast } = useToast();
