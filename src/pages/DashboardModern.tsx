@@ -122,7 +122,8 @@ const Dashboard = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const { data, error } = await supabase
+      // Buscar agendamentos primeiro
+      const { data: appointments, error: appointmentsError } = await supabase
         .from('appointments')
         .select(`
           id,
@@ -131,23 +132,48 @@ const Dashboard = () => {
           modality,
           recurrence_id,
           user_id,
-          client_id,
-          client:booking_clients(name)
+          client_id
         `)
+        .eq('user_id', userProfile?.user_id) // Filtrar por admin
         .gte('date', weekStart.toISOString())
         .lte('date', weekEnd.toISOString())
         .order('date');
 
-      if (error) {
-        console.error('🔍 Dashboard - Erro no join com clients:', error);
-        throw error;
+      if (appointmentsError) {
+        console.error('🔍 Dashboard - Erro ao buscar agendamentos:', appointmentsError);
+        throw appointmentsError;
       }
 
-      const processedData = data
-        .map(apt => ({
-          ...apt,
-          client: apt.client as any
-        })) as Appointment[];
+      if (!appointments || appointments.length === 0) {
+        setAppointments([]);
+        return;
+      }
+
+      // Buscar dados dos clientes usando nova tabela de associações
+      const clientIds = appointments.map(apt => apt.client_id).filter(Boolean);
+      let clients = [];
+      if (clientIds.length > 0) {
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('booking_clients')
+          .select(`
+            id, name, email, phone,
+            client_admin_associations!inner(admin_id)
+          `)
+          .in('id', clientIds)
+          .eq('client_admin_associations.admin_id', userProfile?.user_id);
+
+        if (clientsError) {
+          console.error('🔍 Dashboard - Erro ao buscar clientes:', clientsError);
+        } else {
+          clients = clientsData || [];
+        }
+      }
+
+      // Combinar dados
+      const processedData = appointments.map(apt => ({
+        ...apt,
+        client: clients.find(c => c.id === apt.client_id) || null
+      })) as Appointment[];
 
       setAppointments(processedData);
     } catch (error: any) {
