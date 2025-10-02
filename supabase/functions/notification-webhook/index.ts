@@ -204,11 +204,11 @@ serve(async (req) => {
         console.log('  - client_data.phone:', paymentData.appointment_data.client_data.phone)
       }
 
-      // DETERMINAR CLIENT_ID CORRETO PRIMEIRO
-      let finalClientId = paymentData.appointment_data.client_id;
+      // DETERMINAR CLIENT_ID CORRETO PRIMEIRO - SEMPRE BUSCAR PELO CLIENT_DATA
+      let finalClientId = null; // FORÇAR BUSCA SEMPRE
       
-      if (!finalClientId) {
-        if (paymentData.appointment_data.client_data) {
+      // Sempre buscar pelo client_data se disponível, ignorar client_id que pode estar errado
+      if (paymentData.appointment_data.client_data) {
           console.log('🔍 [WEBHOOK] Buscando cliente existente por email...')
           
           // BUSCA INTELIGENTE: Primeiro cliente global, depois específico do admin
@@ -289,30 +289,37 @@ serve(async (req) => {
               })
             }
           }
-        } else {
-          console.log('⚠️ [WEBHOOK] Sem client_data, buscando primeiro cliente disponível...')
-          
-          const { data: firstClient, error: clientError } = await supabase
-            .from('booking_clients')
-            .select('id, name, email')
-            .eq('user_id', paymentData.appointment_data.user_id)
-            .eq('is_active', true)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-
-          if (clientError || !firstClient) {
-            console.error('❌ [WEBHOOK] Erro ao buscar cliente ou nenhum cliente encontrado:', clientError)
-            return new Response('ok', { status: 200, headers: corsHeaders })
-          }
-
-          finalClientId = firstClient.id
-          console.log('✅ [WEBHOOK] Usando primeiro cliente disponível:', { 
-            clientId: finalClientId, 
-            name: firstClient.name, 
-            email: firstClient.email 
-          })
         }
+      } else {
+        // Fallback: usar client_id original se não há client_data
+        finalClientId = paymentData.appointment_data.client_id;
+        console.log('⚠️ [WEBHOOK] Sem client_data, usando client_id original:', finalClientId)
+      }
+
+      // Se ainda não temos client_id, usar primeiro cliente disponível
+      if (!finalClientId) {
+        console.log('❌ [WEBHOOK] AINDA sem finalClientId, buscando primeiro cliente disponível...')
+        
+        const { data: firstClient, error: clientError } = await supabase
+          .from('booking_clients')
+          .select('id, name, email')
+          .eq('user_id', paymentData.appointment_data.user_id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (clientError || !firstClient) {
+          console.error('❌ [WEBHOOK] Erro ao buscar cliente ou nenhum cliente encontrado:', clientError)
+          return new Response('ok', { status: 200, headers: corsHeaders })
+        }
+
+        finalClientId = firstClient.id
+        console.log('✅ [WEBHOOK] Usando primeiro cliente disponível como último recurso:', { 
+          clientId: finalClientId, 
+          name: firstClient.name, 
+          email: firstClient.email 
+        })
       }
 
       console.log('🎯 [WEBHOOK] Cliente final determinado:', finalClientId)
