@@ -40,22 +40,22 @@ const AppointmentDetailsModal = ({
   const isDevelopment = import.meta.env.DEV;
   
   useEffect(() => {
-    console.log('🔍 AppointmentDetailsModal - Debug Info:', {
+    console.log('🔍 AppointmentDetailsModal - APPOINTMENT COMPLETO:', appointment);
+    console.log('🔍 AppointmentDetailsModal - CLIENT DETAILS:', {
+      hasClient: !!appointment?.client,
+      clientObject: appointment?.client,
+      clientName: appointment?.client?.name,
+      clientType: typeof appointment?.client
+    });
+    console.log('🔍 AppointmentDetailsModal - CONDIÇÕES:', {
       isOpen,
-      appointment: appointment ? {
-        id: appointment.id,
-        date: appointment.date,
-        status: appointment.status,
-        modality: appointment.modality,
-        client: appointment.client,
-        clientName: appointment.client?.name,
-        recurrence_id: appointment.recurrence_id
-      } : null,
-      recurrence_id: appointment?.recurrence_id,
-      hasRecurrence: !!appointment?.recurrence_id,
-      appointmentId: appointment?.id,
-      showSingleDeleteDialog,
-      showRecurrenceDeleteDialog
+      isFetching: false,
+      error: null,
+      hasAppointment: !!appointment,
+      hasId: !!appointment?.id,
+      hasClient: !!appointment?.client,
+      hasDate: !!appointment?.date,
+      conditionMet: !false && !null && appointment && appointment.id && appointment.client && appointment.date
     });
   }, [isOpen, appointment, showSingleDeleteDialog, showRecurrenceDeleteDialog]);
 
