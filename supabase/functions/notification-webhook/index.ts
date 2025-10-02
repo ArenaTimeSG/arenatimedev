@@ -306,16 +306,19 @@ serve(async (req) => {
               hasRealPassword: globalClient.password_hash !== 'temp_hash'
             })
             
-            // ASSOCIAR cliente global ao admin para este agendamento
+            // Atualizar dados do cliente se necessário (mas manter como global)
             const { error: updateError } = await supabase
               .from('booking_clients')
-              .update({ user_id: paymentData.appointment_data.user_id })
+              .update({
+                name: paymentData.appointment_data.client_data.name,
+                phone: paymentData.appointment_data.client_data.phone
+              })
               .eq('id', globalClient.id)
             
             if (updateError) {
-              console.error('⚠️ [WEBHOOK] Erro ao associar cliente global ao admin:', updateError)
+              console.error('⚠️ [WEBHOOK] Erro ao atualizar dados do cliente:', updateError)
             } else {
-              console.log('✅ [WEBHOOK] Cliente global associado ao admin com sucesso')
+              console.log('✅ [WEBHOOK] Dados do cliente atualizados')
             }
             
             finalClientId = globalClient.id
@@ -422,6 +425,25 @@ serve(async (req) => {
       }
 
       console.log('✅ [WEBHOOK] Agendamento criado com sucesso:', newAppointment.id)
+
+      // CRIAR ASSOCIAÇÃO cliente-admin (se não existir)
+      console.log('🔗 [WEBHOOK] Criando associação cliente-admin...')
+      const { error: associationError } = await supabase
+        .from('client_admin_associations')
+        .upsert({
+          client_id: finalClientId,
+          admin_id: paymentData.appointment_data.user_id,
+          first_appointment_date: newAppointment.created_at || new Date().toISOString()
+        }, {
+          onConflict: 'client_id,admin_id',
+          ignoreDuplicates: true
+        })
+
+      if (associationError) {
+        console.error('⚠️ [WEBHOOK] Erro ao criar associação (não crítico):', associationError)
+      } else {
+        console.log('✅ [WEBHOOK] Associação cliente-admin criada/atualizada')
+      }
 
       // Atualizar tabela payments
       const { error: updateError } = await supabase

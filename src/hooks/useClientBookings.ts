@@ -64,15 +64,18 @@ export const useClientBookings = (adminUserId?: string) => {
         return [];
       }
 
-      // Buscar dados dos clientes separadamente (apenas para agendamentos com client_id)
+      // Buscar dados dos clientes usando nova tabela de associações
       const clientIds = appointments.map(apt => apt.client_id).filter(Boolean);
       let clients = [];
       if (clientIds.length > 0) {
         const { data: clientsData, error: clientsError } = await supabase
           .from('booking_clients')
-          .select('id, name, email, phone')
+          .select(`
+            id, name, email, phone,
+            client_admin_associations!inner(admin_id)
+          `)
           .in('id', clientIds)
-          .eq('user_id', adminUserId);
+          .eq('client_admin_associations.admin_id', adminUserId);
 
         if (clientsError) {
           console.error('Erro ao buscar clientes:', clientsError);
@@ -123,92 +126,75 @@ export const useClientBookings = (adminUserId?: string) => {
       if (!clientId && bookingData.client_data) {
         console.log('🔍 Processando cliente para agendamento online:', bookingData.client_data.email);
         
-        // Buscar cliente existente primeiro - verificar por email E user_id
-        const { data: existingClient } = await supabase
+        // NOVA LÓGICA: Buscar cliente GLOBAL por email
+        console.log('🔍 useClientBookings: Buscando cliente global por email...');
+        
+        const { data: globalClient } = await supabase
           .from('booking_clients')
-          .select('id, name, email, user_id')
-          .eq('email', bookingData.client_data.email)
-          .eq('user_id', bookingData.user_id)
+          .select('id, name, email, user_id, password_hash')
+          .ilike('email', bookingData.client_data.email.toLowerCase().trim())
+          .is('user_id', null) // Buscar apenas clientes globais
           .maybeSingle();
 
-        console.log('🔍 useClientBookings: Buscando cliente existente:', {
+        console.log('🔍 useClientBookings: Resultado da busca:', {
           email: bookingData.client_data.email,
-          user_id: bookingData.user_id,
-          found: !!existingClient
+          found: !!globalClient,
+          isGlobal: globalClient?.user_id === null
         });
 
-        if (existingClient) {
-          clientId = existingClient.id;
-          console.log('✅ Cliente existente encontrado:', { clientId, email: bookingData.client_data.email, user_id: bookingData.user_id });
-        } else {
-          // BUSCA INTELIGENTE: Primeiro cliente global, depois específico do admin
-          console.log('🔍 Buscando cliente global primeiro...');
+        if (globalClient) {
+          clientId = globalClient.id;
+          console.log('✅ Cliente GLOBAL encontrado:', { 
+            clientId, 
+            email: globalClient.email,
+            hasRealPassword: globalClient.password_hash !== 'temp_hash'
+          });
           
-          // 1. Buscar cliente global (user_id = null) - PRIORIDADE
-          const { data: globalClient } = await supabase
+          // Atualizar dados do cliente se necessário
+          const { error: updateError } = await supabase
             .from('booking_clients')
-            .select('id, name, email, user_id, password_hash')
-            .ilike('email', bookingData.client_data.email.toLowerCase().trim())
-            .is('user_id', null)
-            .maybeSingle();
+            .update({
+              name: bookingData.client_data.name,
+              phone: bookingData.client_data.phone,
+            })
+            .eq('id', clientId);
 
-          if (globalClient) {
-            console.log('✅ Cliente GLOBAL encontrado:', { 
-              clientId: globalClient.id, 
-              email: globalClient.email,
-              hasRealPassword: globalClient.password_hash !== 'temp_hash'
-            });
-            
-            // ASSOCIAR cliente global ao admin para este agendamento
-            const { error: updateError } = await supabase
-              .from('booking_clients')
-              .update({ 
-                user_id: bookingData.user_id,
-                name: bookingData.client_data.name, // Atualizar nome se necessário
-                phone: bookingData.client_data.phone // Atualizar telefone se necessário
-              })
-              .eq('id', globalClient.id);
-            
-            if (updateError) {
-              console.error('⚠️ Erro ao associar cliente global ao admin:', updateError);
-            } else {
-              console.log('✅ Cliente global associado ao admin com sucesso');
-            }
-            
-            clientId = globalClient.id;
+          if (updateError) {
+            console.error('❌ Erro ao atualizar cliente:', updateError);
           } else {
-            // Cliente não existe nesta conta, criar novo
-            console.log('❌ NENHUM cliente encontrado! Criando novo com senha temporária.', { 
+            console.log('✅ Dados do cliente atualizados');
+          }
+        } else {
+          // Criar novo cliente GLOBAL (nunca mais criar com user_id específico)
+          console.log('🆕 Criando novo cliente GLOBAL:', { 
+            name: bookingData.client_data.name,
+            email: bookingData.client_data.email,
+            phone: bookingData.client_data.phone
+          });
+          
+          const { data: newClient, error: clientError } = await supabase
+            .from('booking_clients')
+            .insert({
               name: bookingData.client_data.name,
               email: bookingData.client_data.email,
-              phone: bookingData.client_data.phone,
-              user_id: bookingData.user_id
-            });
-            
-            const { data: newClient, error: clientError } = await supabase
-              .from('booking_clients')
-              .insert({
-                name: bookingData.client_data.name,
-                email: bookingData.client_data.email,
-                phone: bookingData.client_data.phone || null,
-                password_hash: 'temp_hash',
-                user_id: bookingData.user_id
-              })
-              .select('id, name, email, user_id')
-              .single();
+              phone: bookingData.client_data.phone || null,
+              password_hash: 'temp_hash', // Será alterado quando cliente definir senha
+              user_id: null // SEMPRE GLOBAL
+            })
+            .select('id, name, email, user_id')
+            .single();
 
-            if (clientError) {
-              console.error('❌ Erro ao criar cliente:', clientError);
-              throw new Error('Erro ao criar cliente: ' + clientError.message);
-            } else {
-              clientId = newClient.id;
-              console.log('✅ Cliente criado com sucesso:', { 
-                clientId, 
-                name: newClient.name,
-                email: newClient.email,
-                user_id: newClient.user_id
-              });
-            }
+          if (clientError) {
+            console.error('❌ Erro ao criar cliente:', clientError);
+            throw new Error('Erro ao criar cliente: ' + clientError.message);
+          } else {
+            clientId = newClient.id;
+            console.log('✅ Cliente GLOBAL criado:', { 
+              clientId, 
+              name: newClient.name,
+              email: newClient.email,
+              isGlobal: newClient.user_id === null
+            });
           }
         }
       }
@@ -314,7 +300,24 @@ export const useClientBookings = (adminUserId?: string) => {
         status: newBooking.status
       });
 
-      
+      // CRIAR ASSOCIAÇÃO cliente-admin (se não existir)
+      console.log('🔗 Criando associação cliente-admin...');
+      const { error: associationError } = await supabase
+        .from('client_admin_associations')
+        .upsert({
+          client_id: clientId,
+          admin_id: bookingData.user_id,
+          first_appointment_date: newBooking.created_at || new Date().toISOString()
+        }, {
+          onConflict: 'client_id,admin_id',
+          ignoreDuplicates: true
+        });
+
+      if (associationError) {
+        console.error('⚠️ Erro ao criar associação (não crítico):', associationError);
+      } else {
+        console.log('✅ Associação cliente-admin criada/atualizada');
+      }
 
       return newBooking;
     },
