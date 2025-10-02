@@ -40,13 +40,9 @@ interface Appointment {
 }
 
 const Dashboard = () => {
-  console.log('🚨🚨🚨 DASHBOARD COMPONENT RENDERIZADO - INICIO 🚨🚨🚨');
-  
   const { user, loading, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  console.log('🚨 DASHBOARD - Hooks inicializados:', { user: !!user, loading });
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,33 +79,21 @@ const Dashboard = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    console.log('🔍 Dashboard - useEffect SEMPRE EXECUTA:', { user: !!user, loading, currentWeek });
-    console.log('🔍 Dashboard - Dados completos:', { user, loading, currentWeek });
-    
     if (user && !loading) {
-      console.log('✅ Dashboard - Condições atendidas, chamando fetchUserProfile');
       fetchUserProfile();
-    } else {
-      console.log('❌ Dashboard - Condições não atendidas:', { hasUser: !!user, notLoading: !loading });
     }
   }, [user, currentWeek, loading]);
 
   // Chamar fetchAppointments DEPOIS que userProfile for carregado
   useEffect(() => {
-    console.log('🔍 Dashboard - userProfile mudou SEMPRE:', { userProfile: !!userProfile, hasUserId: !!userProfile?.user_id });
-    
     if (userProfile?.user_id) {
-      console.log('✅ Dashboard - userProfile válido, chamando fetchAppointments');
       fetchAppointments();
-    } else {
-      console.log('❌ Dashboard - userProfile inválido:', userProfile);
     }
   }, [userProfile, currentWeek]);
 
   // FORÇAR ATUALIZAÇÃO quando a página for focada (volta de outra aba/página)
   useEffect(() => {
     const handleFocus = () => {
-      console.log('🔍 Dashboard - Página focada, atualizando...');
       if (user && !loading) {
         fetchAppointments();
       }
