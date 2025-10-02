@@ -307,7 +307,12 @@ export const useClientBookings = (adminUserId?: string) => {
       });
 
       // CRIAR ASSOCIAÇÃO cliente-admin (se não existir)
-      console.log('🔗 Criando associação cliente-admin...');
+      console.log('🔗 CRIANDO ASSOCIAÇÃO CLIENTE-ADMIN - DADOS:', {
+        client_id: clientId,
+        admin_id: bookingData.user_id,
+        first_appointment_date: newBooking.created_at || new Date().toISOString()
+      });
+      
       const { error: associationError } = await supabase
         .from('client_admin_associations')
         .upsert({
@@ -320,9 +325,14 @@ export const useClientBookings = (adminUserId?: string) => {
         });
 
       if (associationError) {
-        console.error('⚠️ Erro ao criar associação (não crítico):', associationError);
+        console.error('❌ ERRO AO CRIAR ASSOCIAÇÃO:', associationError);
+        console.error('❌ DETALHES DO ERRO:', {
+          code: associationError.code,
+          message: associationError.message,
+          details: associationError.details
+        });
       } else {
-        console.log('✅ Associação cliente-admin criada/atualizada');
+        console.log('✅ ASSOCIAÇÃO CLIENTE-ADMIN CRIADA/ATUALIZADA COM SUCESSO');
       }
 
       return newBooking;
