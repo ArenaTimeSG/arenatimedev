@@ -43,6 +43,11 @@ serve(async (req) => {
     
     const { owner_id, booking_id, price, items, return_url, client_id, client_data, appointment_date, modality_id }: CreatePreferenceRequest = await req.json()
 
+    // 🔍 CRITICAL DEBUG: Log client_data received
+    console.log('🔍 [CREATE-PREFERENCE CRITICAL] client_data received:', JSON.stringify(client_data, null, 2))
+    console.log('🔍 [CREATE-PREFERENCE CRITICAL] client_id received:', client_id)
+    console.log('🔍 [CREATE-PREFERENCE CRITICAL] All parameters received:', { owner_id, booking_id, price, return_url, appointment_date, modality_id })
+
     // Validar campos obrigatórios com valores padrão
     if (!owner_id || !price) {
       console.error('❌ [CREATE-PREFERENCE] Campos obrigatórios ausentes')
@@ -294,6 +299,23 @@ serve(async (req) => {
     console.log('✅ [CREATE-PREFERENCE] Registro de pagamento criado com sucesso:', paymentRecord.id)
     console.log('🔍 [CREATE-PREFERENCE] Dados do payment_record criado:', JSON.stringify(paymentRecord, null, 2))
 
+    // 🔍 CRITICAL DEBUG: Log what will be saved in database
+    const appointmentDataToSave = {
+      user_id: owner_id,
+      client_id: client_id, // Pode ser null se client_data for fornecido
+      client_data: client_data, // Dados do cliente para criação
+      date: appointment_date,
+      modalidade: items?.[0]?.title || 'Agendamento',
+      modality_id: modality_id,
+      valor_total: parseFloat(price.toString()),
+      payment_status: 'pending',
+      status: 'a_cobrar',
+      booking_source: 'online'
+    }
+    
+    console.log('🔍 [CREATE-PREFERENCE CRITICAL] appointment_data to save:', JSON.stringify(appointmentDataToSave, null, 2))
+    console.log('🔍 [CREATE-PREFERENCE CRITICAL] client_data being saved:', JSON.stringify(client_data, null, 2))
+    
     // Criar registro na tabela payments com dados do agendamento
     const { data: paymentData, error: paymentDataError } = await supabase
       .from('payments')
@@ -303,18 +325,7 @@ serve(async (req) => {
         currency: 'BRL',
         status: 'pending',
         mercado_pago_preference_id: mpPreference.id,
-        appointment_data: {
-          user_id: owner_id,
-          client_id: client_id, // Pode ser null se client_data for fornecido
-          client_data: client_data, // Dados do cliente para criação
-          date: appointment_date,
-          modality: items?.[0]?.title || 'Agendamento',
-          modality_id: modality_id,
-          valor_total: parseFloat(price.toString()),
-          payment_status: 'pending',
-          status: 'a_cobrar',
-          booking_source: 'online'
-        }
+        appointment_data: appointmentDataToSave
       })
       .select()
       .single()
