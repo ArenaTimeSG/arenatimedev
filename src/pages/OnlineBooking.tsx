@@ -256,7 +256,7 @@ const OnlineBooking = () => {
         // Dados do agendamento para criar após pagamento
         appointment_data: {
           user_id: adminData.user.user_id,
-          client_id: null, // Será criado pelo webhook como cliente temporário
+          client_id: client?.id || null, // USAR CLIENTE LOGADO se disponível
           client_data: { // Incluir dados do cliente para criação
             name: reserva.cliente.nome,
             email: reserva.cliente.email,
