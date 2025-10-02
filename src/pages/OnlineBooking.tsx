@@ -382,6 +382,7 @@ const OnlineBooking = () => {
       
       const bookingData = {
         user_id: adminData.user.user_id,
+        client_id: client?.id, // USAR CLIENTE LOGADO se disponível
         client_data: {
           name: reserva.cliente.nome,
           email: reserva.cliente.email,
