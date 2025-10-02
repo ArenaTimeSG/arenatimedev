@@ -460,7 +460,7 @@ const AppointmentDetailsModal = ({
           )}
 
           {/* Main content - apenas se não estiver carregando, não houver erro e appointment for válido */}
-          {!isFetching && !error && appointment && appointment.id && appointment.client?.name && appointment.date && (
+          {!isFetching && !error && appointment && appointment.id && appointment.client && appointment.date && (
             <div className="space-y-6">
               {/* Informações do Cliente */}
               <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
