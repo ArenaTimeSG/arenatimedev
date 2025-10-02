@@ -72,33 +72,37 @@ serve(async (req) => {
       const paymentData = paymentDataList[0]
       console.log('📊 [WEBHOOK DYNAMIC] Payment data:', JSON.stringify(paymentData, null, 2))
 
-      // SOLUÇÃO DINÂMICA: Extrair informações do cliente de múltiplas fontes
+      // CORREÇÃO DEFINITIVA: NUNCA usar cliente aleatório - SEMPRE criar ou buscar cliente correto
       let finalClientId = null
       
-      console.log('🔍 [WEBHOOK DYNAMIC] === BUSCA INTELIGENTE DE CLIENTE ===')
+      console.log('🔍 [WEBHOOK FINAL] === BUSCA INTELIGENTE DE CLIENTE ===')
+      console.log('🔍 [WEBHOOK FINAL] paymentData.appointment_data.client_data:', paymentData.appointment_data?.client_data)
       
-      // 1. Tentar usar client_data se disponível
+      // ESTRATÉGIA CORRETA: Primeiro verificar client_data, depois fazer fallback inteligente
       if (paymentData.appointment_data?.client_data) {
-        console.log('✅ [WEBHOOK DYNAMIC] Client_data found:', paymentData.appointment_data.client_data)
+        console.log('✅ [WEBHOOK FINAL] Client_data found:', paymentData.appointment_data.client_data)
         
         const clientData = paymentData.appointment_data.client_data
         
-        // Buscar cliente existente por email
+        // Buscar cliente existente por email (global ou específico do admin)
+        console.log('🔍 [WEBHOOK FINAL] Searching for existing client by email:', clientData.email)
+        
         const { data: existingClient } = await supabase
           .from('booking_clients')
-          .select('id, name, email')
+          .select('id, name, email, user_id')
           .ilike('email', clientData.email.toLowerCase().trim())
           .maybeSingle()
 
         if (existingClient) {
           finalClientId = existingClient.id
-          console.log('✅ [WEBHOOK DYNAMIC] Found existing client:', { 
+          console.log('✅ [WEBHOOK FINAL] Found existing client:', { 
             id: finalClientId, 
             name: existingClient.name,
-            email: existingClient.email
+            email: existingClient.email 
           })
         } else {
           // Criar novo cliente com dados do formulário
+          console.log('🔍 [WEBHOOK FINAL] Creating new client with form data')
           const { data: newClient } = await supabase
             .from('booking_clients')
             .insert({
@@ -113,7 +117,7 @@ serve(async (req) => {
 
           if (newClient) {
             finalClientId = newClient.id
-            console.log('✅ [WEBHOOK DYNAMIC] Created new client:', { 
+            console.log('✅ [WEBHOOK FINAL] Created new client:', { 
               id: finalClientId, 
               name: clientData.name,
               email: clientData.email 
@@ -121,22 +125,20 @@ serve(async (req) => {
           }
         }
       } else {
-        console.log('❌ [WEBHOOK DYNAMIC] NO client_data available')
+        console.log('❌ [WEBHOOK FINAL] NO client_data - usando fallback inteligente')
         
-        // 2. Fallback: Tentar extrair informações do preference_id ou other metadata
-        console.log('🔍 [WEBHOOK DYNAMIC] Attempting fallback extraction...')
+        // FALLBACK INTELIGENTE: Criar cliente único baseado no timestamp de pagamento
+        const timestamp = new Date().toLocaleString('pt-BR')
+        const uniqueEmail = `cliente_pagamento_${Date.now()}@automatico.local`;
+        const uniqueName = `Cliente Pagamento ${timestamp}`;
         
-        // Se não há client_data, criar cliente genérico baseado nas informações disponíveis
-        const emergencyEmail = `sem_email_cliente_${Date.now()}@pagamento.local`;
-        const emergencyName = `Cliente Pagamento ${new Date().toLocaleTimeString()}`;
+        console.log('🔧 [WEBHOOK FINAL] Creating unique client with data:', { name: uniqueName, email: uniqueEmail })
         
-        console.log('🚨 [WEBHOOK DYNAMIC] Creating emergency client...')
-        
-        const { data: emergencyClient } = await supabase
+        const { data: uniqueClient } = await supabase
           .from('booking_clients')
           .insert({
-            name: emergencyName,
-            email: emergencyEmail,
+            name: uniqueName,
+            email: uniqueEmail,
             phone: '',
             password_hash: 'temp_hash',
             user_id: null
@@ -144,11 +146,12 @@ serve(async (req) => {
           .select('id')
           .single();
 
-        if (emergencyClient) {
-          finalClientId = emergencyClient.id
-          console.log('✅ [WEBHOOK DYNAMIC] Emergency client created:', { 
+        if (uniqueClient) {
+          finalClientId = uniqueClient.id
+          console.log('✅ [WEBHOOK FINAL] Unique client created:', { 
             id: finalClientId, 
-            name: emergencyName 
+            name: uniqueName,
+            email: uniqueEmail 
           })
         }
       }
