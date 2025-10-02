@@ -271,33 +271,36 @@ serve(async (req) => {
                 hasRealPassword: adminClient.password_hash !== 'temp_hash'
               })
             } else {
-              console.log('❌ [WEBHOOK] ⚠️ ⚠️ ⚠️ PROBLEMA CRÍTICO: NENHUM cliente encontrado!')
+              console.log('❌ [WEBHOOK] ⚠️ ⚠️ ⚠️ MELHORIA: NENHUM cliente encontrado pelos dados do formulário!')
               console.log('❌ [WEBHOOK] Email buscado:', paymentData.appointment_data.client_data.email.toLowerCase().trim())
               console.log('❌ [WEBHOOK] Admin_id:', paymentData.appointment_data.user_id)
-              console.log('❌ [WEBHOOK] Isso vai gerar cliente ERRADO - encontrando primeiro cliente...')
+              console.log('✅ [WEBHOOK] SOLUÇÃO: Criando cliente global baseado nos dados do formulário!')
               
-              // Fallback: usar primeiro cliente disponível do admin
-              const { data: firstClient, error: clientError } = await supabase
-                .from('booking_clients')
-                .select('id, name, email')
-                .eq('user_id', paymentData.appointment_data.user_id)
-                .eq('is_active', true)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle()
+              // CORREÇÃO: Criar um novo cliente global baseado nos dados do formulário
+              const { data: newClient, error: createError } = await supabase
+            .from('booking_clients')
+            .insert({
+              name: paymentData.appointment_data.client_data.name,
+              email: paymentData.appointment_data.client_data.email,
+                  phone: paymentData.appointment_data.client_data.phone,
+                  password_hash: 'temp_hash', // Haverá atualização posterior pelo cliente
+                  user_id: null // Cliente global - pode ser usado por outros admins
+                })
+                .select('id')
+                .single()
 
-              if (clientError || !firstClient) {
-                console.error('❌ [WEBHOOK] Erro ao buscar cliente ou nenhum cliente encontrado:', clientError)
+              if (createError) {
+                console.error('❌ [WEBHOOK] Erro ao criar cliente baseado nos dados:', createError)
                 return new Response('ok', { status: 200, headers: corsHeaders })
               }
 
-              finalClientId = firstClient.id
-              console.log('❌ [WEBHOOK] ⚠️ USANDO CLIENTE ERRADO COMO FALLBACK:', { 
+              finalClientId = newClient.id
+              console.log('✅ [WEBHOOK] NOVO CLIENTE CRIADO CORRETAMENTE:', { 
                 clientId: finalClientId, 
-                name: firstClient.name, 
-                email: firstClient.email 
+                email: paymentData.appointment_data.client_data.email,
+                name: paymentData.appointment_data.client_data.name 
               })
-              console.log('❌ [WEBHOOK] ⚠️ Este cliente será associado incorretamente ao agendamento!')
+              console.log('✅ [WEBHOOK] Este cliente será associado CORRETAMENTE ao agendamento!')
             }
           }
         }
@@ -307,30 +310,15 @@ serve(async (req) => {
         console.log('⚠️ [WEBHOOK] Sem client_data, usando client_id original:', finalClientId)
       }
 
-      // Se ainda não temos client_id, usar primeiro cliente disponível
+      // Se ainda não temos client_id, evitar fallback automático
       if (!finalClientId) {
-        console.log('❌ [WEBHOOK] AINDA sem finalClientId, buscando primeiro cliente disponível...')
+        console.log('❌ [WEBHOOK] PROBLEMA CRÍTICO: AINDA sem finalClientId após toda busca!')
+        console.log('❌ [WEBHOOK] paymentData.appointment_data.client_data =', paymentData.appointment_data.client_data)
+        console.log('❌ [WEBHOOK] paymentData.appointment_data.client_id =', paymentData.appointment_data.client_id)
+        console.log('❌ [WEBHOOK] SEM FALLBACK AUTOMÁTICO - ERRO DE CONFIGURAÇÃO!')
         
-        const { data: firstClient, error: clientError } = await supabase
-          .from('booking_clients')
-          .select('id, name, email')
-          .eq('user_id', paymentData.appointment_data.user_id)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        if (clientError || !firstClient) {
-          console.error('❌ [WEBHOOK] Erro ao buscar cliente ou nenhum cliente encontrado:', clientError)
-          return new Response('ok', { status: 200, headers: corsHeaders })
-        }
-
-        finalClientId = firstClient.id
-        console.log('✅ [WEBHOOK] Usando primeiro cliente disponível como último recurso:', { 
-          clientId: finalClientId, 
-          name: firstClient.name, 
-          email: firstClient.email 
-        })
+        // Não usar fallback automático - isso estava causando o problema
+        return new Response('ok', { status: 200, headers: corsHeaders })
       }
 
       console.log('🎯 [WEBHOOK] Cliente final determinado:', finalClientId)
