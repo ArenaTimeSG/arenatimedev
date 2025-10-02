@@ -133,6 +133,11 @@ const Dashboard = () => {
     console.log('🔍 Dashboard - fetchAppointments INICIADO');
     console.log('🔍 Dashboard - userProfile:', userProfile);
     
+    if (!userProfile?.user_id) {
+      console.log('❌ Dashboard - userProfile.user_id não encontrado, abortando');
+      return;
+    }
+    
     try {
       const weekStart = startOfWeek(currentWeek, { locale: ptBR });
       const weekEnd = addDays(weekStart, 6);
