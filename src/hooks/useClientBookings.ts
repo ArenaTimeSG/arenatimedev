@@ -166,21 +166,27 @@ export const useClientBookings = (adminUserId?: string) => {
           }
         } else {
           // Criar novo cliente GLOBAL (nunca mais criar com user_id específico)
-          console.log('🆕 Criando novo cliente GLOBAL:', { 
+          console.log('🆕 CRIANDO NOVO CLIENTE GLOBAL - VERSÃO ATUALIZADA:', { 
             name: bookingData.client_data.name,
             email: bookingData.client_data.email,
-            phone: bookingData.client_data.phone
+            phone: bookingData.client_data.phone,
+            user_id: null, // FORÇAR GLOBAL
+            admin_id: bookingData.user_id // Para associação posterior
           });
+          
+          const clientInsertData = {
+            name: bookingData.client_data.name,
+            email: bookingData.client_data.email,
+            phone: bookingData.client_data.phone || null,
+            password_hash: 'temp_hash', // Será alterado quando cliente definir senha
+            user_id: null // SEMPRE GLOBAL - NUNCA ESPECÍFICO
+          };
+          
+          console.log('🔍 DADOS PARA INSERÇÃO:', clientInsertData);
           
           const { data: newClient, error: clientError } = await supabase
             .from('booking_clients')
-            .insert({
-              name: bookingData.client_data.name,
-              email: bookingData.client_data.email,
-              phone: bookingData.client_data.phone || null,
-              password_hash: 'temp_hash', // Será alterado quando cliente definir senha
-              user_id: null // SEMPRE GLOBAL
-            })
+            .insert(clientInsertData)
             .select('id, name, email, user_id')
             .single();
 
