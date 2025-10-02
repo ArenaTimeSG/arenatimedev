@@ -56,27 +56,37 @@ const Clients = () => {
     try {
       setIsLoading(true);
       
-      // NOVA LÓGICA: Buscar clientes através da tabela de associações
+      // NOVA LÓGICA: Buscar clientes através da tabela de associações (duas consultas separadas)
       console.log('🔍 Clients - Buscando clientes associados ao admin:', user?.id);
       
+      // 1. Buscar associações
       const { data: associations, error: assocError } = await supabase
         .from('client_admin_associations')
-        .select(`
-          client_id,
-          booking_clients!inner(*)
-        `)
+        .select('client_id')
         .eq('admin_id', user?.id);
 
       console.log('🔍 Clients - Associações encontradas:', { associations, assocError });
 
       if (assocError) throw assocError;
       
-      // Extrair dados dos clientes das associações
-      const clientsData = associations?.map(assoc => assoc.booking_clients).filter(Boolean) || [];
+      if (!associations || associations.length === 0) {
+        setClients([]);
+        return;
+      }
       
-      console.log('🔍 Clients - Clientes extraídos:', clientsData);
+      // 2. Buscar dados dos clientes
+      const clientIds = associations.map(a => a.client_id);
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('booking_clients')
+        .select('*')
+        .in('id', clientIds)
+        .order('name');
       
-      setClients(clientsData);
+      console.log('🔍 Clients - Clientes encontrados:', { clientsData, clientsError });
+      
+      if (clientsError) throw clientsError;
+      
+      setClients(clientsData || []);
     } catch (error: any) {
       console.error('❌ Clients - Erro ao carregar clientes:', error);
       toast({
