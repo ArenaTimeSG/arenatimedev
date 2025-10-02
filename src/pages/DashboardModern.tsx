@@ -133,6 +133,7 @@ const Dashboard = () => {
       if (error) {
         console.error('❌ Dashboard - Erro ao buscar perfil do usuário:', error);
         const profile = {
+          user_id: user.id, // ADICIONAR user_id que estava faltando!
           name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
           email: user.email || '',
           phone: user.user_metadata?.phone || ''
@@ -140,12 +141,17 @@ const Dashboard = () => {
         console.log('✅ Dashboard - userProfile definido (fallback):', profile);
         setUserProfile(profile);
       } else {
-        console.log('✅ Dashboard - userProfile carregado (sucesso):', data);
-        setUserProfile(data);
+        const profileWithUserId = {
+          ...data,
+          user_id: user.id // ADICIONAR user_id que estava faltando!
+        };
+        console.log('✅ Dashboard - userProfile carregado (sucesso):', profileWithUserId);
+        setUserProfile(profileWithUserId);
       }
     } catch (error) {
       console.error('Erro ao buscar perfil:', error);
       setUserProfile({
+        user_id: user.id, // ADICIONAR user_id que estava faltando!
         name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
         email: user.email || '',
         phone: user.user_metadata?.phone || ''
