@@ -227,6 +227,11 @@ const Dashboard = () => {
           .eq('admin_id', userProfile?.user_id);
 
         console.log('🔍 Dashboard - Associações encontradas:', { associations, assocError });
+        console.log('🔍 Dashboard - DETALHES DA CONSULTA DE ASSOCIAÇÕES:', {
+          clientIds,
+          adminId: userProfile?.user_id,
+          associationsLength: associations?.length || 0
+        });
 
         if (!assocError && associations && associations.length > 0) {
           const validClientIds = associations.map(a => a.client_id);
