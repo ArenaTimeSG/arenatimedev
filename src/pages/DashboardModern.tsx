@@ -79,17 +79,26 @@ const Dashboard = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    console.log('🔍 Dashboard - useEffect triggered:', { user: !!user, loading, currentWeek });
+    console.log('🔍 Dashboard - useEffect SEMPRE EXECUTA:', { user: !!user, loading, currentWeek });
+    console.log('🔍 Dashboard - Dados completos:', { user, loading, currentWeek });
+    
     if (user && !loading) {
+      console.log('✅ Dashboard - Condições atendidas, chamando fetchUserProfile');
       fetchUserProfile();
+    } else {
+      console.log('❌ Dashboard - Condições não atendidas:', { hasUser: !!user, notLoading: !loading });
     }
   }, [user, currentWeek, loading]);
 
   // Chamar fetchAppointments DEPOIS que userProfile for carregado
   useEffect(() => {
-    console.log('🔍 Dashboard - userProfile mudou:', { userProfile: !!userProfile });
+    console.log('🔍 Dashboard - userProfile mudou SEMPRE:', { userProfile: !!userProfile, hasUserId: !!userProfile?.user_id });
+    
     if (userProfile?.user_id) {
+      console.log('✅ Dashboard - userProfile válido, chamando fetchAppointments');
       fetchAppointments();
+    } else {
+      console.log('❌ Dashboard - userProfile inválido:', userProfile);
     }
   }, [userProfile, currentWeek]);
 
