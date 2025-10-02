@@ -126,6 +126,12 @@ const Dashboard = () => {
       today.setHours(0, 0, 0, 0);
 
       // Buscar agendamentos primeiro
+      console.log('🔍 Dashboard - Filtros de data:', {
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        userProfileId: userProfile?.user_id
+      });
+      
       const { data: appointments, error: appointmentsError } = await supabase
         .from('appointments')
         .select(`
@@ -141,6 +147,8 @@ const Dashboard = () => {
         .gte('date', weekStart.toISOString())
         .lte('date', weekEnd.toISOString())
         .order('date');
+
+      console.log('🔍 Dashboard - Agendamentos encontrados:', { appointments, appointmentsError });
 
       if (appointmentsError) {
         console.error('🔍 Dashboard - Erro ao buscar agendamentos:', appointmentsError);
