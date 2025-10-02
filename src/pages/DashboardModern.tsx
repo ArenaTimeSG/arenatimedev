@@ -198,36 +198,31 @@ const Dashboard = () => {
       let clients = [];
       
       if (clientIds.length > 0) {
-        // CONSULTA DIRETA COM JOIN CORRIGIDA
-        const { data: clientsData, error: clientsError } = await supabase
+        console.log('🔍 BUSCANDO CLIENTES - clientIds:', clientIds);
+        console.log('🔍 ADMIN ID:', userProfile?.user_id);
+        
+        // CONSULTA SIMPLES E DIRETA - DUAS ETAPAS
+        // 1. Buscar IDs dos clientes associados
+        const { data: associations } = await supabase
           .from('client_admin_associations')
-          .select(`
-            client_id,
-            booking_clients!inner(
-              id,
-              name,
-              email,
-              phone
-            )
-          `)
+          .select('client_id')
           .in('client_id', clientIds)
           .eq('admin_id', userProfile?.user_id);
 
-        if (clientsError) {
-          console.error('Erro na consulta de clientes:', clientsError);
-          // FALLBACK: buscar clientes diretamente
-          const { data: fallbackClients } = await supabase
+        console.log('🔍 ASSOCIAÇÕES ENCONTRADAS:', associations);
+
+        if (associations && associations.length > 0) {
+          const validClientIds = associations.map(a => a.client_id);
+          console.log('🔍 CLIENT IDS VÁLIDOS:', validClientIds);
+          
+          // 2. Buscar dados dos clientes válidos
+          const { data: clientsData } = await supabase
             .from('booking_clients')
             .select('id, name, email, phone')
-            .in('id', clientIds);
-          clients = fallbackClients || [];
-        } else if (clientsData) {
-          clients = clientsData.map(item => ({
-            id: item.booking_clients.id,
-            name: item.booking_clients.name,
-            email: item.booking_clients.email,
-            phone: item.booking_clients.phone
-          }));
+            .in('id', validClientIds);
+          
+          console.log('🔍 DADOS DOS CLIENTES:', clientsData);
+          clients = clientsData || [];
         }
       }
 
