@@ -107,6 +107,7 @@ const Dashboard = () => {
   }, [user, loading]);
 
   const fetchUserProfile = async () => {
+    console.log('🔍 Dashboard - fetchUserProfile INICIADO:', { userId: user?.id });
     if (!user?.id) return;
     
     try {
@@ -117,13 +118,16 @@ const Dashboard = () => {
         .single();
 
       if (error) {
-        console.error('Erro ao buscar perfil do usuário:', error);
-        setUserProfile({
+        console.error('❌ Dashboard - Erro ao buscar perfil do usuário:', error);
+        const profile = {
           name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
           email: user.email || '',
           phone: user.user_metadata?.phone || ''
-        });
+        };
+        console.log('✅ Dashboard - userProfile definido (fallback):', profile);
+        setUserProfile(profile);
       } else {
+        console.log('✅ Dashboard - userProfile carregado (sucesso):', data);
         setUserProfile(data);
       }
     } catch (error) {
