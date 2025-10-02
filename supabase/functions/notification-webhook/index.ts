@@ -59,6 +59,7 @@ serve(async (req) => {
     let preferenceId = null
     let paymentStatus = null
     let externalReference = null
+    let paymentId = null
 
     // Processar notificação de merchant_order
     if (body.topic === 'merchant_order' && body.resource) {
@@ -97,7 +98,7 @@ serve(async (req) => {
       try {
         // Extrair payment ID da URL
         const urlParts = body.resource.split('/')
-        const paymentId = urlParts[urlParts.length - 1]
+        paymentId = urlParts[urlParts.length - 1]
         
         // Buscar detalhes do pagamento
         const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
@@ -114,6 +115,28 @@ serve(async (req) => {
           preferenceId = payment.preference_id
           paymentStatus = payment.status
           externalReference = payment.external_reference
+          
+          // Se não tem preference_id no payment, buscar na order
+          if (!preferenceId && payment.order?.id) {
+            console.log('🔍 [WEBHOOK] Buscando preference_id na order:', payment.order.id)
+            
+            try {
+              const orderResponse = await fetch(`https://api.mercadopago.com/merchant_orders/${payment.order.id}`, {
+                headers: {
+                  'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
+                  'Content-Type': 'application/json'
+                }
+              })
+              
+              if (orderResponse.ok) {
+                const order = await orderResponse.json()
+                preferenceId = order.preference_id
+                console.log('✅ [WEBHOOK] Preference ID encontrado na order:', preferenceId)
+              }
+            } catch (orderError) {
+              console.error('❌ [WEBHOOK] Erro ao buscar order:', orderError)
+            }
+          }
         } else {
           console.error('❌ [WEBHOOK] Erro ao buscar payment:', mpResponse.status)
         }
@@ -135,7 +158,7 @@ serve(async (req) => {
     const { error: webhookError } = await supabase
       .from('webhook_notifications')
       .insert({
-        payment_id: null,
+        payment_id: paymentId,
         preference_id: preferenceId,
         owner_id: adminSettings.user_id,
         booking_id: null, // Não usar external_reference como booking_id
@@ -170,58 +193,215 @@ serve(async (req) => {
 
       const paymentData = paymentDataList[0]
       console.log('📅 [WEBHOOK] Dados do agendamento encontrados:', paymentData.appointment_data)
+      
+      // LOGS DETALHADOS PARA DEBUG
+      console.log('🔍 [WEBHOOK] Debug client_data:')
+      console.log('  - client_id atual:', paymentData.appointment_data.client_id)
+      console.log('  - client_data presente:', !!paymentData.appointment_data.client_data)
+      if (paymentData.appointment_data.client_data) {
+        console.log('  - client_data.name:', paymentData.appointment_data.client_data.name)
+        console.log('  - client_data.email:', paymentData.appointment_data.client_data.email)
+        console.log('  - client_data.phone:', paymentData.appointment_data.client_data.phone)
+      }
 
-      // Determinar client_id - criar cliente temporário se necessário
+      // VERIFICAR SE JÁ EXISTE AGENDAMENTO (EVITAR DUPLICAÇÃO)
+      console.log('🔍 [WEBHOOK] Verificando se já existe agendamento para evitar duplicação...')
+      const { data: existingAppointment, error: checkError } = await supabase
+        .from('appointments')
+        .select('id, status, client_id')
+        .eq('user_id', paymentData.appointment_data.user_id)
+        .eq('date', paymentData.appointment_data.date)
+        .maybeSingle()
+
+      if (checkError) {
+        console.error('❌ [WEBHOOK] Erro ao verificar agendamento existente:', checkError)
+        return new Response('ok', { status: 200, headers: corsHeaders })
+      }
+
+      if (existingAppointment) {
+        console.log('⚠️ [WEBHOOK] Agendamento já existe, apenas atualizando status:', existingAppointment.id)
+        console.log('  - Status atual:', existingAppointment.status)
+        console.log('  - Cliente atual:', existingAppointment.client_id)
+        
+        // Atualizar agendamento existente em vez de criar novo
+        const { error: updateError } = await supabase
+          .from('appointments')
+          .update({
+            status: 'pago',
+            payment_status: 'approved',
+            payment_data: { preference_id: preferenceId, status: paymentStatus },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingAppointment.id)
+
+        if (updateError) {
+          console.error('❌ [WEBHOOK] Erro ao atualizar agendamento:', updateError)
+          return new Response('ok', { status: 200, headers: corsHeaders })
+        } else {
+          console.log('✅ [WEBHOOK] Agendamento atualizado com sucesso:', existingAppointment.id)
+        }
+
+        // Atualizar tabela payments
+        const { error: updatePaymentError } = await supabase
+          .from('payments')
+          .update({
+            status: 'approved',
+            mercado_pago_status: 'approved',
+            mercado_pago_payment_id: paymentId,
+            appointment_id: existingAppointment.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('mercado_pago_preference_id', preferenceId)
+
+        if (updatePaymentError) {
+          console.error('❌ [WEBHOOK] Erro ao atualizar payment:', updatePaymentError)
+        } else {
+          console.log('✅ [WEBHOOK] Payment atualizado com sucesso')
+        }
+
+        // Atualizar payment_records
+        const { error: recordError } = await supabase
+          .from('payment_records')
+          .update({
+            status: 'confirmed',
+            booking_id: existingAppointment.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('preference_id', preferenceId)
+
+        if (recordError) {
+          console.error('❌ [WEBHOOK] Erro ao atualizar payment_record:', recordError)
+        } else {
+          console.log('✅ [WEBHOOK] Payment record atualizado com sucesso')
+        }
+
+        return new Response('ok', { status: 200, headers: corsHeaders })
+      }
+
+      // Se não existe agendamento, criar novo
+      console.log('✅ [WEBHOOK] Nenhum agendamento existente, criando novo...')
+
+      // Determinar client_id - LÓGICA MELHORADA
       let finalClientId = paymentData.appointment_data.client_id;
       
-      if (!finalClientId && paymentData.appointment_data.client_data) {
-        console.log('🔍 [WEBHOOK] Criando cliente temporário para agendamento com pagamento...');
-        
-        // Buscar cliente existente primeiro
-        const { data: existingClient } = await supabase
-          .from('booking_clients')
-          .select('id, name, email, user_id')
-          .eq('email', paymentData.appointment_data.client_data.email)
-          .eq('user_id', paymentData.appointment_data.user_id)
-          .maybeSingle();
-
-        if (existingClient) {
-          finalClientId = existingClient.id;
-          console.log('✅ [WEBHOOK] Cliente existente encontrado:', { clientId: finalClientId, email: paymentData.appointment_data.client_data.email });
-        } else {
-          // Criar novo cliente temporário
-          const { data: newClient, error: clientError } = await supabase
+      if (!finalClientId) {
+        if (paymentData.appointment_data.client_data) {
+          console.log('🔍 [WEBHOOK] Buscando cliente existente por email...')
+          
+          // BUSCA INTELIGENTE: Primeiro cliente global, depois específico do admin
+          console.log('🔍 [WEBHOOK] Buscando cliente global primeiro...')
+          
+          // 1. Buscar cliente global (user_id = null) - PRIORIDADE
+          const { data: globalClient } = await supabase
             .from('booking_clients')
-            .insert({
-              name: paymentData.appointment_data.client_data.name,
-              email: paymentData.appointment_data.client_data.email,
-              phone: paymentData.appointment_data.client_data.phone || null,
-              password_hash: 'temp_hash', // Cliente temporário
-              user_id: paymentData.appointment_data.user_id
-            })
-            .select('id, name, email, user_id')
-            .single();
+            .select('id, name, email, user_id, password_hash')
+            .ilike('email', paymentData.appointment_data.client_data.email.toLowerCase().trim())
+            .is('user_id', null)
+            .maybeSingle()
 
-          if (clientError) {
-            console.error('❌ [WEBHOOK] Erro ao criar cliente temporário:', clientError);
+          if (globalClient) {
+            console.log('✅ [WEBHOOK] Cliente GLOBAL encontrado:', { 
+              clientId: globalClient.id, 
+              email: globalClient.email,
+              hasRealPassword: globalClient.password_hash !== 'temp_hash'
+            })
+            
+            // ASSOCIAR cliente global ao admin para este agendamento
+            const { error: updateError } = await supabase
+              .from('booking_clients')
+              .update({ user_id: paymentData.appointment_data.user_id })
+              .eq('id', globalClient.id)
+            
+            if (updateError) {
+              console.error('⚠️ [WEBHOOK] Erro ao associar cliente global ao admin:', updateError)
+            } else {
+              console.log('✅ [WEBHOOK] Cliente global associado ao admin com sucesso')
+            }
+            
+            finalClientId = globalClient.id
+          } else {
+            // 2. Buscar cliente específico do admin
+            console.log('🔍 [WEBHOOK] Cliente global não encontrado, buscando específico do admin...')
+            
+            const { data: adminClient } = await supabase
+              .from('booking_clients')
+              .select('id, name, email, user_id, password_hash')
+              .ilike('email', paymentData.appointment_data.client_data.email.toLowerCase().trim())
+              .eq('user_id', paymentData.appointment_data.user_id)
+              .maybeSingle()
+
+            if (adminClient) {
+              finalClientId = adminClient.id
+              console.log('✅ [WEBHOOK] Cliente específico do admin encontrado:', { 
+                clientId: finalClientId, 
+                email: adminClient.email,
+                hasRealPassword: adminClient.password_hash !== 'temp_hash'
+              })
+            } else {
+              console.log('❌ [WEBHOOK] NENHUM cliente encontrado! Não criando temporário.')
+              console.log('⚠️ [WEBHOOK] Usando primeiro cliente disponível como fallback...')
+              
+              // Fallback: usar primeiro cliente disponível do admin
+              const { data: firstClient, error: clientError } = await supabase
+                .from('booking_clients')
+                .select('id, name, email')
+                .eq('user_id', paymentData.appointment_data.user_id)
+                .eq('is_active', true)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+
+              if (clientError || !firstClient) {
+                console.error('❌ [WEBHOOK] Erro ao buscar cliente ou nenhum cliente encontrado:', clientError)
+                return new Response('ok', { status: 200, headers: corsHeaders })
+              }
+
+              finalClientId = firstClient.id
+              console.log('✅ [WEBHOOK] Usando primeiro cliente disponível como fallback:', { 
+                clientId: finalClientId, 
+                name: firstClient.name, 
+                email: firstClient.email 
+              })
+            }
+          }
+        } else {
+          console.log('⚠️ [WEBHOOK] Sem client_data, buscando primeiro cliente disponível...')
+          
+          const { data: firstClient, error: clientError } = await supabase
+            .from('booking_clients')
+            .select('id, name, email')
+            .eq('user_id', paymentData.appointment_data.user_id)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (clientError || !firstClient) {
+            console.error('❌ [WEBHOOK] Erro ao buscar cliente ou nenhum cliente encontrado:', clientError)
             return new Response('ok', { status: 200, headers: corsHeaders })
           }
 
-          finalClientId = newClient.id;
-          console.log('✅ [WEBHOOK] Cliente temporário criado:', { clientId: finalClientId, email: newClient.email });
+          finalClientId = firstClient.id
+          console.log('✅ [WEBHOOK] Usando primeiro cliente disponível:', { 
+            clientId: finalClientId, 
+            name: firstClient.name, 
+            email: firstClient.email 
+          })
         }
       }
 
-      // Gerar UUID para o agendamento (não usar external_reference)
-      const appointmentId = crypto.randomUUID();
+      console.log('🎯 [WEBHOOK] Cliente final determinado:', finalClientId)
+
+      // Gerar UUID para o agendamento
+      const appointmentId = crypto.randomUUID()
       
       // Criar o agendamento
       const { data: newAppointment, error: createError } = await supabase
         .from('appointments')
         .insert({
-          id: appointmentId, // Usar UUID gerado
+          id: appointmentId,
           user_id: paymentData.appointment_data.user_id,
-          client_id: finalClientId, // Usar client_id determinado
+          client_id: finalClientId,
           date: paymentData.appointment_data.date,
           modality_id: paymentData.appointment_data.modality_id,
           modality: paymentData.appointment_data.modality,
@@ -249,7 +429,7 @@ serve(async (req) => {
         .update({
           status: 'approved',
           mercado_pago_status: 'approved',
-          mercado_pago_payment_id: null,
+          mercado_pago_payment_id: paymentId,
           appointment_id: newAppointment.id,
           updated_at: new Date().toISOString()
         })
