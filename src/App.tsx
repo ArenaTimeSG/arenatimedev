@@ -8,7 +8,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useRecurringStatusUpdate } from "@/hooks/useRecurringStatusUpdate";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Dashboard from "./pages/DashboardModern";
+import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import NewClient from "./pages/NewClient";
 import ClientDetail from "./pages/ClientDetail";

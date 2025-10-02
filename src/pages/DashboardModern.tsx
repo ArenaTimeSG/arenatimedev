@@ -56,7 +56,9 @@ const Dashboard = () => {
     name: string;
     email: string;
     phone?: string;
+    user_id: string;
   } | null>(null);
+  const [viewMode] = useState<'weekly'>('weekly'); // Adicionado viewMode
 
   // Hook para gerenciar horários de funcionamento
   const {

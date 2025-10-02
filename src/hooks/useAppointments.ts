@@ -76,7 +76,23 @@ export const useAppointments = () => {
     // Buscar dados em paralelo apenas para IDs que não estão no cache
     const [clientsResponse, modalitiesResponse] = await Promise.all([
       missingClientIds.length > 0 
-        ? supabase.from('booking_clients').select('id, name, phone').in('id', missingClientIds).eq('user_id', userId)
+        ? (async () => {
+            // Buscar clientes através da tabela de associações
+            const { data: associations } = await supabase
+              .from('client_admin_associations')
+              .select('client_id')
+              .in('client_id', missingClientIds)
+              .eq('admin_id', userId);
+            
+            if (associations && associations.length > 0) {
+              const validClientIds = associations.map(a => a.client_id);
+              return await supabase
+                .from('booking_clients')
+                .select('id, name, phone')
+                .in('id', validClientIds);
+            }
+            return { data: null, error: null };
+          })()
         : Promise.resolve({ data: null, error: null }),
       missingModalityIds.length > 0 
         ? supabase.from('modalities').select('id, name, valor').in('id', missingModalityIds).eq('user_id', userId)
