@@ -56,11 +56,34 @@ const ClientDetail = () => {
   const fetchClient = async () => {
     try {
       setIsLoading(true);
+      
+      // NOVA LÓGICA: Verificar se o cliente está associado ao admin atual
+      // 1. Verificar associação na tabela client_admin_associations
+      const { data: association, error: assocError } = await supabase
+        .from('client_admin_associations')
+        .select('client_id')
+        .eq('admin_id', user?.id)
+        .eq('client_id', id)
+        .maybeSingle();
+      
+      if (assocError) throw assocError;
+      
+      // 2. Se não há associação, adicionar o cliente ao admin
+      if (!association) {
+        console.log('🔍 ClientDetail - Cliente não associado ao admin, criando associação...');
+        await supabase
+          .from('client_admin_associations')
+          .insert({
+            client_id: id,
+            admin_id: user?.id
+          });
+      }
+      
+      // 3. Buscar dados do cliente (agora que sabemos que está associado)
       const { data, error } = await supabase
         .from('booking_clients')
         .select('*')
         .eq('id', id)
-        .eq('user_id', user?.id)
         .single();
 
       if (error) throw error;
