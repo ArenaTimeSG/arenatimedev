@@ -81,10 +81,17 @@ const Dashboard = () => {
   useEffect(() => {
     console.log('🔍 Dashboard - useEffect triggered:', { user: !!user, loading, currentWeek });
     if (user && !loading) {
-      fetchAppointments();
       fetchUserProfile();
     }
   }, [user, currentWeek, loading]);
+
+  // Chamar fetchAppointments DEPOIS que userProfile for carregado
+  useEffect(() => {
+    console.log('🔍 Dashboard - userProfile mudou:', { userProfile: !!userProfile });
+    if (userProfile?.user_id) {
+      fetchAppointments();
+    }
+  }, [userProfile, currentWeek]);
 
   // FORÇAR ATUALIZAÇÃO quando a página for focada (volta de outra aba/página)
   useEffect(() => {
@@ -673,16 +680,6 @@ const Dashboard = () => {
               </div>
               
               <div className="flex items-center gap-4">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fetchAppointments()}
-                    className="bg-blue-50 hover:bg-blue-100 border-blue-200 hover:border-blue-300 shadow-sm text-blue-700"
-                  >
-                    🔄 Atualizar
-                  </Button>
-                </motion.div>
                 {viewMode === 'weekly' && (
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button
