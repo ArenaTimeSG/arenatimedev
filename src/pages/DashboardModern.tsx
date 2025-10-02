@@ -40,9 +40,13 @@ interface Appointment {
 }
 
 const Dashboard = () => {
+  console.log('🚨 DASHBOARD COMPONENT RENDERIZADO - INICIO');
+  
   const { user, loading, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  console.log('🚨 DASHBOARD - Hooks inicializados:', { user: !!user, loading });
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
