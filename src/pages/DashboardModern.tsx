@@ -116,6 +116,9 @@ const Dashboard = () => {
   };
 
   const fetchAppointments = async () => {
+    console.log('🔍 Dashboard - fetchAppointments INICIADO');
+    console.log('🔍 Dashboard - userProfile:', userProfile);
+    
     try {
       const weekStart = startOfWeek(currentWeek, { locale: ptBR });
       const weekEnd = addDays(weekStart, 6);
