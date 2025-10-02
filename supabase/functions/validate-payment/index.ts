@@ -15,7 +15,7 @@ interface ValidatePaymentRequest {
 }
 
 serve(async (req) => {
-  console.log('🔍 Payment validation function started');
+  console.log('🔍 Payment validation function STARTED - CREATION DISABLED (webhook handles)');
   
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -197,45 +197,15 @@ serve(async (req) => {
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         } else {
-          // Criar novo agendamento
-          console.log('🆕 Criando novo agendamento...');
-          const { data: newAppointment, error: createError } = await supabase
-            .from('appointments')
-            .insert({
-              id: external_reference,
-              user_id: appointmentData.user_id,
-              client_id: finalClientId, // Usar client_id determinado
-              date: appointmentData.date,
-              time: appointmentData.time,
-              modality_id: appointmentData.modality_id,
-              modality_name: appointmentData.modality_name,
-              valor_total: appointmentData.valor_total,
-              status: 'agendado',
-              payment_status: 'paid',
-              payment_id: payment_id,
-              booking_source: 'online',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-
-          if (createError) {
-            console.error('❌ Erro ao criar agendamento:', createError);
-            return new Response(
-              JSON.stringify({ error: 'Failed to create appointment', details: createError }),
-              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          }
-
-          console.log('✅ Agendamento criado:', newAppointment);
+          // DESABILITADO: Criar novo agendamento - Webhook responsável
+          console.log('🚫 IMPORTANTE: Criação de agendamento DESABILITADA nesta função');
+          console.log('🚫 notification-webhook é responsável pela criação de agendamentos pagos');
           
           return new Response(
             JSON.stringify({
               success: true,
               payment_status: 'approved',
-              appointment: newAppointment,
-              message: 'Pagamento aprovado e agendamento criado'
+              message: 'Pagamento validado - agendamento será criado pelo webhook'
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )

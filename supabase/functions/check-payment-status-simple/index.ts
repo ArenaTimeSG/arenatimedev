@@ -220,9 +220,9 @@ serve(async (req) => {
 
               // Se o pagamento foi aprovado no MP mas não confirmado localmente
               if (mercadoPagoStatus === 'approved' && paymentRecord.status !== 'confirmed') {
-                console.log('✅ Pagamento aprovado no MP - confirmando agendamento');
+                console.log('✅ Pagamento aprovado no MP - NÃO criando agendamento (webhook responsável)');
                 
-                // Atualizar status do pagamento
+                // Apenas atualizar status do pagamento - NÃO criar agendamento
                 await supabase
                   .from('payment_records')
                   .update({ 
@@ -231,7 +231,7 @@ serve(async (req) => {
                   })
                   .eq('id', paymentRecord.id);
 
-                // Confirmar agendamento
+                // Atualizar agendamento existente se encontrado
                 if (appointmentData && appointmentData.id) {
                   await supabase
                     .from('appointments')
@@ -243,10 +243,12 @@ serve(async (req) => {
                     .eq('id', appointmentData.id);
                   
                   console.log('✅ Agendamento atualizado:', appointmentData.id);
+                } else {
+                  console.log('⚠️ Nenhum agendamento encontrado para atualizar - webhook deve criar');
                 }
 
                 paymentStatus = 'confirmed';
-                console.log('✅ Agendamento confirmado automaticamente');
+                console.log('✅ Status de pagamento confirmado (agendamento gerenciado pelo webhook)');
               }
             }
           }

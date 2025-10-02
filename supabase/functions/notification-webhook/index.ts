@@ -326,11 +326,20 @@ serve(async (req) => {
 
       // VERIFICAR SE JÁ EXISTE AGENDAMENTO (EVITAR DUPLICAÇÃO)
       console.log('🔍 [WEBHOOK] Verificando se já existe agendamento para evitar duplicação...')
+      
+      // Buscar agendamentos com data próxima (±30 minutos) para capturar agendamentos duplicados
+      const appointmentDate = new Date(paymentData.appointment_data.date)
+      const thirtyMinutesBefore = new Date(appointmentDate.getTime() - 30 * 60 * 1000).toISOString()
+      const thirtyMinutesAfter = new Date(appointmentDate.getTime() + 30 * 60 * 1000).toISOString()
+      
       const { data: existingAppointment, error: checkError } = await supabase
         .from('appointments')
-        .select('id, status, client_id')
+        .select('id, status, client_id, date')
         .eq('user_id', paymentData.appointment_data.user_id)
-        .eq('date', paymentData.appointment_data.date)
+        .gte('date', thirtyMinutesBefore)
+        .lte('date', thirtyMinutesAfter)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle()
 
       if (checkError) {
@@ -343,6 +352,32 @@ serve(async (req) => {
         console.log('  - Status atual:', existingAppointment.status)
         console.log('  - Cliente atual:', existingAppointment.client_id)
         console.log('  - Cliente correto:', finalClientId)
+        console.log('  - Data agendamento:', existingAppointment.date)
+        
+        // Verificar se é um agendamento já processado ou não (Pode ser agendamento sem pagamento)
+        if (existingAppointment.status === 'pago' || existingAppointment.status === 'confirmed' || existingAppointment.status === 'agendado') {
+          console.log('⚠️ [WEBHOOK] Agendamento já foi processado! Evitando duplicação.')
+          
+          // Apenas atualizar dados do pagamento se necessário
+          const { error: updatePaymentError } = await supabase
+            .from('payments')
+            .update({
+              status: 'approved',
+              mercado_pago_status: 'approved',
+              mercado_pago_payment_id: paymentId,
+              appointment_id: existingAppointment.id,
+              updated_at: new Date().toISOString()
+            })
+            .eq('mercado_pago_preference_id', preferenceId)
+
+          if (updatePaymentError) {
+            console.error('❌ [WEBHOOK] Erro ao atualizar payment:', updatePaymentError)
+          } else {
+            console.log('✅ [WEBHOOK] Payment atualizado com sucesso (evitando duplicação)')
+          }
+
+          return new Response('ok', { status: 200, headers: corsHeaders })
+        }
         
         // Atualizar agendamento existente com cliente correto
         const { error: updateError } = await supabase

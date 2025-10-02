@@ -147,45 +147,16 @@ serve(async (req) => {
     if (payment.status === 'approved') {
       console.log('✅ Pagamento aprovado imediatamente!');
       
-      // Criar agendamento
-      const { data: newAppointment, error: createError } = await supabase
-        .from('appointments')
-        .insert({
-          id: appointmentId,
-          user_id: appointment_data.user_id,
-          client_id: appointment_data.client_id,
-          date: appointment_data.date,
-          time: appointment_data.time,
-          modality_id: appointment_data.modality_id,
-          modality_name: appointment_data.modality_name,
-          valor_total: appointment_data.valor_total,
-          status: 'agendado',
-          payment_status: 'paid',
-          payment_id: payment.id,
-          booking_source: 'online',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        console.error('❌ Erro ao criar agendamento:', createError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to create appointment', details: createError }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      console.log('✅ Agendamento criado:', newAppointment);
+      // DESABILITADO: Criar agendamento - Webhook responsável
+      console.log('🚫 IMPORTANTE: Criação de agendamento DESABILITADA nesta função');
+      console.log('🚫 notification-webhook é responsável pela criação de agendamentos pagos');
       
       return new Response(
         JSON.stringify({
           success: true,
           payment_status: 'approved',
-          appointment: newAppointment,
           payment: payment,
-          message: 'Pagamento aprovado e agendamento criado'
+          message: 'Pagamento processado - agendamento será criado pelo webhook'
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
