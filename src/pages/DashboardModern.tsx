@@ -214,17 +214,30 @@ const Dashboard = () => {
       let clients = [];
       
       if (clientIds.length > 0) {
-        // CONSULTA DIRETA COM JOIN
+        // CONSULTA DIRETA COM JOIN CORRIGIDA
         const { data: clientsData, error: clientsError } = await supabase
           .from('client_admin_associations')
           .select(`
             client_id,
-            booking_clients!inner(id, name, email, phone)
+            booking_clients!inner(
+              id,
+              name,
+              email,
+              phone
+            )
           `)
           .in('client_id', clientIds)
           .eq('admin_id', userProfile?.user_id);
 
-        if (!clientsError && clientsData) {
+        if (clientsError) {
+          console.error('Erro na consulta de clientes:', clientsError);
+          // FALLBACK: buscar clientes diretamente
+          const { data: fallbackClients } = await supabase
+            .from('booking_clients')
+            .select('id, name, email, phone')
+            .in('id', clientIds);
+          clients = fallbackClients || [];
+        } else if (clientsData) {
           clients = clientsData.map(item => ({
             id: item.booking_clients.id,
             name: item.booking_clients.name,
