@@ -252,10 +252,13 @@ const Dashboard = () => {
       }
 
       // Combinar dados
-      const processedData = appointments.map(apt => ({
-        ...apt,
-        client: clients.find(c => c.id === apt.client_id) || null
-      })) as Appointment[];
+      const processedData = appointments.map(apt => {
+        const clientData = clients.find(c => c.id === apt.client_id);
+        return {
+          ...apt,
+          client: clientData ? { name: clientData.name } : { name: 'Cliente não identificado' }
+        };
+      }) as Appointment[];
 
       setAppointments(processedData);
     } catch (error: any) {
