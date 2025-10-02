@@ -41,13 +41,13 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Buscar configurações do Mercado Pago (assumindo primeiro usuário por enquanto)
+    // Buscar configurações do Mercado Pago (primeira configuração com token válido)
     const { data: adminSettings, error: settingsError } = await supabase
       .from('settings')
       .select('mercado_pago_access_token, user_id')
       .not('mercado_pago_access_token', 'is', null)
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (settingsError || !adminSettings?.mercado_pago_access_token) {
       console.error('❌ [WEBHOOK] Configurações do Mercado Pago não encontradas')

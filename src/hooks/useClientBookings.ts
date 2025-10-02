@@ -140,40 +140,77 @@ export const useClientBookings = (adminUserId?: string) => {
         if (existingClient) {
           clientId = existingClient.id;
           console.log('✅ Cliente existente encontrado:', { clientId, email: bookingData.client_data.email, user_id: bookingData.user_id });
-         } else {
-           // Cliente não existe nesta conta, criar novo
-           console.log('🔍 Criando novo cliente para esta conta...', { 
-             name: bookingData.client_data.name,
-             email: bookingData.client_data.email,
-             phone: bookingData.client_data.phone,
-             user_id: bookingData.user_id
-           });
-           
-           const { data: newClient, error: clientError } = await supabase
-             .from('booking_clients')
-             .insert({
-               name: bookingData.client_data.name,
-               email: bookingData.client_data.email,
-               phone: bookingData.client_data.phone || null,
-               password_hash: 'temp_hash',
-               user_id: bookingData.user_id
-             })
-             .select('id, name, email, user_id')
-             .single();
+        } else {
+          // BUSCA INTELIGENTE: Primeiro cliente global, depois específico do admin
+          console.log('🔍 Buscando cliente global primeiro...');
+          
+          // 1. Buscar cliente global (user_id = null) - PRIORIDADE
+          const { data: globalClient } = await supabase
+            .from('booking_clients')
+            .select('id, name, email, user_id, password_hash')
+            .ilike('email', bookingData.client_data.email.toLowerCase().trim())
+            .is('user_id', null)
+            .maybeSingle();
 
-           if (clientError) {
-             console.error('❌ Erro ao criar cliente:', clientError);
-             throw new Error('Erro ao criar cliente: ' + clientError.message);
-           } else {
-             clientId = newClient.id;
-             console.log('✅ Cliente criado com sucesso:', { 
-               clientId, 
-               name: newClient.name,
-               email: newClient.email,
-               user_id: newClient.user_id
-             });
-           }
-         }
+          if (globalClient) {
+            console.log('✅ Cliente GLOBAL encontrado:', { 
+              clientId: globalClient.id, 
+              email: globalClient.email,
+              hasRealPassword: globalClient.password_hash !== 'temp_hash'
+            });
+            
+            // ASSOCIAR cliente global ao admin para este agendamento
+            const { error: updateError } = await supabase
+              .from('booking_clients')
+              .update({ 
+                user_id: bookingData.user_id,
+                name: bookingData.client_data.name, // Atualizar nome se necessário
+                phone: bookingData.client_data.phone // Atualizar telefone se necessário
+              })
+              .eq('id', globalClient.id);
+            
+            if (updateError) {
+              console.error('⚠️ Erro ao associar cliente global ao admin:', updateError);
+            } else {
+              console.log('✅ Cliente global associado ao admin com sucesso');
+            }
+            
+            clientId = globalClient.id;
+          } else {
+            // Cliente não existe nesta conta, criar novo
+            console.log('❌ NENHUM cliente encontrado! Criando novo com senha temporária.', { 
+              name: bookingData.client_data.name,
+              email: bookingData.client_data.email,
+              phone: bookingData.client_data.phone,
+              user_id: bookingData.user_id
+            });
+            
+            const { data: newClient, error: clientError } = await supabase
+              .from('booking_clients')
+              .insert({
+                name: bookingData.client_data.name,
+                email: bookingData.client_data.email,
+                phone: bookingData.client_data.phone || null,
+                password_hash: 'temp_hash',
+                user_id: bookingData.user_id
+              })
+              .select('id, name, email, user_id')
+              .single();
+
+            if (clientError) {
+              console.error('❌ Erro ao criar cliente:', clientError);
+              throw new Error('Erro ao criar cliente: ' + clientError.message);
+            } else {
+              clientId = newClient.id;
+              console.log('✅ Cliente criado com sucesso:', { 
+                clientId, 
+                name: newClient.name,
+                email: newClient.email,
+                user_id: newClient.user_id
+              });
+            }
+          }
+        }
       }
       
       if (!clientId) {
