@@ -218,7 +218,7 @@ const OnlineBooking = () => {
 
   // Função para processar pagamento - criar agendamento primeiro
   const handleProcessPayment = useCallback(async () => {
-    console.log('🔍 OnlineBooking: Processando pagamento - criando preferência de pagamento');
+    console.log('🔍 OnlineBooking: Processando pagamento - agendamento será criado após confirmação!');
     console.log('🔍 OnlineBooking: Dados disponíveis:', { 
       adminData: !!adminData, 
       modalidade: !!reserva.modalidade, 
@@ -239,10 +239,9 @@ const OnlineBooking = () => {
       const [horas, minutos] = reserva.horario.split(':');
       dataHora.setHours(parseInt(horas), parseInt(minutos), 0, 0);
       
-      // IMPORTANTE: Para pagamentos, usar os dados do formulário (reserva.cliente) 
-      // em vez do cliente logado (client), para criar um cliente temporário
-      console.log('🔍 OnlineBooking: Usando dados do formulário para pagamento:', {
-        formClient: reserva.cliente,
+      // IMPORTANTE: Para pagamentos, usar os dados do cliente LOGADO 
+      // para que o webhook crie o agendamento com o cliente correto
+      console.log('🔍 OnlineBooking: Usando cliente LOGADO para pagamento (webhook criará agendando):', {
         loggedClient: client
       });
       
@@ -446,10 +445,12 @@ const OnlineBooking = () => {
 
   // Função para confirmar reserva com pagamento (política opcional com pagamento)
   const handleConfirmarComPagamento = useCallback(async () => {
-    console.log('🔍 OnlineBooking: Processando pagamento opcional');
-    // Para pagamento opcional, apenas processar pagamento (não criar agendamento)
-    await handleProcessPayment();
-  }, [handleProcessPayment]);
+    console.log('🔍 OnlineBooking: Processando pagamento opcional - SEM CRIAR AGENDAMENTO');
+    console.log('🔍 OnlineBooking: Agendamento será criado APENAS após confirmação do pagamento');
+    
+    // ESTRATÉGIA CORRETA: NÃO criar agendamento até pagamento ser confirmado
+    await handleProcessPayment(); // Criar preferência de pagamento
+  }, [createAppointment, handleProcessPayment]);
 
   const handleVoltar = useCallback(() => {
     if (step > 1) {

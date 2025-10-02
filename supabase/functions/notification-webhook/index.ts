@@ -210,8 +210,6 @@ serve(async (req) => {
     console.log('🔍 [WEBHOOK CRITICAL DEBUG] === INICIANDO BUSCA DE CLIENTE ===')
     console.log('🔍 [WEBHOOK] paymentData complete =', JSON.stringify(paymentData, null, 2))
     console.log('🔍 [WEBHOOK] appointment_data.client_data =', paymentData.appointment_data.client_data)
-    console.log('🔍 [WEBHOOK] appointment_data.client_id =', paymentData.appointment_data.client_id)
-    console.log('🔍 [WEBHOOK] appointment_data.user_id =', paymentData.appointment_data.user_id)
     
     // Sempre buscar pelo client_data se disponível, ignorar client_id que pode estar errado
     if (paymentData.appointment_data.client_data) {
@@ -257,10 +255,10 @@ serve(async (req) => {
             console.log('🔍 [WEBHOOK] Cliente global não encontrado, buscando específico do admin...')
             
             const { data: adminClient } = await supabase
-              .from('booking_clients')
+          .from('booking_clients')
               .select('id, name, email, user_id, password_hash')
               .ilike('email', paymentData.appointment_data.client_data.email.toLowerCase().trim())
-              .eq('user_id', paymentData.appointment_data.user_id)
+          .eq('user_id', paymentData.appointment_data.user_id)
               .maybeSingle()
 
             if (adminClient) {
@@ -270,7 +268,7 @@ serve(async (req) => {
                 email: adminClient.email,
                 hasRealPassword: adminClient.password_hash !== 'temp_hash'
               })
-            } else {
+        } else {
               console.log('❌ [WEBHOOK] ⚠️ ⚠️ ⚠️ MELHORIA: NENHUM cliente encontrado pelos dados do formulário!')
               console.log('❌ [WEBHOOK] Email buscado:', paymentData.appointment_data.client_data.email.toLowerCase().trim())
               console.log('❌ [WEBHOOK] Admin_id:', paymentData.appointment_data.user_id)
