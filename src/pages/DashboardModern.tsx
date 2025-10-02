@@ -673,6 +673,16 @@ const Dashboard = () => {
               </div>
               
               <div className="flex items-center gap-4">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchAppointments()}
+                    className="bg-blue-50 hover:bg-blue-100 border-blue-200 hover:border-blue-300 shadow-sm text-blue-700"
+                  >
+                    🔄 Atualizar
+                  </Button>
+                </motion.div>
                 {viewMode === 'weekly' && (
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button
