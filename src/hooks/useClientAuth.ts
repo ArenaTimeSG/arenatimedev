@@ -280,6 +280,12 @@ export const useClientAuth = () => {
             hash: clientWithUserId.password_hash,
             hashCalculado: hashPassword(data.password)
           });
+          // BLOQUEAR LOGIN COM SENHA TEMPORÁRIA
+          if (clientWithUserId.password_hash === 'temp_hash') {
+            console.log('❌ useClientAuth: Cliente com senha temporária - login bloqueado');
+            throw new Error('Esta conta foi criada automaticamente. Entre em contato para definir sua senha.');
+          }
+          
           if (!verifyPassword(data.password, clientWithUserId.password_hash)) {
             console.log('❌ useClientAuth: Senha não confere');
             throw new Error('Email ou senha incorretos');
@@ -306,6 +312,12 @@ export const useClientAuth = () => {
 
       if (!client) {
         throw new Error('Email ou senha incorretos');
+      }
+
+      // BLOQUEAR LOGIN COM SENHA TEMPORÁRIA
+      if (client.password_hash === 'temp_hash') {
+        console.log('❌ useClientAuth: Cliente com senha temporária - login bloqueado');
+        throw new Error('Esta conta foi criada automaticamente. Entre em contato para definir sua senha.');
       }
 
       if (!verifyPassword(data.password, client.password_hash)) {
