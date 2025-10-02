@@ -303,7 +303,7 @@ serve(async (req) => {
     const appointmentDataToSave = {
       user_id: owner_id,
       client_id: client_id, // Pode ser null se client_data for fornecido
-      client_data: client_data, // Dados do cliente para criação
+      client_data: client_data || null, // GARANTIR: sempre incluir client_data
       date: appointment_date,
       modalidade: items?.[0]?.title || 'Agendamento',
       modality_id: modality_id,
@@ -311,6 +311,17 @@ serve(async (req) => {
       payment_status: 'pending',
       status: 'a_cobrar',
       booking_source: 'online'
+    }
+    
+    // CORREÇÃO CRÍTICA: Se não há client_data, criar com dados padrão para debug
+    if (!client_data) {
+      console.log('🚨 [CREATE-PREFERENCE CRITICAL] NO client_data provided! Creating emergency client data...')
+      appointmentDataToSave.client_data = {
+        name: `Cliente Novo ${new Date().toLocaleTimeString()}`,
+        email: `sem_email_${Date.now()}@debug.local`,
+        phone: ''
+      }
+      console.log('🔧 [CREATE-PREFERENCE CRITICAL] Emergency client_data created:', appointmentDataToSave.client_data)
     }
     
     console.log('🔍 [CREATE-PREFERENCE CRITICAL] appointment_data to save:', JSON.stringify(appointmentDataToSave, null, 2))
