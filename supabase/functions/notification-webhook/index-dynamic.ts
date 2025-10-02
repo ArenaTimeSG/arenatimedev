@@ -35,7 +35,7 @@ serve(async (req) => {
     let paymentStatus = null
     let preferenceId = null
 
-    if (body.topic === 'merchant_order' && body.resource) {
+    if (body.topic === 'mercart_order' && body.resource) {
       const mpResponse = await fetch(body.resource, {
         headers: {
           'Authorization': `Bearer ${adminSettings.mercado_pago_access_token}`,
@@ -188,63 +188,3 @@ serve(async (req) => {
         }
       } else {
         console.log('✅ [WEBHOOK DYNAMIC] Creating new appointment with correct client...')
-        
-        // Crear nuevo agendamento com cliente correcto
-        const appointmentId = crypto.randomUUID()
-        
-        const { data: newAppointment } = await supabase
-          .from('appointments')
-          .insert({
-            id: appointmentId,
-            user_id: paymentData.appointment_data.user_id,
-            client_id: finalClientId, // Cliente correcto!
-            date: paymentData.appointment_data.date,
-            modality_id: paymentData.appointment_data.modality_id,
-            modality: paymentData.appointment_data.modality,
-            valor_total: paymentData.appointment_data.valor_total,
-            status: 'pago',
-            payment_status: 'approved',
-            payment_data: { preference_id: preferenceId, status: paymentStatus },
-            booking_source: 'online',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single()
-
-        if (newAppointment) {
-          console.log('✅ [WEBHOOK DYNAMIC] NEW appointment created with correct client!', newAppointment.id)
-        }
-      }
-
-      // Atualizar outras tabelas
-      await supabase
-        .from('payments')
-        .update({
-          status: 'approved',
-          marketplace_pago_status: 'approved',
-          marketplace_pago_payment_id: body.id || null,
-          appointment_id: existingAppointment?.id || newAppointment?.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('mercado_pago_preference_id', preferenceId)
-
-      await supabase
-        .from('payment_records')
-        .update({
-          status: 'confirmed',
-          booking_id: existingAppointment?.id || newAppointment?.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('preference_id', preferenceId)
-
-      console.log('✅ [WEBHOOK DYNAMIC] Payment processing completed!')
-    }
-
-    return new Response('ok', { status: 200, headers: corsHeaders })
-    
-  } catch (error) {
-    console.error('❌ [WEBHOOK DYNAMIC] Error:', error)
-    return new Response('ok', { status: 200, headers: corsHeaders })
-  }
-})
