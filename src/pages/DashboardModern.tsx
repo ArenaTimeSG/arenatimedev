@@ -79,11 +79,24 @@ const Dashboard = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
+    console.log('🔍 Dashboard - useEffect triggered:', { user: !!user, loading, currentWeek });
     if (user && !loading) {
       fetchAppointments();
       fetchUserProfile();
     }
   }, [user, currentWeek, loading]);
+
+  // FORÇAR ATUALIZAÇÃO A CADA 10 SEGUNDOS PARA DEBUG
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('🔍 Dashboard - Atualização automática...');
+      if (user && !loading) {
+        fetchAppointments();
+      }
+    }, 10000); // 10 segundos
+
+    return () => clearInterval(interval);
+  }, [user, loading]);
 
   const fetchUserProfile = async () => {
     if (!user?.id) return;
