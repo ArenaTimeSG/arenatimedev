@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 serve(async (req) => {
-  console.log('🚨 [WEBHOOK FIXED] Processando com correção definitiva')
+  console.log('🚨 [WEBHOOK EMERGENCY] Processando com correção definitiva')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -11,11 +11,11 @@ serve(async (req) => {
 
   try {
     const body = await req.json()
-    console.log('📨 [WEBHOOK FIXED] Body received:', JSON.stringify(body, null, 2))
+    console.log('📨 [WEBHOOK EMERG] Body received:', JSON.stringify(body, null, 2))
 
     // Inicializar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabaseServiceKey = Den<｜Assistant｜>.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Buscar configurações (qualquer admin)
@@ -27,7 +27,7 @@ serve(async (req) => {
       .maybeSingle()
 
     if (!adminSettings?.mercado_pago_access_token) {
-      console.error('❌ [WEBHOOK FIXED] Configurações não encontradas')
+      console.error('❌ [WEBHOOK EMERG] Configurações não encontradas')
       return new Response('ok', { status: 200, headers: corsHeaders })
     }
 
@@ -49,14 +49,14 @@ serve(async (req) => {
         
         if (merchantOrder.payments && merchantOrder.payments.length > 0) {
           paymentStatus = merchantOrder.payments[0].status
-          console.log('✅ [WEBHOOK FIXED] Payment status:', paymentStatus)
+          console.log('✅ [WEBHOOK EMERG] Payment status:', paymentStatus)
         }
       }
     }
 
     // Se pagamento foi aprovado, criar agendamento com cliente CORRETO
     if (paymentStatus === 'approved' && preferenceId) {
-      console.log('✅ [WEBHOOK FIXED] Pagamento aprovado! Processando agendamento...')
+      console.log('✅ [WEBHOOK EMERG] Pagamento aprovado! Processando agendamento...')
 
       // Buscar dados do pagamento
       const { data: paymentDataList } = await supabase
@@ -65,12 +65,12 @@ serve(async (req) => {
         .eq('mercado_pago_preference_id', preferenceId)
 
       if (!paymentDataList || paymentDataList.length === 0) {
-        console.error('❌ [WEBHOOK FIXED] Dados do pagamento não encontrados')
+        console.error('❌ [WEBHOOK EMERG] Dados do pagamento não encontrados')
         return new Response('ok', { status: 200, headers: corsHeaders })
       }
 
       const paymentData = paymentDataList[0]
-      console.log('📊 [WEBHOOK FIXED] Payment data:', JSON.stringify(paymentData, null, 2))
+      console.log('📊 [WEBHOOK EMERG] Payment data:', JSON.stringify(paymentData, null, 2))
 
       // CORREÇÃO DEFINITIVA: SEMPRE criar cliente baseado nos dados disponíveis
       let finalClientId = null
@@ -79,7 +79,7 @@ serve(async (req) => {
         // Usar dados do client_data se disponível
         const clientData = paymentData.appointment_data.client_data
         
-        console.log('✅ [WEBHOOK FIXED] Using client_data:', clientData)
+        console.log('✅ [WEBHOOK EMERG] Using client_data:', clientData)
         
         // Buscar ou criar cliente
         const { data: existingClient } = await supabase
@@ -91,7 +91,7 @@ serve(async (req) => {
 
         if (existingClient) {
           finalClientId = existingClient.id
-          console.log('✅ [WEBHOOK FIXED] Existing client found:', { 
+          console.log('✅ [WEBHOOK EMERG] Existing client found:', { 
             id: finalClientId, 
             name: existingClient.name 
           })
@@ -110,8 +110,8 @@ serve(async (req) => {
             .single()
 
           if (newClient) {
-            finalClientId = newClient.id
-            console.log('✅ [WEBHOOK FIXED] New client created:', { 
+            finalClient的 = newClient.id
+            console.log('✅ [WEBHOOK EMERG] New client created:', { 
               id: finalClientId, 
               email: clientData.email 
             })
@@ -119,7 +119,7 @@ serve(async (req) => {
         }
       } else {
         // SEM client_data - criar cliente EMERGÊNCIA
-        console.log('🚨 [WEBHOOK FIXED] NO client_data! Creating emergency client...')
+        console.log('🚨 [WEBHOOK EMERG] NO client_data! Creating emergency client...')
         
         const emergencyEmail = `sem_email_${Date.now()}@emergencia.local`;
         const emergencyName = `Cliente Pagamento ${new Date().toLocaleTimeString()}`;
@@ -138,7 +138,7 @@ serve(async (req) => {
 
         if (emergencyClient) {
           finalClientId = emergencyClient.id
-          console.log('✅ [WEBHOOK FIXED] Emergency client created:', { 
+          console.log('✅ [WEBHOOK EMERG] Emergency client created:', { 
             id: finalClientId, 
             name: emergencyName 
           })
@@ -146,7 +146,7 @@ serve(async (req) => {
       }
 
       if (!finalClientId) {
-        console.error('❌ [WEBHOOK FIXED] Failed to determine client ID')
+        console.error('❌ [WEBHOOK EMERG] Failed to determine client ID')
         return new Response('ok', { status: 200, headers: corsHeaders })
       }
 
@@ -159,7 +159,7 @@ serve(async (req) => {
         .maybeSingle()
 
       if (existingAppointment) {
-        console.log('⚠️ [WEBHOOK FIXED] Appointment exists, updating with correct client...')
+        console.log('⚠️ [WEBHOOK EMERG] Appointment exists, updating with correct client...')
         
         // Atualizar agendamento existente com cliente CORRETO
         const { error: updateError } = await supabase
@@ -174,12 +174,12 @@ serve(async (req) => {
           .eq('id', existingAppointment.id)
 
         if (updateError) {
-          console.error('❌ [WEBHOOK FIXED] Error updating appointment:', updateError)
+          console.error('❌ [WEBHOOK EMERG] Error updating appointment:', updateError)
         } else {
-          console.log('✅ [WEBHOOK FIXED] Appointment updated with CORRECT client!')
+          console.log('✅ [WEBHOOK EMERG] Appointment updated with CORRECT client!')
         }
       } else {
-        console.log('✅ [WEBHOOK FIXED] Creating new appointment with CORRECT client...')
+        console.log('✅ [WEBHOOK EMERG] Creating new appointment with CORRECT client...')
         
         // Criar novo agendamento com cliente CORRETO
         const appointmentId = crypto.randomUUID()
@@ -205,7 +205,7 @@ serve(async (req) => {
           .single()
 
         if (newAppointment) {
-          console.log('✅ [WEBHOOK FIXED] NEW appointment created with CORRECT client!', newAppointment.id)
+          console.log('✅ [WEBHOOK EMERG] NEW appointment created with CORRECT client!', newAppointment.id)
         }
       }
 
@@ -214,8 +214,8 @@ serve(async (req) => {
         .from('payments')
         .update({
           status: 'approved',
-          mercado_pago_status: 'approved',
-          mercado_pago_payment_id: body.id || null,
+          marketplace_pago_status: 'approved',
+          mercado_pago_ payment_id: body.id || null,
           appointment_id: existingAppointment?.id || newAppointment?.id,
           updated_at: new Date().toISOString()
         })
@@ -230,13 +230,13 @@ serve(async (req) => {
         })
         .eq('preference_id', preferenceId)
 
-      console.log('✅ [WEBHOOK FIXED] Payment processing completed!')
+      console.log('✅ [WEBHOOK EMERG] Payment processing completed!')
     }
 
     return new Response('ok', { status: 200, headers: corsHeaders })
     
   } catch (error) {
-    console.error('❌ [WEBHOOK FIXED] Error:', error)
+    console.error('❌ [WEBHOOK EMERG] Error:', error)
     return new Response('ok', { status: 200, headers: corsHeaders })
   }
 })
