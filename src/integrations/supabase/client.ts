@@ -2,8 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://xjsovawofsibcolnrgxl.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqc292YXdvZnNpYmNvbG5yZ3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3NjQ0MDksImV4cCI6MjA3NDM0MDQwOX0.7E4CcCqm7apbXMrFR-jYgyn3ZWtfMDubT2rK_UgFp1U";
+const SUPABASE_URL = "https://ogzlvdpdngwbgqeiayec.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nemx2ZHBkbmd3YmdxZWlheWVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTAzNjksImV4cCI6MjA3NjA2NjM2OX0.KSQVdj50BY5s1mBsU6B3Ut9t7xfFW7z5LsPx4JPHYeg";
 
 // Verificar se estamos no browser
 const isBrowser = typeof window !== 'undefined';

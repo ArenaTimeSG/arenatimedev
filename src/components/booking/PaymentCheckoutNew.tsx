@@ -78,7 +78,7 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
       
       console.log('🔑 [FRONTEND] Chave anon:', anonKey ? 'Presente' : 'Ausente');
 
-      const response = await fetch('https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/create-payment-preference', {
+      const response = await fetch('https://ogzlvdpdngwbgqeiayec.supabase.co/functions/v1/create-payment-preference', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,7 +187,7 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
       }
       
       // Verificar status do pagamento na tabela payments
-      const response = await fetch(`https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-payment-status-simple`, {
+      const response = await fetch(`https://ogzlvdpdngwbgqeiayec.supabase.co/functions/v1/check-payment-status-simple`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -245,7 +245,7 @@ const PaymentCheckoutNew: React.FC<PaymentCheckoutNewProps> = ({
     
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`https://xtufbfvrgpzqbvdfmtiy.supabase.co/functions/v1/check-payment-status-simple`, {
+        const response = await fetch(`https://ogzlvdpdngwbgqeiayec.supabase.co/functions/v1/check-payment-status-simple`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
