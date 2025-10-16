@@ -140,7 +140,7 @@ export const useClientAuth = () => {
     setClient(null);
   };
 
-  // Mutation para registrar cliente
+  // Mutation para registrar cliente (considera apenas conta global - user_id IS NULL)
   const registerMutation = useMutation({
     mutationFn: async (data: CreateClientData) => {
       // Verificar se o email já existe (usando .maybeSingle() para evitar erro de múltiplos registros)
@@ -148,7 +148,13 @@ export const useClientAuth = () => {
         .from('booking_clients')
         .select('id')
         .eq('email', data.email)
-        .maybeSingle();
+        // Ignorar registros temporários de agendas (que possuem user_id)
+        .is('user_id', null)
+        // Em caso de duplicatas antigas, pegar o mais recente
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .single();
 
       // Se encontrou um cliente com este email, erro
       if (existingClient) {
@@ -189,53 +195,59 @@ export const useClientAuth = () => {
     }
   });
 
-  // Mutation para login
+  // Mutation para login (validação 100% no banco; suporta duplicatas por email)
   const loginMutation = useMutation({
     mutationFn: async (data: LoginClientData & { user_id?: string }) => {
-      console.log('🔍 useClientAuth: Tentando fazer login:', { email: data.email, user_id: data.user_id });
-      
-      // Primeiro, tentar buscar cliente com user_id específico (se fornecido)
+      console.log('🔍 useClientAuth: Tentando fazer login (validação no banco):', { email: data.email, user_id: data.user_id });
+
+      const hashed = hashPassword(data.password);
+
+      // 1) Se user_id foi fornecido, priorizar o registro específico da agenda
       if (data.user_id) {
-        const { data: clientWithUserId, error: errorWithUserId } = await supabase
+        const { data: clientByUser, error: errByUser } = await supabase
           .from('booking_clients')
           .select('*')
           .eq('email', data.email)
           .eq('user_id', data.user_id)
+          .eq('password_hash', hashed)
+          .order('updated_at', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false, nullsFirst: false })
+          .limit(1)
           .maybeSingle();
 
-        if (clientWithUserId && !errorWithUserId) {
-          console.log('✅ useClientAuth: Cliente encontrado com user_id específico');
-          if (!verifyPassword(data.password, clientWithUserId.password_hash)) {
-            throw new Error('Email ou senha incorretos');
-          }
-          return clientWithUserId;
+        if (errByUser && errByUser.code !== 'PGRST116') {
+          console.error('❌ useClientAuth: Erro ao buscar cliente por user_id:', errByUser);
+          throw new Error('Erro ao fazer login: ' + errByUser.message);
+        }
+        if (clientByUser) {
+          return clientByUser;
         }
       }
-      
-      // Se não encontrou com user_id específico, buscar por email apenas
-      const { data: client, error } = await supabase
+
+      // 2) Sem user_id (ou não encontrou acima): procurar qualquer registro do email com o hash correspondente
+      const { data: clientAny, error: errAny } = await supabase
         .from('booking_clients')
         .select('*')
         .eq('email', data.email)
+        .eq('password_hash', hashed)
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false, nullsFirst: false })
+        .limit(1)
         .maybeSingle();
 
-      if (error) {
-        console.error('❌ useClientAuth: Erro ao buscar cliente:', error);
-        if (error.code === 'PGRST116') {
+      if (errAny) {
+        if (errAny.code === 'PGRST116') {
           throw new Error('Email ou senha incorretos');
         }
-        throw new Error('Erro ao fazer login: ' + error.message);
+        console.error('❌ useClientAuth: Erro ao buscar cliente por email/hash:', errAny);
+        throw new Error('Erro ao fazer login: ' + errAny.message);
       }
 
-      if (!client) {
+      if (!clientAny) {
         throw new Error('Email ou senha incorretos');
       }
 
-      if (!verifyPassword(data.password, client.password_hash)) {
-        throw new Error('Email ou senha incorretos');
-      }
-
-      return client;
+      return clientAny;
     },
     onSuccess: (data) => {
       saveClientToStorage(data);
