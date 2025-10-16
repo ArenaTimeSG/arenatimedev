@@ -66,12 +66,12 @@ export const createPreference = async (req: Request, res: Response) => {
       }],
       external_reference: booking_id,
       back_urls: { 
-        success: return_url || `${process.env.FRONTEND_URL || 'https://arenatime.vercel.app'}/payment/success`, 
-        failure: return_url || `${process.env.FRONTEND_URL || 'https://arenatime.vercel.app'}/payment/failure`, 
-        pending: return_url || `${process.env.FRONTEND_URL || 'https://arenatime.vercel.app'}/payment/pending` 
+        success: return_url || `${process.env.FRONTEND_URL || 'https://arenatimesind.vercel.app'}/payment/success`, 
+        failure: return_url || `${process.env.FRONTEND_URL || 'https://arenatimesind.vercel.app'}/payment/failure`, 
+        pending: return_url || `${process.env.FRONTEND_URL || 'https://arenatimesind.vercel.app'}/payment/pending` 
       },
       auto_return: 'approved',
-      notification_url: `${process.env.WEBHOOK_URL || 'https://arenatime.vercel.app'}/api/webhook`,
+      notification_url: `${process.env.WEBHOOK_URL || 'https://arenatimesind.vercel.app'}/api/webhook`,
       metadata: { owner_id, booking_id }
     };
 

@@ -200,7 +200,7 @@ const Settings = () => {
     if (profile?.name) {
       setConfiguracaoAgendamento(prev => ({
         ...prev,
-        linkPublico: `https://arenatime.com/booking/${profile.name.toLowerCase().replace(/\s+/g, '-')}`
+        linkPublico: `https://arenatimesind.vercel.app/booking/${profile.name.toLowerCase().replace(/\s+/g, '-')}`
       }));
     }
   }, [profile?.name]);
