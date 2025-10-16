@@ -39,6 +39,8 @@ const Clients = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [appointmentsForClient, setAppointmentsForClient] = useState<Array<{ id: string; date: string; modality: string | null; status: string }>>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -86,22 +88,15 @@ const Clients = () => {
     try {
       setIsDeleting(true);
 
-      // Verificar se o cliente tem agendamentos
-      const { data: appointments, error: appointmentsError } = await supabase
-        .from('agendamentos')
-        .select('id')
-        .eq('client_id', clientToDelete.id)
-        .limit(1);
+      // Se houver agendamentos, excluir primeiro
+      if (appointmentsForClient.length > 0) {
+        const { error: deleteAppointmentsError } = await supabase
+          .from('appointments')
+          .delete()
+          .eq('client_id', clientToDelete.id)
+          .eq('user_id', user?.id);
 
-      if (appointmentsError) throw appointmentsError;
-
-      if (appointments && appointments.length > 0) {
-        toast({
-          title: 'Não é possível excluir',
-          description: 'Este cliente possui agendamentos. Exclua os agendamentos primeiro.',
-          variant: 'destructive',
-        });
-        return;
+        if (deleteAppointmentsError) throw deleteAppointmentsError;
       }
 
       // Excluir o cliente
@@ -118,10 +113,13 @@ const Clients = () => {
 
       toast({
         title: 'Cliente excluído',
-        description: `${clientToDelete.name} foi excluído com sucesso.`,
+        description: appointmentsForClient.length > 0
+          ? `${clientToDelete.name} e ${appointmentsForClient.length} agendamento(s) foram excluídos.`
+          : `${clientToDelete.name} foi excluído com sucesso.`,
       });
 
       setClientToDelete(null);
+      setAppointmentsForClient([]);
     } catch (error: any) {
       toast({
         title: 'Erro ao excluir cliente',
@@ -130,6 +128,33 @@ const Clients = () => {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Ao selecionar um cliente para excluir, buscar seus agendamentos
+  const openDeleteModal = async (client: Client) => {
+    setClientToDelete(client);
+    setLoadingAppointments(true);
+    setAppointmentsForClient([]);
+
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('id, date, modality, status')
+        .eq('client_id', client.id)
+        .eq('user_id', user?.id)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+      setAppointmentsForClient(data || []);
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao buscar agendamentos',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingAppointments(false);
     }
   };
 
@@ -363,7 +388,7 @@ const Clients = () => {
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => setClientToDelete(client)}
+                              onClick={() => openDeleteModal(client)}
                               className="border-red-200 hover:bg-red-50 hover:border-red-300 text-red-700 w-full sm:w-auto text-[11px] sm:text-sm flex flex-col sm:flex-row items-center justify-center"
                             >
                               <Trash2 className="h-4 w-4 sm:mr-2 mb-0.5 sm:mb-0" />
@@ -392,10 +417,31 @@ const Clients = () => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir o cliente <strong>{clientToDelete?.name}</strong>?
-              <br />
-              <span className="text-red-600 text-sm mt-2 block">
-                ⚠️ Esta ação não pode ser desfeita. Se o cliente possuir agendamentos, a exclusão será cancelada.
-              </span>
+              {loadingAppointments && (
+                <div className="text-slate-600 text-sm mt-2">Carregando agendamentos...</div>
+              )}
+              {!loadingAppointments && appointmentsForClient.length > 0 && (
+                <div className="mt-3">
+                  <span className="text-red-600 text-sm block mb-2">
+                    ⚠️ Este cliente possui {appointmentsForClient.length} agendamento(s). Eles serão excluídos junto com o cliente.
+                  </span>
+                  <div className="max-h-48 overflow-auto border border-slate-200 rounded-md p-2 bg-slate-50">
+                    {appointmentsForClient.slice(0, 8).map(a => (
+                      <div key={a.id} className="text-xs text-slate-700 py-1 flex items-center justify-between">
+                        <span>{new Date(a.date).toLocaleString('pt-BR')}</span>
+                        <span className="ml-2">{a.modality || 'Sem modalidade'}</span>
+                        <Badge variant="outline" className="ml-2">{a.status}</Badge>
+                      </div>
+                    ))}
+                    {appointmentsForClient.length > 8 && (
+                      <div className="text-xs text-slate-500 mt-1">... e mais {appointmentsForClient.length - 8}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {!loadingAppointments && appointmentsForClient.length === 0 && (
+                <span className="text-slate-600 text-sm mt-2 block">Este cliente não possui agendamentos.</span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -407,7 +453,7 @@ const Clients = () => {
               className="bg-red-600 hover:bg-red-700"
               disabled={isDeleting}
             >
-              {isDeleting ? 'Excluindo...' : 'Excluir Cliente'}
+              {isDeleting ? 'Excluindo...' : appointmentsForClient.length > 0 ? 'Excluir Cliente e Agendamentos' : 'Excluir Cliente'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
