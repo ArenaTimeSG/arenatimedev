@@ -76,7 +76,7 @@ const NewClient = () => {
         const nameSlug = formData.name.trim().toLowerCase().replace(/\s+/g, '_');
         emailToInsert = `sem_email_${nameSlug}_${timestamp}@cliente.local`;
       } else {
-        emailToInsert = formData.email.trim() || null;
+        emailToInsert = formData.email.trim().toLowerCase() || null;
       }
 
       const { error } = await supabase
@@ -85,7 +85,8 @@ const NewClient = () => {
           name: formData.name.trim(),
           email: emailToInsert,
           phone: formData.phone.trim() || null,
-          password_hash: 'temp_hash', // Hash temporário para clientes criados pelo admin
+          // cliente criado pelo admin/agenda não deve ter senha de login
+          password_hash: null,
           user_id: user?.id
         });
 
