@@ -40,10 +40,11 @@ export const useOnlineBooking = () => {
         let clientId: string;
         
         // Buscar cliente existente por email ou telefone
+        const normalizedEmail = (data.cliente_email || '').trim().toLowerCase();
         const { data: existingClient } = await supabase
           .from('booking_clients')
           .select('id')
-          .or(`email.eq.${data.cliente_email},phone.eq.${data.cliente_telefone}`)
+          .or(`email.eq.${normalizedEmail},phone.eq.${data.cliente_telefone}`)
           .maybeSingle();
 
         if (existingClient) {
@@ -56,7 +57,7 @@ export const useOnlineBooking = () => {
             .update({
               name: data.cliente_nome,
               phone: data.cliente_telefone,
-              email: data.cliente_email,
+              email: normalizedEmail,
             })
             .eq('id', clientId);
 
@@ -68,7 +69,7 @@ export const useOnlineBooking = () => {
         } else {
           console.log('🆕 Criando novo cliente:', { 
             name: data.cliente_nome, 
-            email: data.cliente_email, 
+            email: normalizedEmail, 
             phone: data.cliente_telefone 
           });
           
@@ -78,8 +79,9 @@ export const useOnlineBooking = () => {
             .insert({
               name: data.cliente_nome,
               phone: data.cliente_telefone,
-              email: data.cliente_email,
-              password_hash: 'temp_hash', // Hash temporário para clientes criados online
+              email: normalizedEmail,
+              // clientes criados via agendamento não devem ter senha de login
+              password_hash: null,
               user_id: data.admin_user_id // Associar ao admin
             })
             .select('id')

@@ -124,10 +124,11 @@ export const useClientBookings = (adminUserId?: string) => {
         console.log('🔍 Processando cliente para agendamento online:', bookingData.client_data.email);
         
         // Buscar cliente existente primeiro - verificar por email E user_id
+        const normalizedEmail = (bookingData.client_data.email || '').trim().toLowerCase();
         const { data: existingClient } = await supabase
           .from('booking_clients')
           .select('id, name, email, user_id')
-          .eq('email', bookingData.client_data.email)
+          .eq('email', normalizedEmail)
           .eq('user_id', bookingData.user_id)
           .maybeSingle();
 
@@ -144,7 +145,7 @@ export const useClientBookings = (adminUserId?: string) => {
            // Cliente não existe nesta conta, criar novo
            console.log('🔍 Criando novo cliente para esta conta...', { 
              name: bookingData.client_data.name,
-             email: bookingData.client_data.email,
+             email: normalizedEmail,
              phone: bookingData.client_data.phone,
              user_id: bookingData.user_id
            });
@@ -153,9 +154,10 @@ export const useClientBookings = (adminUserId?: string) => {
              .from('booking_clients')
              .insert({
                name: bookingData.client_data.name,
-               email: bookingData.client_data.email,
+               email: normalizedEmail,
                phone: bookingData.client_data.phone || null,
-               password_hash: 'temp_hash',
+               // clientes de agenda não devem ter senha
+               password_hash: null,
                user_id: bookingData.user_id
              })
              .select('id, name, email, user_id')
