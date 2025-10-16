@@ -52,10 +52,9 @@ export const AddClientModal = ({ isOpen, onClose, onClientAdded }: AddClientModa
       // Gerar email único para clientes sem email
       let emailToInsert: string;
       if (isClientWithoutEmail) {
-        // Gerar email único baseado no timestamp e nome
-        const timestamp = Date.now();
-        const nameSlug = formData.name.trim().toLowerCase().replace(/\s+/g, '_');
-        emailToInsert = `sem_email_${nameSlug}_${timestamp}@cliente.local`;
+        // Gerar email padronizado: nomedocliente@cliente.local
+        const nameSlug = formData.name.trim().toLowerCase().replace(/\s+/g, '');
+        emailToInsert = `${nameSlug}@cliente.local`;
       } else {
         emailToInsert = formData.email.trim().toLowerCase() || null;
       }
