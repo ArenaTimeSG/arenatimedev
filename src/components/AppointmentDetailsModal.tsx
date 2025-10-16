@@ -269,11 +269,12 @@ const AppointmentDetailsModal = ({
     setError(null);
     
     try {
-      // Primeiro, verificar quantos agendamentos existem com este recurrence_id
+      // Primeiro, verificar quantos agendamentos existem a partir da data selecionada (preserva passados)
       const { data: appointmentsToDelete, error: countError } = await supabase
         .from('appointments')
         .select('id, date, client_id, modality, status')
         .eq('recurrence_id', appointment.recurrence_id)
+        .gte('date', appointment.date)
         .order('date', { ascending: true });
 
       if (countError) throw countError;
@@ -303,11 +304,12 @@ const AppointmentDetailsModal = ({
         return;
       }
 
-      // Deletar TODOS os agendamentos com o mesmo recurrence_id
+      // Deletar somente a partir do horário selecionado (>= appointment.date)
       const { error } = await supabase
         .from('appointments')
         .delete()
-        .eq('recurrence_id', appointment.recurrence_id);
+        .eq('recurrence_id', appointment.recurrence_id)
+        .gte('date', appointment.date);
 
       if (error) throw error;
 
@@ -321,7 +323,7 @@ const AppointmentDetailsModal = ({
 
       toast({
         title: 'Recorrência excluída!',
-        description: `${appointmentsToDelete.length} agendamentos da recorrência foram excluídos com sucesso.`,
+        description: `${appointmentsToDelete.length} ocorrência(s) a partir do horário selecionado foram excluídas. As passadas foram preservadas.`,
       });
 
       // Invalidar cache para atualizar a lista
