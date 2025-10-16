@@ -41,6 +41,7 @@ const Clients = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [loadingAppointments, setLoadingAppointments] = useState(false);
   const [appointmentsForClient, setAppointmentsForClient] = useState<Array<{ id: string; date: string; modality: string | null; status: string }>>([]);
+  const [confirmClientName, setConfirmClientName] = useState('');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -136,17 +137,46 @@ const Clients = () => {
     setClientToDelete(client);
     setLoadingAppointments(true);
     setAppointmentsForClient([]);
+    setConfirmClientName('');
 
     try {
       const { data, error } = await supabase
         .from('appointments')
-        .select('id, date, modality, status')
+        .select('id, date, modality, modality_id, status')
         .eq('client_id', client.id)
         .eq('user_id', user?.id)
         .order('date', { ascending: false });
 
       if (error) throw error;
-      setAppointmentsForClient(data || []);
+
+      const appointments = data || [];
+
+      // Montar mapa de modalidades quando modality (nome) vier vazio
+      const missingModalities = Array.from(new Set(
+        appointments
+          .filter((a: any) => !a.modality && a.modality_id)
+          .map((a: any) => a.modality_id)
+      ));
+
+      let modalityMap = new Map<string, string>();
+      if (missingModalities.length > 0) {
+        const { data: modalitiesData, error: modalitiesError } = await supabase
+          .from('modalities')
+          .select('id, name')
+          .in('id', missingModalities)
+          .eq('user_id', user?.id);
+        if (modalitiesError) throw modalitiesError;
+        (modalitiesData || []).forEach((m: any) => modalityMap.set(m.id, m.name));
+      }
+
+      const normalized = appointments.map((a: any) => ({
+        id: a.id,
+        date: a.date,
+        status: a.status,
+        modality: a.modality || (a.modality_id ? modalityMap.get(a.modality_id) || null : null)
+      }));
+
+      setAppointmentsForClient(normalized);
     } catch (error: any) {
       toast({
         title: 'Erro ao buscar agendamentos',
@@ -408,7 +438,7 @@ const Clients = () => {
       </div>
 
       {/* Modal de Confirmação de Exclusão */}
-      <AlertDialog open={!!clientToDelete} onOpenChange={() => setClientToDelete(null)}>
+      <AlertDialog open={!!clientToDelete} onOpenChange={() => { setClientToDelete(null); setConfirmClientName(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -442,6 +472,17 @@ const Clients = () => {
               {!loadingAppointments && appointmentsForClient.length === 0 && (
                 <span className="text-slate-600 text-sm mt-2 block">Este cliente não possui agendamentos.</span>
               )}
+
+              {/* Segunda etapa de segurança */}
+              <div className="mt-4">
+                <label className="text-xs text-slate-600 block mb-1">Para confirmar, digite o nome do cliente exatamente como abaixo:</label>
+                <div className="text-sm font-semibold text-slate-800 mb-2">{clientToDelete?.name}</div>
+                <Input
+                  value={confirmClientName}
+                  onChange={(e) => setConfirmClientName(e.target.value)}
+                  placeholder="Digite o nome do cliente para confirmar"
+                />
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -451,7 +492,7 @@ const Clients = () => {
             <AlertDialogAction
               onClick={handleDeleteClient}
               className="bg-red-600 hover:bg-red-700"
-              disabled={isDeleting}
+              disabled={isDeleting || !clientToDelete || confirmClientName.trim().toLowerCase() !== clientToDelete.name.trim().toLowerCase()}
             >
               {isDeleting ? 'Excluindo...' : appointmentsForClient.length > 0 ? 'Excluir Cliente e Agendamentos' : 'Excluir Cliente'}
             </AlertDialogAction>
