@@ -473,16 +473,18 @@ const Clients = () => {
                 <span className="text-slate-600 text-sm mt-2 block">Este cliente não possui agendamentos.</span>
               )}
 
-              {/* Segunda etapa de segurança */}
-              <div className="mt-4">
-                <label className="text-xs text-slate-600 block mb-1">Para confirmar, digite o nome do cliente exatamente como abaixo:</label>
-                <div className="text-sm font-semibold text-slate-800 mb-2">{clientToDelete?.name}</div>
-                <Input
-                  value={confirmClientName}
-                  onChange={(e) => setConfirmClientName(e.target.value)}
-                  placeholder="Digite o nome do cliente para confirmar"
-                />
-              </div>
+              {/* Segunda etapa de segurança - somente quando existir agendamento */}
+              {appointmentsForClient.length > 0 && (
+                <div className="mt-4">
+                  <label className="text-xs text-slate-600 block mb-1">Para confirmar, digite o nome do cliente exatamente como abaixo:</label>
+                  <div className="text-sm font-semibold text-slate-800 mb-2">{clientToDelete?.name}</div>
+                  <Input
+                    value={confirmClientName}
+                    onChange={(e) => setConfirmClientName(e.target.value)}
+                    placeholder="Digite o nome do cliente para confirmar"
+                  />
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -492,7 +494,13 @@ const Clients = () => {
             <AlertDialogAction
               onClick={handleDeleteClient}
               className="bg-red-600 hover:bg-red-700"
-              disabled={isDeleting || !clientToDelete || confirmClientName.trim().toLowerCase() !== clientToDelete.name.trim().toLowerCase()}
+              disabled={
+                isDeleting ||
+                !clientToDelete ||
+                (appointmentsForClient.length > 0 && (
+                  confirmClientName.trim().toLowerCase() !== clientToDelete.name.trim().toLowerCase()
+                ))
+              }
             >
               {isDeleting ? 'Excluindo...' : appointmentsForClient.length > 0 ? 'Excluir Cliente e Agendamentos' : 'Excluir Cliente'}
             </AlertDialogAction>
