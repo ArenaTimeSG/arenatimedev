@@ -57,7 +57,7 @@ export const AddClientModal = ({ isOpen, onClose, onClientAdded }: AddClientModa
         const nameSlug = formData.name.trim().toLowerCase().replace(/\s+/g, '_');
         emailToInsert = `sem_email_${nameSlug}_${timestamp}@cliente.local`;
       } else {
-        emailToInsert = formData.email.trim() || null;
+        emailToInsert = formData.email.trim().toLowerCase() || null;
       }
 
       const { data, error } = await supabase
@@ -66,7 +66,8 @@ export const AddClientModal = ({ isOpen, onClose, onClientAdded }: AddClientModa
           name: formData.name.trim(),
           email: emailToInsert,
           phone: formData.phone.trim() || null,
-          password_hash: 'temp_hash', // Hash temporário para clientes criados pelo admin
+          // Cliente criado pelo admin para agenda específica: não deve ter senha válida de login
+          password_hash: null,
           user_id: user?.id
         })
         .select()

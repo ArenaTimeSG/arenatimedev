@@ -144,10 +144,11 @@ export const useClientAuth = () => {
   const registerMutation = useMutation({
     mutationFn: async (data: CreateClientData) => {
       // Verificar se o email já existe (usando .maybeSingle() para evitar erro de múltiplos registros)
+      const normalizedEmail = data.email.trim().toLowerCase();
       const { data: existingClient, error: checkError } = await supabase
         .from('booking_clients')
         .select('id')
-        .eq('email', data.email)
+        .eq('email', normalizedEmail)
         // Ignorar registros temporários de agendas (que possuem user_id)
         .is('user_id', null)
         // Em caso de duplicatas antigas, pegar o mais recente
@@ -175,7 +176,7 @@ export const useClientAuth = () => {
         .from('booking_clients')
         .insert({
           name: data.name,
-          email: data.email,
+          email: normalizedEmail,
           password_hash: hashedPassword,
           phone: data.phone
         })
@@ -198,7 +199,8 @@ export const useClientAuth = () => {
   // Mutation para login (validação 100% no banco; suporta duplicatas por email)
   const loginMutation = useMutation({
     mutationFn: async (data: LoginClientData & { user_id?: string }) => {
-      console.log('🔍 useClientAuth: Tentando fazer login (validação no banco):', { email: data.email, user_id: data.user_id });
+      const normalizedLoginEmail = data.email.trim().toLowerCase();
+      console.log('🔍 useClientAuth: Tentando fazer login (validação no banco):', { email: normalizedLoginEmail, user_id: data.user_id });
 
       const hashed = hashPassword(data.password);
 
@@ -207,7 +209,7 @@ export const useClientAuth = () => {
         const { data: clientByUser, error: errByUser } = await supabase
           .from('booking_clients')
           .select('*')
-          .eq('email', data.email)
+          .eq('email', normalizedLoginEmail)
           .eq('user_id', data.user_id)
           .eq('password_hash', hashed)
           .order('updated_at', { ascending: false, nullsFirst: false })
@@ -228,7 +230,7 @@ export const useClientAuth = () => {
       const { data: clientAny, error: errAny } = await supabase
         .from('booking_clients')
         .select('*')
-        .eq('email', data.email)
+        .eq('email', normalizedLoginEmail)
         .eq('password_hash', hashed)
         .order('updated_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false, nullsFirst: false })

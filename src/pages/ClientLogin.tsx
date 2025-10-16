@@ -33,8 +33,9 @@ const ClientLogin = () => {
       return;
     }
 
+    // Normalizar email antes de enviar
     login(
-      { email, password, user_id: adminUserId },
+      { email: email.trim().toLowerCase(), password, user_id: adminUserId },
       {
         onSuccess: () => {
           toast({
